@@ -1,0 +1,28 @@
+{
+	"clang-tidy.compilerArgs": [
+        "--std=c++20",
+        "-Iinclude",
+        "-Ibuild/imgui/imgui",
+        "-Ibuild/imgui/imgui/backends",
+        "-Ibuild/tracy",
+        "-Ibuild/tinygltf",
+	],
+	"files.associations": {
+		"*.vsh": "glsl",
+		"*.vs": "glsl",
+		"*.fsh": "glsl",
+		"*.fs": "glsl",
+		"*.tes": "glsl",
+		"*.tcs": "glsl",
+		"*.gsh": "glsl",
+		"*.gs": "glsl",
+		"iostream": "cpp"
+	},
+	"C_Cpp.default.includePath": [
+		"${default}",
+		"${workspaceFolder}/build/imgui/imgui",
+		"${workspaceFolder}/build/imgui/imgui/backends",
+		"${workspaceFolder}/build/tracy",
+		"${workspaceFolder}/build/tinygltf",
+	],
+}
