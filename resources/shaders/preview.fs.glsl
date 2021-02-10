@@ -13,17 +13,21 @@ out vec3 f_color;
 void main()
 {
 	const vec3 light_pos = vec3(-2, 1, 1); // In camera space
-	const vec3 light_color = vec3(10);
+	const vec3 light_color = vec3(1);
 	const vec3 base_color = vec3(0.8);
-	const float ambient_int = 0.1;
+	const float ambient_int = 0.5;
 	const float diffuse_int = 1.0;
-	const float specular_int = 1.0;
-	const float specular_exp = 5.0;
+	const float specular_int = 0.2;
+	const float specular_exp = 10.0;
 
-	float light_distance = length(light_pos - vs_out.v_pos);
-	vec3 light_int = light_color / (light_distance * light_distance);
+	// float light_distance = length(light_pos - vs_out.v_pos);
+	// vec3 light_int = light_color / (light_distance * light_distance);
+
+	vec3 light_int = light_color;
+
 	vec3 N = normalize(vs_out.v_normal);
-	vec3 L = normalize(light_pos - vs_out.v_pos);
+	// vec3 L = normalize(light_pos - vs_out.v_pos);
+	vec3 L = normalize(vec3(-0.2, 0.2, 1));
 	vec3 V = -normalize(vs_out.v_pos);
 	vec3 H = normalize(L + V);
 
