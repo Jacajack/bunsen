@@ -12,16 +12,37 @@
 #include "ui.hpp"
 #include "preview/preview.hpp"
 #include "assimp_loader.hpp"
+#include "mouse.hpp"
 
-void glfw_error_callback(int error, const char *message)
+static void glfw_error_callback(int error, const char *message)
 {
 	std::cerr << "GLFW error - " << message << std::endl;
 }
 
-void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
 }
+
+static void glfw_cursor_position_callback(GLFWwindow *window, double x, double y)
+{
+	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	main_state->mouse.glfw_position_event(x, y);
+}
+
+static void glfw_scroll_callback(GLFWwindow *window, double x, double y)
+{
+	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	main_state->mouse.glfw_scroll_event(x, y);
+}
+
+static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
+{
+	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	main_state->mouse.glfw_button_event(button, action, mods);
+}
+
+
 
 void main_loop(br::borealis_state &main_state)
 {
@@ -29,6 +50,7 @@ void main_loop(br::borealis_state &main_state)
 	br::scene scene;
 	main_state.current_scene = &scene;
 	br::preview_renderer preview;
+	br::camera_orbiter orbiter;
 
 	scene.meshes.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
 	scene.objects.emplace_back();
@@ -36,8 +58,58 @@ void main_loop(br::borealis_state &main_state)
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
+		main_state.mouse.clear();
 		glfwPollEvents();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		glm::ivec2 window_size;
+		glfwGetWindowSize(main_state.window, &window_size.x, &window_size.y);
+
+		auto normalize_mouse_pos = [window_size](glm::vec2 pos)
+		{
+			return pos / glm::vec2(window_size);
+		};
+
+		// Orbiting camera control
+		if (main_state.mouse.is_drag_pending(2))
+		{
+			auto ndelta = normalize_mouse_pos(main_state.mouse.get_drag_delta(2));
+			int mods = main_state.mouse.get_drag_mods(2);
+			bool shift = mods & GLFW_MOD_SHIFT;
+			bool ctrl = mods & GLFW_MOD_CONTROL;
+			if (!shift & !ctrl)
+				orbiter.spin(ndelta);
+			else if (ctrl)
+				orbiter.zoom(ndelta);
+			else 
+				orbiter.translate(ndelta);
+		}
+
+		// Orbiting camera control - end drag
+		auto ev = main_state.mouse.get_last_event(2);
+		if (ev.type == br::mouse_event_type::DRAG_END)
+		{
+			auto ndelta = normalize_mouse_pos(ev.position - ev.start_position);
+			int mods = main_state.mouse.get_drag_mods(2);
+			bool shift = mods & GLFW_MOD_SHIFT;
+			bool ctrl = mods & GLFW_MOD_CONTROL;
+			if (!shift & !ctrl)
+			{
+				orbiter.spin(ndelta);
+				orbiter.end_spin();
+			}
+			else if (ctrl)
+			{
+				orbiter.zoom(ndelta);
+				orbiter.end_zoom();
+			}
+			else
+			{
+				orbiter.translate(ndelta);
+				orbiter.end_translate();
+			}
+		}
+
+		orbiter.distance *= std::pow(1.2, -main_state.mouse.get_scroll().y);
 
 		// Notify ImGui of new frame
 		ImGui_ImplOpenGL3_NewFrame();
@@ -45,10 +117,12 @@ void main_loop(br::borealis_state &main_state)
 		ImGui::NewFrame();
 
 		// Draw the scene
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, window_size.x, window_size.y);
+
 		// TEMP
 		br::camera cam;
-		cam.position = glm::vec3(2, 2, 2);
-		cam.look_at({0, 0, 0});
+		orbiter.update_camera(cam);
 		preview.draw(*main_state.current_scene, cam);
 
 		// Render ImGui
@@ -82,6 +156,9 @@ int main(int argc, char *argv[])
 
 	// GLFW callbacks
 	glfwSetKeyCallback(main_state.window, glfw_key_callback);
+	glfwSetCursorPosCallback(main_state.window, glfw_cursor_position_callback);
+	glfwSetScrollCallback(main_state.window, glfw_scroll_callback);
+	glfwSetMouseButtonCallback(main_state.window, glfw_mouse_button_callback);
 
 	// Load GL functions
 	glfwMakeContextCurrent(main_state.window);

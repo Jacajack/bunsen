@@ -27,6 +27,7 @@ add_executable(borealis
 	"src/scene.cpp"
 	"src/ui.cpp"
 	"src/utils.cpp"
+	"src/mouse.cpp"
 	"src/assimp_loader.cpp"
 	)
 
