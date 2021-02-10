@@ -6,9 +6,18 @@ using br::preview_renderer;
 
 preview_renderer::preview_renderer()
 {
-	auto vs = br::make_shader(GL_VERTEX_SHADER, br::slurp_txt("resources/shaders/preview.vs.glsl"));
-	auto fs = br::make_shader(GL_FRAGMENT_SHADER, br::slurp_txt("resources/shaders/preview.fs.glsl"));
-	program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
+	{
+		auto vs = br::make_shader(GL_VERTEX_SHADER, br::slurp_txt("resources/shaders/preview.vs.glsl"));
+		auto fs = br::make_shader(GL_FRAGMENT_SHADER, br::slurp_txt("resources/shaders/preview.fs.glsl"));
+		program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
+	}
+
+	{
+		auto vs = br::make_shader(GL_VERTEX_SHADER, br::slurp_txt("resources/shaders/grid.vs.glsl"));
+		auto fs = br::make_shader(GL_FRAGMENT_SHADER, br::slurp_txt("resources/shaders/grid.fs.glsl"));
+		grid_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
+	}
+
 
 	// VAO setup
 	glVertexArrayAttribFormat( // Position
@@ -82,4 +91,15 @@ void preview_renderer::draw(br::scene &scene, const br::camera &camera)
 		glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, nullptr);
 		
 	}
+	
+	// Draw grid
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glUseProgram(grid_program->id());
+	glUniform1f(grid_program->get_uniform_location("cam_near"), camera.near);
+	glUniform1f(grid_program->get_uniform_location("cam_far"), camera.far);
+	glUniformMatrix4fv(grid_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+	glUniformMatrix4fv(grid_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDisable(GL_BLEND);
 }
