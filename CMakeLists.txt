@@ -4,19 +4,30 @@ cmake_minimum_required(VERSION 3.3)
 set(OpenGL_GL_PREFERENCE GLVND)
 
 include(cmake/get_imgui.cmake)
-include(cmake/get_tinygltf.cmake)
+#include(cmake/get_tinygltf.cmake)
 include(cmake/get_tracy.cmake)
 
 find_package(glm 0.9.9 REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(OpenGL 4.2 REQUIRED)
+find_package(OpenGL 4.3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(ASSIMP REQUIRED)
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter --std=c++17 -pthread")
+# set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
+set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DNDEBUG")
+
 add_executable(borealis 
 	"src/borealis.cpp"
+	"src/gl/shader.cpp"
+	"src/preview/preview.cpp"
+	"src/camera.cpp"
+	"src/scene.cpp"
 	"src/ui.cpp"
+	"src/utils.cpp"
+	"src/assimp_loader.cpp"
 	)
 
 target_link_libraries(borealis PRIVATE 
@@ -28,7 +39,11 @@ target_link_libraries(borealis PRIVATE
 	${ASSIMP_LIBRARIES}
 	imgui_glfw
 	# tinygltf
-	# tracy
+	tracy
 	)
 	
-file(COPY "${PROJECT_SOURCE_DIR}/resources" DESTINATION "${PROJECT_BINARY_DIR}")
+add_custom_target(
+	symlink_resources ALL
+	COMMAND ${CMAKE_COMMAND} -E create_symlink
+	"${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
+	)

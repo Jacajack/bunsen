@@ -15,7 +15,11 @@ out struct VS_OUT
 
 void main()
 {
-	vs_out.v_pos = v_pos;
-	vs_out.v_normal = v_normal;
-	gl_Position = mat_proj * mat_view * mat_model * vec4(v_pos, 1.0);
+	vec4 v_pos_view = mat_view * mat_model * vec4(v_pos, 1.0);
+	vec4 v_normal_view = mat_view * mat_model * vec4(v_normal, 0.0);
+
+	vs_out.v_pos = v_pos_view.xyz;
+	vs_out.v_normal = v_normal_view.xyz;
+	
+	gl_Position = mat_proj * v_pos_view;
 }

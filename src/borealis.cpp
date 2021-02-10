@@ -7,8 +7,11 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include "gl.hpp"
+#include "gl/gl.hpp"
+#include "camera.hpp"
 #include "ui.hpp"
+#include "preview/preview.hpp"
+#include "assimp_loader.hpp"
 
 void glfw_error_callback(int error, const char *message)
 {
@@ -22,6 +25,15 @@ void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, in
 
 void main_loop(br::borealis_state &main_state)
 {
+	// TEMP
+	br::scene scene;
+	main_state.current_scene = &scene;
+	br::preview_renderer preview;
+
+	scene.meshes.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
+	scene.objects.emplace_back();
+	// scene.objects[0].transform
+
 	while (!glfwWindowShouldClose(main_state.window))
 	{
 		glfwPollEvents();
@@ -31,6 +43,13 @@ void main_loop(br::borealis_state &main_state)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+		// Draw the scene
+		// TEMP
+		br::camera cam;
+		cam.position = glm::vec3(2, 2, 2);
+		cam.look_at({0, 0, 0});
+		preview.draw(*main_state.current_scene, cam);
 
 		// Render ImGui
 		br::draw_ui(main_state);
