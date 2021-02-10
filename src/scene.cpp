@@ -20,7 +20,7 @@ void mesh_gpu_buffers::buffer_mesh(const mesh &m)
 		// Normal (up if missing)
 		glm::vec3 N;
 		if (i < m.vertex_normals.size())
-			N = m.vertex_positions[i];
+			N = m.vertex_normals[i];
 		else
 			N = glm::vec3{0, 1, 0};
 
