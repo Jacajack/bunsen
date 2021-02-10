@@ -8,7 +8,7 @@ in struct VS_OUT
 
 uniform vec3 world_color;
 
-out vec3 f_color;
+out vec4 f_color;
 
 void main()
 {
@@ -35,7 +35,8 @@ void main()
 	vec3 diffuse = light_int * base_color * clamp(dot(N, L), 0, 1);
 	vec3 specular = light_int * vec3(pow(clamp(dot(N, H), 0, 1), specular_exp));
 
-	f_color = ambient * ambient_int + diffuse * diffuse_int + specular * specular_int;
+	vec3 color = ambient * ambient_int + diffuse * diffuse_int + specular * specular_int;
+	f_color = vec4(color, 1);
 	// f_color = N;
 	//  f_color = vec3(1.0, 0.0, 0.0);
 }

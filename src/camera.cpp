@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "mouse.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
@@ -106,4 +107,57 @@ void camera_orbiter::update_camera(camera &cam) const
 	cam.position = cps + focus + focus_delta;
 	cam.direction = forward;
 	cam.up = glm::cross(right, forward);
+}
+
+void br::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const br::mouse_event_generator &mouse, const glm::ivec2 &window_size)
+{
+	auto normalize_mouse_pos = [window_size](glm::vec2 pos)
+	{
+		// Making controls independent from window size seems to be
+		// a better solution
+		// return pos / glm::vec2(window_size);
+		return pos / glm::vec2(1440, 960);
+	};
+
+	// Orbiting camera control
+	if (mouse.is_drag_pending(2))
+	{
+		auto ndelta = normalize_mouse_pos(mouse.get_drag_delta(2));
+		int mods = mouse.get_drag_mods(2);
+		bool shift = mods & GLFW_MOD_SHIFT;
+		bool ctrl = mods & GLFW_MOD_CONTROL;
+		if (!shift & !ctrl)
+			orbiter.spin(ndelta);
+		else if (ctrl)
+			orbiter.zoom(ndelta);
+		else 
+			orbiter.translate(ndelta);
+	}
+
+	// Orbiting camera control - end drag
+	auto ev = mouse.get_last_event(2);
+	if (ev.type == br::mouse_event_type::DRAG_END)
+	{
+		auto ndelta = normalize_mouse_pos(ev.position - ev.start_position);
+		int mods = mouse.get_drag_mods(2);
+		bool shift = mods & GLFW_MOD_SHIFT;
+		bool ctrl = mods & GLFW_MOD_CONTROL;
+		if (!shift & !ctrl)
+		{
+			orbiter.spin(ndelta);
+			orbiter.end_spin();
+		}
+		else if (ctrl)
+		{
+			orbiter.zoom(ndelta);
+			orbiter.end_zoom();
+		}
+		else
+		{
+			orbiter.translate(ndelta);
+			orbiter.end_translate();
+		}
+	}
+
+	orbiter.distance *= std::pow(1.2, -mouse.get_scroll().y);
 }
