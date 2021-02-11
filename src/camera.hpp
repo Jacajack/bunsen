@@ -24,9 +24,9 @@ struct camera_orbiter
 {
 	glm::vec3 focus = {0, 0, 0};
 	glm::vec3 focus_delta = {0, 0, 0};
-	glm::vec2 angle = {0, 0};
+	glm::vec2 angle = {-0.25 * glm::pi<float>(), 0.85 * glm::pi<float>()};
 	glm::vec2 angle_delta = {0, 0};
-	float distance = 3;
+	float distance = 4;
 	float distance_delta = 0;
 
 	glm::vec2 spin_speed = 2.f * glm::pi<float>() * glm::vec2{2, 1};
