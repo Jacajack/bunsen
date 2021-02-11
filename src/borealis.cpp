@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <unordered_map>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -13,10 +14,11 @@
 #include "preview/preview.hpp"
 #include "assimp_loader.hpp"
 #include "mouse.hpp"
+#include "log.hpp"
 
 static void glfw_error_callback(int error, const char *message)
 {
-	std::cerr << "GLFW error - " << message << std::endl;
+	LOG_ERROR << "GLFW error - " << message;
 }
 
 static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -56,6 +58,7 @@ void main_loop(br::borealis_state &main_state)
 	while (!glfwWindowShouldClose(main_state.window))
 	{
 		main_state.mouse.clear();
+		glfwWaitEventsTimeout(1.0);
 		glfwPollEvents();
 		
 		// Get current window size
@@ -92,6 +95,14 @@ int main(int argc, char *argv[])
 	// Main state
 	br::borealis_state main_state;
 
+	// Debug announcement
+	LOG_DEBUG << "Debug output is enabled!";
+
+	bool gl_debug = false;
+	#if defined(GL_DEBUG) || defined(DEBUG)
+	gl_debug = true;
+	#endif
+
 	// GLFW setup
 	glfwSetErrorCallback(glfw_error_callback);
 	glfwInit();
@@ -101,10 +112,15 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, gl_debug ? GLFW_TRUE : GLFW_FALSE);
 
 	// GLFW window creation
-	main_state.window = glfwCreateWindow(720, 480, "Borealis", nullptr, nullptr);
-	if (main_state.window == nullptr) throw std::runtime_error("glfwCreateWindow() failed!");
+	main_state.window = glfwCreateWindow(1280, 720, "Borealis", nullptr, nullptr);
+	if (main_state.window == nullptr)
+	{
+		LOG_ERROR << "glfwCreateWindow() failed! Terminating...";
+		return 1; 
+	}
 	glfwSetWindowUserPointer(main_state.window, &main_state);
 
 	// GLFW callbacks
@@ -116,8 +132,22 @@ int main(int argc, char *argv[])
 	// Load GL functions
 	glfwMakeContextCurrent(main_state.window);
 	glewExperimental = true;
-	if (glewInit() != GLEW_OK) throw std::runtime_error("glewInit() failed!");
+	if (glewInit() != GLEW_OK)
+	{
+		LOG_ERROR << "glewInit() failed! Terminating...";
+		return 1;
+	}
 
+	// Setup OpenGL debug callback
+	if (gl_debug)
+	{
+		glEnable(GL_DEBUG_OUTPUT);
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+		glDebugMessageCallback(br::gl_debug_callback, &main_state);
+		glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_OTHER, 0,
+			GL_DEBUG_SEVERITY_LOW, -1, "OpenGL debug output is active");
+	}
+	
 	// Initialize ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -126,6 +156,8 @@ int main(int argc, char *argv[])
 	ImGui_ImplGlfw_InitForOpenGL(main_state.window, true);
 	ImGui_ImplOpenGL3_Init();
 
+	LOG_INFO << "Init completed!";
+
 	// Main loop
 	try
 	{
@@ -133,12 +165,14 @@ int main(int argc, char *argv[])
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << "Main loop threw an exception - " << ex.what() << std::endl;
+		LOG_ERROR << "Main loop threw an exception - " << ex.what() << std::endl;
 	}
 	catch (...)
 	{
-		std::cerr << "Main loop threw an unrecognized exception..." << std::endl;
+		LOG_ERROR << "Main loop threw an unrecognized exception..." << std::endl;
 	}
+
+	LOG_INFO << "Terminating...";
 
 	// ImGui cleanup
 	ImGui_ImplOpenGL3_Shutdown();

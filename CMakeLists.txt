@@ -6,6 +6,7 @@ set(OpenGL_GL_PREFERENCE GLVND)
 include(cmake/get_imgui.cmake)
 #include(cmake/get_tinygltf.cmake)
 include(cmake/get_tracy.cmake)
+include(cmake/get_inih.cmake)
 
 find_package(glm 0.9.9 REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
@@ -21,9 +22,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DND
 
 add_executable(borealis 
 	"src/borealis.cpp"
+	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
 	"src/preview/preview.cpp"
 	"src/camera.cpp"
+	"src/log.cpp"
 	"src/scene.cpp"
 	"src/ui.cpp"
 	"src/utils.cpp"
@@ -41,6 +44,7 @@ target_link_libraries(borealis PRIVATE
 	imgui_glfw
 	# tinygltf
 	tracy
+	inih
 	)
 	
 add_custom_target(
