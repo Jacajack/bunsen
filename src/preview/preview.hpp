@@ -11,7 +11,7 @@ class preview_renderer
 {
 public:
 	preview_renderer();
-	void draw(br::scene &scene, const br::camera &camera);
+	void draw(br::scene &scene, const br::camera &camera, const scene_node *selected_node = nullptr);
 
 private:
 	std::unique_ptr<br::shader_program> program;

@@ -7,6 +7,7 @@ in struct VS_OUT
 } vs_out;
 
 uniform vec3 world_color;
+uniform bool selected;
 
 out vec4 f_color;
 
@@ -36,7 +37,13 @@ void main()
 	vec3 specular = light_int * vec3(pow(clamp(dot(N, H), 0, 1), specular_exp));
 
 	vec3 color = ambient * ambient_int + diffuse * diffuse_int + specular * specular_int;
-	f_color = vec4(color, 1);
+
+	if (selected)
+		f_color = vec4(mix(vec3(0.7, 0.3, 0.0), color, 0.3), 1);
+	else
+		f_color = vec4(color, 1);
+
+	// f_color = vec4(mix(color, vec3(0.8, 0.7, 0.0), float(selected) * 0.4), 1);
 	// f_color = N;
 	//  f_color = vec3(1.0, 0.0, 0.0);
 }
