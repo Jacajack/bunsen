@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <functional>
 #include "camera.hpp"
 #include "gl/gl.hpp"
 #include <glm/gtc/matrix_transform.hpp>
@@ -11,10 +12,10 @@
 
 namespace br {
 
-struct mesh;
+struct mesh_data;
 
 /**
-	\brief Equivalent of \ref mesh stored in GPU buffers.
+	\brief Equivalent of \ref mesh_data stored in GPU buffers.
 	
 	Storage format defined by this structure shall be consistent
 	across entire application. That is:
@@ -24,53 +25,108 @@ struct mesh;
 			- 2 x float - uvs
 		- Index buffer (unsigned int)
 */
-struct mesh_gpu_buffers
+struct mesh_gl_buffers
 {
 	gl_buffer vertex_buffer;
 	gl_buffer index_buffer;
 
-	void buffer_mesh(const mesh &m);
+	void buffer_mesh(const mesh_data &m);
 };
 
-struct mesh
+/**
+	\brief Abstract surface material
+*/
+struct surface_material
 {
-	std::vector<glm::vec3> vertex_positions;
-	std::vector<glm::vec3> vertex_normals;
-	std::vector<glm::vec3> vertex_uvs;
+};
+
+/**
+	\brief Abstract volume material
+*/
+struct volume_material
+{
+};
+
+struct light
+{
+};
+
+/**
+	\brief Material data holds and owns shaders for both surface and volume shading
+*/
+struct material_data
+{
+	std::string name;
+	std::unique_ptr<surface_material> surface;
+	std::unique_ptr<volume_material> volume;
+};
+
+/**
+	\brief Mesh data contains and owns purely geometrical vertex information
+
+	The mesh data may include a pointer to a struct containing the same data
+	in GL buffers.
+*/
+struct mesh_data
+{
+	std::string name;
+	std::vector<glm::vec3> positions;
+	std::vector<glm::vec3> normals;
+	std::vector<glm::vec3> uvs;
 	std::vector<unsigned int> indices;
 
-	std::unique_ptr<mesh_gpu_buffers> gpu_buffers;
-	void buffer_mesh();
-	void unbuffer_mesh();
+	std::unique_ptr<mesh_gl_buffers> gl_buffers;
+	void buffer();
+	void unbuffer();
 };
 
-struct matrix_transform
+/**
+	\brief Meshes link together mesh data (vertex stuff) and material data
+		and can share this data with other meshes.
+*/
+struct mesh
 {
-	glm::vec3 scale = glm::vec3{1.f};
-	glm::vec3 rotation = glm::vec3{0.f};
-	glm::vec3 position = glm::vec3{0.f};
+	std::shared_ptr<mesh_data> data;
+	std::shared_ptr<material_data> mat;
+};
 
-	glm::mat4 get_matrix() const
+/**
+	\brief Basic element of a scene.
+
+	Nodes can be transformed relative to their parents. They can contain and own
+	light sources and cameras. 
+	
+*/
+struct scene_node
+{
+	std::string name;
+	glm::mat4 transform = glm::mat4{1.f};
+	bool visible = true;
+	
+	std::vector<scene_node> children;
+	std::vector<mesh> meshes;
+	std::vector<camera> cameras;
+	std::vector<light> lights;
+
+	scene_node &find_node(const std::string &name) const;
+
+	template <typename T>
+	void foreach_node(std::function<T> f)
 	{
-		return glm::translate(glm::scale(glm::orientate4(rotation), scale), position);
+		f(*this);
+		for (auto &c : children)
+			c.foreach_node(f);
 	}
 };
 
 /**
-	Object links mesh data with a matrix transform applied to it
+	\brief The scene.
 */
-struct scene_object
-{
-	std::string name;
-	matrix_transform transform;	
-	int mesh_id;
-};
-
 struct scene
 {
-	std::vector<mesh> meshes;
-	std::vector<scene_object> objects;
-	std::vector<camera> cameras;
+	scene();
+
+	scene_node root_node;
 };
 
 }
