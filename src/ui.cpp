@@ -6,7 +6,7 @@
 #include <queue>
 #include <ImGuiFileDialog.h>
 
-void br::draw_ui(const br::borealis_state &main_state)
+void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 {
 	auto &scene = *main_state.current_scene;
 
@@ -17,65 +17,75 @@ void br::draw_ui(const br::borealis_state &main_state)
 	static void *selection = nullptr;
 	bool selection_valid = false;
 	
-	std::stack<scene_node*> node_stack;
-	node_stack.push(&scene.root_node);
-	while (node_stack.size())
+	if (ImGui::CollapsingHeader("Scene tree"))
 	{
-		scene_node *node_ptr = node_stack.top();
-		node_stack.pop();		
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+		ImGui::BeginChild("Scene Tree", ImVec2(ImGui::GetWindowContentRegionWidth(), 200), false, window_flags);
 
-		if (node_ptr)
+		std::stack<scene_node*> node_stack;
+		node_stack.push(&scene.root_node);
+		while (node_stack.size())
 		{
-			auto &node = *node_ptr;
-			ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
-				| ImGuiTreeNodeFlags_OpenOnDoubleClick 
-				| ImGuiTreeNodeFlags_SpanFullWidth 
-				| ImGuiTreeNodeFlags_SpanAvailWidth;
-			if (is_node && selection == node_ptr)
-			{
-				node_flags |= ImGuiTreeNodeFlags_Selected;
-				selection_valid = true;
-			}
-			bool node_open = ImGui::TreeNodeEx(node_ptr, node_flags, "%s", node.name.c_str());
-			if (ImGui::IsItemClicked())
-			{
-				is_mesh = false;
-				is_node = true;
-				selection = node_ptr;
-			}	
+			scene_node *node_ptr = node_stack.top();
+			node_stack.pop();		
 
-			if (node_open)
+			if (node_ptr)
 			{
-				node_stack.push(nullptr);
-				for (auto &c : node.children)
-					node_stack.push(&c);
-
-				for (auto &mesh : node.meshes)
+				auto &node = *node_ptr;
+				ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
+					| ImGuiTreeNodeFlags_OpenOnDoubleClick 
+					| ImGuiTreeNodeFlags_SpanFullWidth 
+					| ImGuiTreeNodeFlags_SpanAvailWidth;
+				if (is_node && selection == node_ptr)
 				{
-					ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
-						| ImGuiTreeNodeFlags_OpenOnDoubleClick 
-						| ImGuiTreeNodeFlags_SpanAvailWidth 
-						| ImGuiTreeNodeFlags_SpanFullWidth 
-						| ImGuiTreeNodeFlags_Leaf 
-						| ImGuiTreeNodeFlags_NoTreePushOnOpen;
-					if (is_mesh && selection == &mesh)
+					node_flags |= ImGuiTreeNodeFlags_Selected;
+					selection_valid = true;
+				}
+				bool node_open = ImGui::TreeNodeEx(node_ptr, node_flags, "%s", node.name.c_str());
+				if (ImGui::IsItemClicked())
+				{
+					is_mesh = false;
+					is_node = true;
+					selection = node_ptr;
+				}	
+
+				if (node_open)
+				{
+					node_stack.push(nullptr);
+					for (auto &c : node.children)
+						node_stack.push(&c);
+
+					for (auto &mesh : node.meshes)
 					{
-						node_flags |= ImGuiTreeNodeFlags_Selected;
-						selection_valid = true;
+						ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
+							| ImGuiTreeNodeFlags_OpenOnDoubleClick 
+							| ImGuiTreeNodeFlags_SpanAvailWidth 
+							| ImGuiTreeNodeFlags_SpanFullWidth 
+							| ImGuiTreeNodeFlags_Leaf 
+							| ImGuiTreeNodeFlags_NoTreePushOnOpen;
+						if (is_mesh && selection == &mesh)
+						{
+							node_flags |= ImGuiTreeNodeFlags_Selected;
+							selection_valid = true;
+						}
+						ImGui::TreeNodeEx(&mesh, node_flags, "[M] %s", mesh.data->name.c_str());
+						if (ImGui::IsItemClicked())
+						{
+							is_mesh = true;
+							is_node = false;
+							selection = &mesh;
+						}	
 					}
-					ImGui::TreeNodeEx(&mesh, node_flags, "[M] %s", mesh.data->name.c_str());
-					if (ImGui::IsItemClicked())
-					{
-						is_mesh = true;
-						is_node = false;
-						selection = &mesh;
-					}	
 				}
 			}
+			else
+				ImGui::TreePop();
 		}
-		else
-			ImGui::TreePop();
+
+		ImGui::EndChild();
 	}
+
+	
 
 	ImGui::Separator();
 
@@ -85,8 +95,8 @@ void br::draw_ui(const br::borealis_state &main_state)
 		{
 			auto &node = *reinterpret_cast<br::scene_node*>(selection);
 			ImGui::TextWrapped("Selected node '%s' with %d children", node.name.c_str(), node.children.size());
-
 			ImGui::SliderFloat3("Translate", &node.transform[3][0], -10, 10);
+			ui.selected_node = &node;
 		}
 
 		if (is_mesh)
@@ -96,7 +106,12 @@ void br::draw_ui(const br::borealis_state &main_state)
 			{
 				ImGui::TextWrapped("Mesh data named '%s' consists of %d vertices...", mesh.data->name.c_str(), mesh.data->positions.size());
 			}
+			ui.selected_node = nullptr;
 		}
+	}
+	else
+	{
+		ui.selected_node = nullptr;
 	}
 
 	ImGui::Separator();
@@ -121,7 +136,7 @@ void br::draw_ui(const br::borealis_state &main_state)
 	// }
 
 	if (ImGui::Button("Open File Dialog"))
-		ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj,.dae,.gltf", ".");
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj,.dae,.gltf,.glb", ".");
 
 	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 	{

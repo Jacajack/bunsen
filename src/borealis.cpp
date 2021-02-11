@@ -50,6 +50,7 @@ void main_loop(br::borealis_state &main_state)
 	main_state.current_scene = &scene;
 	br::preview_renderer preview;
 	br::camera_orbiter orbiter;
+	br::ui_state ui_state;
 
 	// TEMP
 	scene.root_node.children.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
@@ -84,7 +85,7 @@ void main_loop(br::borealis_state &main_state)
 		if (!imgui_mouse_grab)
 			br::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
 		orbiter.update_camera(cam);
-		preview.draw(*main_state.current_scene, cam);
+		preview.draw(*main_state.current_scene, cam, ui_state.selected_node);
 		glDisable(GL_DEBUG_OUTPUT);
 		
 		
@@ -93,7 +94,7 @@ void main_loop(br::borealis_state &main_state)
 			glDisable(GL_DEBUG_OUTPUT);
 
 		// Render ImGui
-		br::draw_ui(main_state);
+		br::draw_ui(ui_state, main_state);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

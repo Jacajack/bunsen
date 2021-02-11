@@ -58,7 +58,7 @@ preview_renderer::preview_renderer()
 	glVertexArrayAttribBinding(vao.id(), 2, 0);
 }
 
-void preview_renderer::draw(br::scene &scene, const br::camera &camera)
+void preview_renderer::draw(br::scene &scene, const br::camera &camera, const scene_node *selected_node)
 {
 	const glm::vec3 world_color{0.1, 0.1, 0.1};
 
@@ -78,22 +78,27 @@ void preview_renderer::draw(br::scene &scene, const br::camera &camera)
 
 	std::stack<scene_node*> node_stack;
 	std::stack<glm::mat4> transform_stack;
+	std::stack<bool> selection_stack;
 	node_stack.push(&scene.root_node);
 	transform_stack.push(scene.root_node.transform);
+	selection_stack.push(selected_node == &scene.root_node);
 
 	while (node_stack.size())
 	{
 		auto &node = *node_stack.top();
 		auto mat = transform_stack.top();
+		auto is_selected = selection_stack.top();
 		node_stack.pop();		
 		transform_stack.pop();
+		selection_stack.pop();
 
 		if (!node.visible) continue;
 
 		for (auto &c : node.children)
 		{
 			node_stack.push(&c);
-			transform_stack.push(c.transform * mat);
+			transform_stack.push(mat * c.transform);
+			selection_stack.push(is_selected || &c == selected_node);
 		}
 
 		for (auto &mesh : node.meshes)
@@ -104,6 +109,7 @@ void preview_renderer::draw(br::scene &scene, const br::camera &camera)
 			if (!mesh_data.gl_buffers)
 				mesh_data.buffer();
 
+			glUniform1i(program->get_uniform_location("selected"), is_selected);
 			glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());

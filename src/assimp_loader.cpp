@@ -2,9 +2,15 @@
 #include "log.hpp"
 #include <stdexcept>
 
+#include <glm/gtc/type_ptr.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
+
+glm::mat4 assimp_mat4_to_glm(const aiMatrix4x4 &m)
+{
+	return glm::transpose(glm::make_mat4(&m.a1));
+}
 
 br::scene_node br::load_mesh_from_file(const std::string &path)
 {
@@ -58,6 +64,7 @@ br::scene_node br::load_mesh_from_file(const std::string &path)
 		{
 			br::scene_node node;
 			node.name = n->mName.C_Str();
+			node.transform = assimp_mat4_to_glm(n->mTransformation);
 			LOG_DEBUG << "Processing node '" << node.name << "'";
 
 			for (auto i = 0u; i < n->mNumMeshes; i++)
