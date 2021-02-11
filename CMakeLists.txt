@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.3)
 set(OpenGL_GL_PREFERENCE GLVND)
 
 include(cmake/get_imgui.cmake)
+include(cmake/get_imgui_file_dialog.cmake)
 #include(cmake/get_tinygltf.cmake)
 include(cmake/get_tracy.cmake)
 include(cmake/get_inih.cmake)
@@ -42,6 +43,7 @@ target_link_libraries(borealis PRIVATE
 	nlohmann_json::nlohmann_json
 	${ASSIMP_LIBRARIES}
 	imgui_glfw
+	imgui_file_dialog
 	# tinygltf
 	tracy
 	inih
