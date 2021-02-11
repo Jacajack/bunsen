@@ -1,5 +1,6 @@
 #include "preview.hpp"
 #include <memory>
+#include <stack>
 #include "../utils.hpp"
 
 using br::preview_renderer;
@@ -75,21 +76,41 @@ void preview_renderer::draw(br::scene &scene, const br::camera &camera)
 	glUniformMatrix4fv(program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 	glUniformMatrix4fv(program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 
-	for (const auto &obj : scene.objects)
+	std::stack<scene_node*> node_stack;
+	std::stack<glm::mat4> transform_stack;
+	node_stack.push(&scene.root_node);
+	transform_stack.push(scene.root_node.transform);
+
+	while (node_stack.size())
 	{
-		auto mat_model = obj.transform.get_matrix();
-		auto &mesh = scene.meshes.at(obj.mesh_id);
+		auto &node = *node_stack.top();
+		auto mat = transform_stack.top();
+		node_stack.pop();		
+		transform_stack.pop();
 
-		if (!mesh.gpu_buffers)
-			mesh.buffer_mesh();
+		if (!node.visible) continue;
 
-		glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat_model[0][0]);
+		for (auto &c : node.children)
+		{
+			node_stack.push(&c);
+			transform_stack.push(c.transform * mat);
+		}
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.gpu_buffers->index_buffer.id());
-		glBindVertexBuffer(0, mesh.gpu_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.gpu_buffers->index_buffer.id());
-		glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, nullptr);
-		
+		for (auto &mesh : node.meshes)
+		{
+			if (!mesh.data) continue;
+			auto &mesh_data = *mesh.data;
+
+			if (!mesh_data.gl_buffers)
+				mesh_data.buffer();
+
+			glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
+			glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
+			glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
+		}
 	}
 	
 	// Draw grid

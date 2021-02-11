@@ -51,14 +51,13 @@ void main_loop(br::borealis_state &main_state)
 	br::preview_renderer preview;
 	br::camera_orbiter orbiter;
 
-	scene.meshes.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
-	scene.objects.emplace_back();
-	// scene.objects[0].transform
+	// TEMP
+	scene.root_node.children.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
 		main_state.mouse.clear();
-		glfwWaitEventsTimeout(1.0);
+		glfwWaitEventsTimeout(1.0 / 30.0);
 		glfwPollEvents();
 		
 		// Get current window size
@@ -69,6 +68,11 @@ void main_loop(br::borealis_state &main_state)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		bool imgui_mouse_grab = main_state.imgui_io->WantCaptureMouse;
+
+		// --- GL debug start
+		if (main_state.gl_debug)
+			glEnable(GL_DEBUG_OUTPUT);
 
 		// Draw the scene
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -77,9 +81,16 @@ void main_loop(br::borealis_state &main_state)
 		// TEMP
 		br::camera cam;
 		cam.aspect = float(window_size.x) / window_size.y;
-		br::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
+		if (!imgui_mouse_grab)
+			br::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
 		orbiter.update_camera(cam);
 		preview.draw(*main_state.current_scene, cam);
+		glDisable(GL_DEBUG_OUTPUT);
+		
+		
+		// --- GL debug end
+		if (main_state.gl_debug)
+			glDisable(GL_DEBUG_OUTPUT);
 
 		// Render ImGui
 		br::draw_ui(main_state);
@@ -98,9 +109,9 @@ int main(int argc, char *argv[])
 	// Debug announcement
 	LOG_DEBUG << "Debug output is enabled!";
 
-	bool gl_debug = false;
+	main_state.gl_debug = false;
 	#if defined(GL_DEBUG) || defined(DEBUG)
-	gl_debug = true;
+	main_state.gl_debug = true;
 	#endif
 
 	// GLFW setup
@@ -112,7 +123,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, gl_debug ? GLFW_TRUE : GLFW_FALSE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, main_state.gl_debug ? GLFW_TRUE : GLFW_FALSE);
 
 	// GLFW window creation
 	main_state.window = glfwCreateWindow(1280, 720, "Borealis", nullptr, nullptr);
@@ -139,7 +150,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Setup OpenGL debug callback
-	if (gl_debug)
+	if (main_state.gl_debug)
 	{
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);

@@ -39,9 +39,9 @@ void br::gl_debug_callback(
 	static const std::unordered_map<GLenum, std::string> severity_names
 	{
 		{GL_DEBUG_SEVERITY_LOW, "low"},
-		{GL_DEBUG_SEVERITY_MEDIUM, "medium"},
+		{GL_DEBUG_SEVERITY_MEDIUM, "med"},
 		{GL_DEBUG_SEVERITY_HIGH, "high"},
-		{GL_DEBUG_SEVERITY_NOTIFICATION, "notification"},
+		{GL_DEBUG_SEVERITY_NOTIFICATION, "info"},
 	};
 
 	try

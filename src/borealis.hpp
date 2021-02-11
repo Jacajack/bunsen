@@ -17,6 +17,7 @@ struct borealis_state
 	br::mouse_event_generator mouse;
 
 	br::scene *current_scene;
+	bool gl_debug;
 
 };
 

@@ -1,26 +1,27 @@
 #include "scene.hpp"
 #include "utils.hpp"
 
-using br::mesh_gpu_buffers;
+using br::mesh_gl_buffers;
 using br::mesh;
+using br::mesh_data;
 
-void mesh_gpu_buffers::buffer_mesh(const mesh &m)
+void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
 {
-	auto vertex_count = m.vertex_positions.size();
+	auto vertex_count = m.positions.size();
 	auto vertex_size = 3 + 3 + 2;
 	
 	std::vector<float> data(vertex_count * vertex_size);
 
 	for (auto i = 0u; i < vertex_count; i++)
 	{
-		data[i * vertex_size + 0] = m.vertex_positions[i].x;
-		data[i * vertex_size + 1] = m.vertex_positions[i].y;
-		data[i * vertex_size + 2] = m.vertex_positions[i].z;
+		data[i * vertex_size + 0] = m.positions[i].x;
+		data[i * vertex_size + 1] = m.positions[i].y;
+		data[i * vertex_size + 2] = m.positions[i].z;
 
 		// Normal (up if missing)
 		glm::vec3 N;
-		if (i < m.vertex_normals.size())
-			N = m.vertex_normals[i];
+		if (i < m.normals.size())
+			N = m.normals[i];
 		else
 			N = glm::vec3{0, 1, 0};
 
@@ -30,8 +31,8 @@ void mesh_gpu_buffers::buffer_mesh(const mesh &m)
 
 		// UVs
 		glm::vec2 uv;
-		if (i < m.vertex_uvs.size())
-			uv = m.vertex_uvs[i];
+		if (i < m.uvs.size())
+			uv = m.uvs[i];
 		else
 			uv = glm::vec2{0};
 
@@ -43,13 +44,18 @@ void mesh_gpu_buffers::buffer_mesh(const mesh &m)
 	glNamedBufferStorage(index_buffer.id(), br::vector_size(m.indices), m.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 
-void mesh::buffer_mesh()
+void mesh_data::buffer()
 {
-	gpu_buffers = std::make_unique<mesh_gpu_buffers>();
-	gpu_buffers->buffer_mesh(*this);
+	gl_buffers = std::make_unique<mesh_gl_buffers>();
+	gl_buffers->buffer_mesh(*this);
 }
 
-void mesh::unbuffer_mesh()
+void mesh_data::unbuffer()
 {
-	gpu_buffers.reset();
+	gl_buffers.reset();
+}
+
+br::scene::scene()
+{
+	root_node.name = "root";
 }

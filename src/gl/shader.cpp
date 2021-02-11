@@ -3,6 +3,7 @@
 #include <memory>
 #include <stdexcept>
 #include "gl.hpp"
+#include "../log.hpp"
 
 using br::gl_shader;
 using br::gl_program;
@@ -91,5 +92,10 @@ shader_program::shader_program(std::initializer_list<const gl_shader*> shaders)
 GLint shader_program::get_uniform_location(const std::string &name)
 {
 	auto it = m_uniforms.find(name);
-	return it == m_uniforms.end() ? -1 : it->second;
+	if (it == m_uniforms.end())
+	{
+		LOG_DEBUG << "Requested nonexistent uniform '" << name << "'";
+		return -1;
+	}
+	return it->second;
 }
