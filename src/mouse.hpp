@@ -4,7 +4,7 @@
 #include <vector>
 #include "gl/gl.hpp"
 
-namespace br {
+namespace bu {
 
 enum class mouse_event_type
 {

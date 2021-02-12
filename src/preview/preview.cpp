@@ -3,19 +3,19 @@
 #include <stack>
 #include "../utils.hpp"
 
-using br::preview_renderer;
+using bu::preview_renderer;
 
 preview_renderer::preview_renderer()
 {
 	{
-		auto vs = br::make_shader(GL_VERTEX_SHADER, br::slurp_txt("resources/shaders/preview.vs.glsl"));
-		auto fs = br::make_shader(GL_FRAGMENT_SHADER, br::slurp_txt("resources/shaders/preview.fs.glsl"));
+		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/preview.vs.glsl"));
+		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/preview.fs.glsl"));
 		program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
 	}
 
 	{
-		auto vs = br::make_shader(GL_VERTEX_SHADER, br::slurp_txt("resources/shaders/grid.vs.glsl"));
-		auto fs = br::make_shader(GL_FRAGMENT_SHADER, br::slurp_txt("resources/shaders/grid.fs.glsl"));
+		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/grid.vs.glsl"));
+		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/grid.fs.glsl"));
 		grid_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
 	}
 
@@ -58,7 +58,7 @@ preview_renderer::preview_renderer()
 	glVertexArrayAttribBinding(vao.id(), 2, 0);
 }
 
-void preview_renderer::draw(br::scene &scene, const br::camera &camera, const scene_node *selected_node)
+void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const scene_node *selected_node)
 {
 	const glm::vec3 world_color{0.1, 0.1, 0.1};
 

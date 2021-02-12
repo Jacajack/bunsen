@@ -9,7 +9,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-namespace br {
+namespace bu {
 
 void gl_debug_callback(
 	GLenum source,

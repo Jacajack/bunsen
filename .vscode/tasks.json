@@ -21,7 +21,7 @@
 				"isDefault": true
 			},
 			"dependsOn": ["cmake-build"],
-			"command": "./borealis",
+			"command": "./bunsen",
 			"options": {"cwd": "build"}
 		}
 	]

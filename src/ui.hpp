@@ -1,14 +1,14 @@
 #pragma once
 
-#include "borealis.hpp"
+#include "bunsen.hpp"
 
-namespace br {
+namespace bu {
 
 struct ui_state
 {
 	const scene_node *selected_node;
 };
 
-void draw_ui(ui_state &state, const br::borealis_state &main_state);
+void draw_ui(ui_state &state, const bu::bunsen_state &main_state);
 
 }

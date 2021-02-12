@@ -1,9 +1,9 @@
 #include "scene.hpp"
 #include "utils.hpp"
 
-using br::mesh_gl_buffers;
-using br::mesh;
-using br::mesh_data;
+using bu::mesh_gl_buffers;
+using bu::mesh;
+using bu::mesh_data;
 
 void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
 {
@@ -40,8 +40,8 @@ void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
 		data[i * vertex_size + 7] = uv.y;
 	}
 
-	glNamedBufferStorage(vertex_buffer.id(), br::vector_size(data), data.data(), GL_DYNAMIC_STORAGE_BIT);
-	glNamedBufferStorage(index_buffer.id(), br::vector_size(m.indices), m.indices.data(), GL_DYNAMIC_STORAGE_BIT);
+	glNamedBufferStorage(vertex_buffer.id(), bu::vector_size(data), data.data(), GL_DYNAMIC_STORAGE_BIT);
+	glNamedBufferStorage(index_buffer.id(), bu::vector_size(m.indices), m.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 
 void mesh_data::buffer()
@@ -55,7 +55,7 @@ void mesh_data::unbuffer()
 	gl_buffers.reset();
 }
 
-br::scene::scene()
+bu::scene::scene()
 {
 	root_node.name = "root";
 }

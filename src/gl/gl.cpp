@@ -2,7 +2,7 @@
 #include "../log.hpp"
 #include <unordered_map>
 
-void br::gl_debug_callback(
+void bu::gl_debug_callback(
 	GLenum source,
 	GLenum type,
 	GLuint id,
@@ -46,7 +46,7 @@ void br::gl_debug_callback(
 
 	try
 	{
-		br::log_stream(
+		bu::log_stream(
 			std::cerr, 
 			"[GL] "s + type_names.at(type) + ": "s, 
 			type == GL_DEBUG_TYPE_ERROR ? 1 : 6

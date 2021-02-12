@@ -4,7 +4,7 @@
 #include <string>
 #include <map>
 
-namespace br {
+namespace bu {
 
 gl_shader make_shader(GLenum type, const std::string &source);
 

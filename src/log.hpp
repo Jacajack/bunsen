@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <chrono>
 
-namespace br {
+namespace bu {
 
 struct dummy_stream
 {
@@ -80,9 +80,9 @@ struct log_debug : public log_stream
 
 }
 
-#define LOG_ERROR br::log_error{}
-#define LOG_WARNING br::log_warning{}
-#define LOG_INFO br::log_info{}
+#define LOG_ERROR bu::log_error{}
+#define LOG_WARNING bu::log_warning{}
+#define LOG_INFO bu::log_info{}
 
 // Make debug logging dependent on standard debug macro
 #ifdef DEBUG
@@ -94,7 +94,7 @@ struct log_debug : public log_stream
 
 // Debug logging is fully optional
 #ifdef DEBUG_LOGGING
-#define LOG_DEBUG br::log_debug{} << __FILE__ << ":" << __LINE__ << ": "
+#define LOG_DEBUG bu::log_debug{} << __FILE__ << ":" << __LINE__ << ": "
 #else
-#define LOG_DEBUG br::dummy_stream{}
+#define LOG_DEBUG bu::dummy_stream{}
 #endif

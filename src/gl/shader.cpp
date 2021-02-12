@@ -5,9 +5,9 @@
 #include "gl.hpp"
 #include "../log.hpp"
 
-using br::gl_shader;
-using br::gl_program;
-using br::shader_program;
+using bu::gl_shader;
+using bu::gl_program;
+using bu::shader_program;
 using namespace std::string_literals;
 
 static GLuint get_shader_log(gl_shader &shader, std::string &log)
@@ -46,7 +46,7 @@ static GLuint get_program_log(gl_program &prog, std::string &log)
 	return result;
 }
 
-gl_shader br::make_shader(GLenum type, const std::string &source)
+gl_shader bu::make_shader(GLenum type, const std::string &source)
 {
 	gl_shader shader(type);
 

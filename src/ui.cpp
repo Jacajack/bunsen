@@ -6,7 +6,7 @@
 #include <queue>
 #include <ImGuiFileDialog.h>
 
-void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
+void bu::draw_ui(ui_state &ui, const bu::bunsen_state &main_state)
 {
 	auto &scene = *main_state.current_scene;
 
@@ -107,7 +107,7 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 	{
 		if (is_node)
 		{
-			auto &node = *reinterpret_cast<br::scene_node*>(selection);
+			auto &node = *reinterpret_cast<bu::scene_node*>(selection);
 			ImGui::TextWrapped("Selected node '%s' with %d children", node.name.c_str(), node.children.size());
 			ImGui::SliderFloat3("Translate", &node.transform[3][0], -10, 10);
 			ui.selected_node = &node;
@@ -115,7 +115,7 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 
 		if (is_mesh)
 		{
-			auto &mesh = *reinterpret_cast<br::mesh*>(selection);
+			auto &mesh = *reinterpret_cast<bu::mesh*>(selection);
 			if (mesh.data)
 			{
 				ImGui::TextWrapped("Mesh data named '%s' consists of %d vertices...", mesh.data->name.c_str(), mesh.data->positions.size());
@@ -159,7 +159,7 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 			std::string path = ImGuiFileDialog::Instance()->GetFilePathName();
 			try
 			{
-				scene.root_node.children.emplace_back(br::load_mesh_from_file(path));
+				scene.root_node.children.emplace_back(bu::load_mesh_from_file(path));
 			}
 			catch (const std::exception &ex)
 			{

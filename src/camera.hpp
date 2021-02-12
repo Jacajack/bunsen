@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
-namespace br {
+namespace bu {
 
 struct camera
 {
@@ -46,6 +46,6 @@ struct camera_orbiter
 };
 
 struct mouse_event_generator;
-void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const br::mouse_event_generator &mouse, const glm::ivec2 &window_size);
+void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mouse_event_generator &mouse, const glm::ivec2 &window_size);
 
 }
