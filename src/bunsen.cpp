@@ -1,4 +1,4 @@
-#include "borealis.hpp"
+#include "bunsen.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -27,33 +27,33 @@ static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int act
 
 static void glfw_cursor_position_callback(GLFWwindow *window, double x, double y)
 {
-	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
 	main_state->mouse.glfw_position_event(x, y);
 }
 
 static void glfw_scroll_callback(GLFWwindow *window, double x, double y)
 {
-	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
 	main_state->mouse.glfw_scroll_event(x, y);
 }
 
 static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-	auto main_state = reinterpret_cast<br::borealis_state*>(glfwGetWindowUserPointer(window));
+	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
 	main_state->mouse.glfw_button_event(button, action, mods);
 }
 
-void main_loop(br::borealis_state &main_state)
+void main_loop(bu::bunsen_state &main_state)
 {
 	// TEMP
-	br::scene scene;
+	bu::scene scene;
 	main_state.current_scene = &scene;
-	br::preview_renderer preview;
-	br::camera_orbiter orbiter;
-	br::ui_state ui_state;
+	bu::preview_renderer preview;
+	bu::camera_orbiter orbiter;
+	bu::ui_state ui_state;
 
 	// TEMP
-	scene.root_node.children.emplace_back(br::load_mesh_from_file("resources/monkey.obj"));
+	scene.root_node.children.emplace_back(bu::load_mesh_from_file("resources/monkey.obj"));
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
@@ -80,10 +80,10 @@ void main_loop(br::borealis_state &main_state)
 		glViewport(0, 0, window_size.x, window_size.y);
 
 		// TEMP
-		br::camera cam;
+		bu::camera cam;
 		cam.aspect = float(window_size.x) / window_size.y;
 		if (!imgui_mouse_grab)
-			br::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
+			bu::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
 		orbiter.update_camera(cam);
 		preview.draw(*main_state.current_scene, cam, ui_state.selected_node);
 		glDisable(GL_DEBUG_OUTPUT);
@@ -94,7 +94,7 @@ void main_loop(br::borealis_state &main_state)
 			glDisable(GL_DEBUG_OUTPUT);
 
 		// Render ImGui
-		br::draw_ui(ui_state, main_state);
+		bu::draw_ui(ui_state, main_state);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -105,7 +105,7 @@ void main_loop(br::borealis_state &main_state)
 int main(int argc, char *argv[])
 {
 	// Main state
-	br::borealis_state main_state;
+	bu::bunsen_state main_state;
 
 	// Debug announcement
 	LOG_DEBUG << "Debug output is enabled!";
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, main_state.gl_debug ? GLFW_TRUE : GLFW_FALSE);
 
 	// GLFW window creation
-	main_state.window = glfwCreateWindow(1280, 720, "Borealis", nullptr, nullptr);
+	main_state.window = glfwCreateWindow(1280, 720, "bunsen", nullptr, nullptr);
 	if (main_state.window == nullptr)
 	{
 		LOG_ERROR << "glfwCreateWindow() failed! Terminating...";
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 	{
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-		glDebugMessageCallback(br::gl_debug_callback, &main_state);
+		glDebugMessageCallback(bu::gl_debug_callback, &main_state);
 		glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_OTHER, 0,
 			GL_DEBUG_SEVERITY_LOW, -1, "OpenGL debug output is active");
 	}

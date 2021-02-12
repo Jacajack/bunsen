@@ -3,8 +3,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
-using br::camera;
-using br::camera_orbiter;
+using bu::camera;
+using bu::camera_orbiter;
 
 void camera::look_at(const glm::vec3 &what)
 {
@@ -109,7 +109,7 @@ void camera_orbiter::update_camera(camera &cam) const
 	cam.up = glm::cross(right, forward);
 }
 
-void br::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const br::mouse_event_generator &mouse, const glm::ivec2 &window_size)
+void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mouse_event_generator &mouse, const glm::ivec2 &window_size)
 {
 	auto normalize_mouse_pos = [window_size](glm::vec2 pos)
 	{
@@ -136,7 +136,7 @@ void br::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const br::mou
 
 	// Orbiting camera control - end drag
 	auto ev = mouse.get_last_event(2);
-	if (ev.type == br::mouse_event_type::DRAG_END)
+	if (ev.type == bu::mouse_event_type::DRAG_END)
 	{
 		auto ndelta = normalize_mouse_pos(ev.position - ev.start_position);
 		int mods = mouse.get_drag_mods(2);

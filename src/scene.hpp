@@ -10,7 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
-namespace br {
+namespace bu {
 
 struct mesh_data;
 

@@ -5,7 +5,7 @@
 
 using namespace std::string_literals;
 
-std::string br::slurp_txt(const std::string &path)
+std::string bu::slurp_txt(const std::string &path)
 {
 	std::ifstream f(path);
 	if (!f) throw std::runtime_error("could not read file '"s + path + "'"s);

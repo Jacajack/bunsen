@@ -5,18 +5,18 @@
 #include "mouse.hpp"
 #include <imgui.h>
 
-namespace br {
+namespace bu {
 
 /**
 	\brief State of the application
 */
-struct borealis_state
+struct bunsen_state
 {
 	GLFWwindow *window;
 	ImGuiIO *imgui_io;
-	br::mouse_event_generator mouse;
+	bu::mouse_event_generator mouse;
 
-	br::scene *current_scene;
+	bu::scene *current_scene;
 	bool gl_debug;
 
 };

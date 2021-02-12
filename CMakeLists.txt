@@ -1,4 +1,4 @@
-project(borealis)
+project(bunsen)
 cmake_minimum_required(VERSION 3.3)
 
 set(OpenGL_GL_PREFERENCE GLVND)
@@ -21,8 +21,8 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter --std=c++17 -pthread")
 set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DNDEBUG")
 
-add_executable(borealis 
-	"src/borealis.cpp"
+add_executable(bunsen 
+	"src/bunsen.cpp"
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
 	"src/preview/preview.cpp"
@@ -35,7 +35,7 @@ add_executable(borealis
 	"src/assimp_loader.cpp"
 	)
 
-target_link_libraries(borealis PRIVATE 
+target_link_libraries(bunsen PRIVATE 
 	glm
 	glfw
 	GLEW

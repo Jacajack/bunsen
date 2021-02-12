@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace br {
+namespace bu {
 
 template <typename T>
 size_t vector_size(const std::vector<T> &v)

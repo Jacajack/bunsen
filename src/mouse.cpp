@@ -1,7 +1,7 @@
 #include "mouse.hpp"
 #include "gl/gl.hpp"
 
-using br::mouse_event_generator;
+using bu::mouse_event_generator;
 
 mouse_event_generator::mouse_event_generator(int buttons) :
 	m_button_count(buttons),
@@ -108,7 +108,7 @@ glm::vec2 mouse_event_generator::get_drag_delta(int button) const
 	return m_pos - get_drag_start(button);
 }
 
-const br::mouse_event &mouse_event_generator::get_last_event(int button) const
+const bu::mouse_event &mouse_event_generator::get_last_event(int button) const
 {
 	return m_last_events.at(button);
 }

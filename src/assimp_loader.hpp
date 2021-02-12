@@ -3,8 +3,8 @@
 #include "scene.hpp"
 #include <memory>
 
-namespace br {
+namespace bu {
 
-br::scene_node load_mesh_from_file(const std::string &path);
+bu::scene_node load_mesh_from_file(const std::string &path);
 
 }
