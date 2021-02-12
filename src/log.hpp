@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
+#include "utils.hpp"
 
 namespace bu {
 
@@ -94,7 +95,7 @@ struct log_debug : public log_stream
 
 // Debug logging is fully optional
 #ifdef DEBUG_LOGGING
-#define LOG_DEBUG bu::log_debug{} << __FILE__ << ":" << __LINE__ << ": "
+#define LOG_DEBUG bu::log_stream{std::cerr, "debug: " __FILE__ ":" BU_TO_STR(__LINE__) ": ", 5}
 #else
 #define LOG_DEBUG bu::dummy_stream{}
 #endif
