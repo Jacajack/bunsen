@@ -44,9 +44,16 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 				bool node_open = ImGui::TreeNodeEx(node_ptr, node_flags, "%s", node.name.c_str());
 				if (ImGui::IsItemClicked())
 				{
-					is_mesh = false;
-					is_node = true;
-					selection = node_ptr;
+					if (selection != node_ptr)
+					{
+						is_mesh = false;
+						is_node = true;
+						selection = node_ptr;
+					}
+					else
+					{
+						selection = nullptr;
+					}
 				}	
 
 				if (node_open)
@@ -71,9 +78,16 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 						ImGui::TreeNodeEx(&mesh, node_flags, "[M] %s", mesh.data->name.c_str());
 						if (ImGui::IsItemClicked())
 						{
-							is_mesh = true;
-							is_node = false;
-							selection = &mesh;
+							if (selection != &mesh)
+							{
+								is_mesh = true;
+								is_node = false;
+								selection = &mesh;
+							}
+							else
+							{
+								selection = nullptr;
+							}
 						}	
 					}
 				}
@@ -89,7 +103,7 @@ void br::draw_ui(ui_state &ui, const br::borealis_state &main_state)
 
 	ImGui::Separator();
 
-	if (selection_valid)
+	if (selection_valid && selection)
 	{
 		if (is_node)
 		{
