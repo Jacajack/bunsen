@@ -1,5 +1,5 @@
 #include "camera.hpp"
-#include "mouse.hpp"
+#include "input.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
@@ -109,7 +109,7 @@ void camera_orbiter::update_camera(camera &cam) const
 	cam.up = glm::cross(right, forward);
 }
 
-void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mouse_event_generator &mouse, const glm::ivec2 &window_size)
+void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &inputs, const glm::ivec2 &window_size)
 {
 	auto normalize_mouse_pos = [window_size](glm::vec2 pos)
 	{
@@ -120,10 +120,10 @@ void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mou
 	};
 
 	// Orbiting camera control
-	if (mouse.is_drag_pending(2))
+	if (inputs.is_drag_pending(2))
 	{
-		auto ndelta = normalize_mouse_pos(mouse.get_drag_delta(2));
-		int mods = mouse.get_drag_mods(2);
+		auto ndelta = normalize_mouse_pos(inputs.get_drag_delta(2));
+		int mods = inputs.get_drag_mods(2);
 		bool shift = mods & GLFW_MOD_SHIFT;
 		bool ctrl = mods & GLFW_MOD_CONTROL;
 		if (!shift & !ctrl)
@@ -135,29 +135,31 @@ void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mou
 	}
 
 	// Orbiting camera control - end drag
-	auto ev = mouse.get_last_event(2);
-	if (ev.type == bu::mouse_event_type::DRAG_END)
+	for (const auto &ev : inputs.get_queue())
 	{
-		auto ndelta = normalize_mouse_pos(ev.position - ev.start_position);
-		int mods = mouse.get_drag_mods(2);
-		bool shift = mods & GLFW_MOD_SHIFT;
-		bool ctrl = mods & GLFW_MOD_CONTROL;
-		if (!shift & !ctrl)
+		if (ev.type == bu::input_event_type::DRAG_END && ev.key == 2)
 		{
-			orbiter.spin(ndelta);
-			orbiter.end_spin();
-		}
-		else if (ctrl)
-		{
-			orbiter.zoom(ndelta);
-			orbiter.end_zoom();
-		}
-		else
-		{
-			orbiter.translate(ndelta);
-			orbiter.end_translate();
+			auto ndelta = normalize_mouse_pos(ev.position - ev.start_position);
+			int mods = inputs.get_drag_mods(2);
+			bool shift = mods & GLFW_MOD_SHIFT;
+			bool ctrl = mods & GLFW_MOD_CONTROL;
+			if (!shift & !ctrl)
+			{
+				orbiter.spin(ndelta);
+				orbiter.end_spin();
+			}
+			else if (ctrl)
+			{
+				orbiter.zoom(ndelta);
+				orbiter.end_zoom();
+			}
+			else
+			{
+				orbiter.translate(ndelta);
+				orbiter.end_translate();
+			}
 		}
 	}
 
-	orbiter.distance *= std::pow(1.2, -mouse.get_scroll().y);
+	orbiter.distance *= std::pow(1.2, -inputs.get_scroll().y);
 }

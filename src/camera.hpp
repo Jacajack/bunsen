@@ -45,7 +45,7 @@ struct camera_orbiter
 	void update_camera(camera &cam) const;
 };
 
-struct mouse_event_generator;
-void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::mouse_event_generator &mouse, const glm::ivec2 &window_size);
+struct input_event_queue;
+void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &mouse, const glm::ivec2 &window_size);
 
 }

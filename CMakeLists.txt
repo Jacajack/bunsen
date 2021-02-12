@@ -31,7 +31,7 @@ add_executable(bunsen
 	"src/scene.cpp"
 	"src/ui.cpp"
 	"src/utils.cpp"
-	"src/mouse.cpp"
+	"src/input.cpp"
 	"src/assimp_loader.cpp"
 	)
 
