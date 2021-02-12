@@ -59,6 +59,8 @@ gl_shader bu::make_shader(GLenum type, const std::string &source)
 	std::string log;
 	if (get_shader_log(shader, log) == GL_FALSE)
 		throw std::runtime_error("Shader compilation failed:\n"s + log + "\n"s);
+	if (log.size())
+		LOG_WARNING << "Shader compilation log: " << log;
 
 	return shader;
 }
@@ -73,6 +75,8 @@ shader_program::shader_program(std::initializer_list<const gl_shader*> shaders)
 	std::string log;
 	if (get_program_log(*this, log) == GL_FALSE)
 		throw std::runtime_error("Program linking failed:\n"s + log + "\n"s);
+	if (log.size())
+		LOG_WARNING << "Shader linking log: " << log;
 
 	// Get uniforms
 	GLint count;
