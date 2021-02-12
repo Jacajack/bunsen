@@ -4,6 +4,7 @@
 #include "scene.hpp"
 #include "input.hpp"
 #include <imgui.h>
+#include <INIReader.h>
 
 namespace bu {
 
@@ -19,6 +20,7 @@ struct bunsen_state
 	bu::scene *current_scene; // \todo get rid of this
 	bool gl_debug;
 
+	INIReader *config;
 };
 
 }
