@@ -2,7 +2,7 @@
 
 #include "gl/gl.hpp"
 #include "scene.hpp"
-#include "mouse.hpp"
+#include "input.hpp"
 #include <imgui.h>
 
 namespace bu {
@@ -14,9 +14,9 @@ struct bunsen_state
 {
 	GLFWwindow *window;
 	ImGuiIO *imgui_io;
-	bu::mouse_event_generator mouse;
+	bu::input_event_queue user_input;
 
-	bu::scene *current_scene;
+	bu::scene *current_scene; // \todo get rid of this
 	bool gl_debug;
 
 };

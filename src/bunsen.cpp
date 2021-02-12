@@ -13,7 +13,7 @@
 #include "ui.hpp"
 #include "preview/preview.hpp"
 #include "assimp_loader.hpp"
-#include "mouse.hpp"
+#include "input.hpp"
 #include "log.hpp"
 
 static void glfw_error_callback(int error, const char *message)
@@ -23,24 +23,26 @@ static void glfw_error_callback(int error, const char *message)
 
 static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
+	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
+	main_state->user_input.glfw_keyboard_event(key, action, mods);
 }
 
 static void glfw_cursor_position_callback(GLFWwindow *window, double x, double y)
 {
 	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->mouse.glfw_position_event(x, y);
+	main_state->user_input.glfw_position_event(x, y);
 }
 
 static void glfw_scroll_callback(GLFWwindow *window, double x, double y)
 {
 	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->mouse.glfw_scroll_event(x, y);
+	main_state->user_input.glfw_scroll_event(x, y);
 }
 
 static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
 	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->mouse.glfw_button_event(button, action, mods);
+	main_state->user_input.glfw_button_event(button, action, mods);
 }
 
 void main_loop(bu::bunsen_state &main_state)
@@ -57,44 +59,43 @@ void main_loop(bu::bunsen_state &main_state)
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
-		main_state.mouse.clear();
+		// Clear input queue and wait for events
+		main_state.user_input.clear_queue();
+		main_state.user_input.clear_scroll();
+		main_state.user_input.set_inhibit_mouse(main_state.imgui_io->WantCaptureMouse);
+		main_state.user_input.set_inhibit_keyboard(main_state.imgui_io->WantCaptureKeyboard);
 		glfwWaitEventsTimeout(1.0 / 30.0);
-		glfwPollEvents();
-		
-		// Get current window size
-		glm::ivec2 window_size;
-		glfwGetWindowSize(main_state.window, &window_size.x, &window_size.y);
 
 		// Notify ImGui of new frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		bool imgui_mouse_grab = main_state.imgui_io->WantCaptureMouse;
+		
+		// Get current window size
+		glm::ivec2 window_size;
+		glfwGetWindowSize(main_state.window, &window_size.x, &window_size.y);
 
 		// --- GL debug start
 		if (main_state.gl_debug)
 			glEnable(GL_DEBUG_OUTPUT);
 
-		// Draw the scene
+		// Clear window and set proper viewport size
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, window_size.x, window_size.y);
 
 		// TEMP
 		bu::camera cam;
 		cam.aspect = float(window_size.x) / window_size.y;
-		if (!imgui_mouse_grab)
-			bu::update_camera_orbiter_from_mouse(orbiter, main_state.mouse, window_size);
+		bu::update_camera_orbiter_from_mouse(orbiter, main_state.user_input, window_size);
 		orbiter.update_camera(cam);
 		preview.draw(*main_state.current_scene, cam, ui_state.selected_node);
-		glDisable(GL_DEBUG_OUTPUT);
-		
+		bu::draw_ui(ui_state, main_state);
 		
 		// --- GL debug end
 		if (main_state.gl_debug)
 			glDisable(GL_DEBUG_OUTPUT);
 
 		// Render ImGui
-		bu::draw_ui(ui_state, main_state);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
