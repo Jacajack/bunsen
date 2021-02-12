@@ -9,5 +9,8 @@ FetchContent_Populate(inih
 	SUBBUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/inih/subbuild"
 )
 
-add_library(inih "${inih_SOURCE_DIR}/cpp/INIReader.cpp")
+add_library(inih 
+	"${inih_SOURCE_DIR}/cpp/INIReader.cpp"
+	"${inih_SOURCE_DIR}/ini.c"
+	)
 target_include_directories(inih PUBLIC "${inih_SOURCE_DIR}/../")

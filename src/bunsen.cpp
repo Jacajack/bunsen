@@ -3,10 +3,13 @@
 #include <iostream>
 #include <stdexcept>
 #include <unordered_map>
+#include <memory>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
+#include <INIReader.h>
 
 #include "gl/gl.hpp"
 #include "camera.hpp"
@@ -116,10 +119,38 @@ int main(int argc, char *argv[])
 	main_state.gl_debug = true;
 	#endif
 
+	// Read config
+	const char *default_config_path = "bunsen.ini";
+	auto ini_config = std::make_unique<INIReader>(default_config_path);
+	if (ini_config->ParseError() < 0)
+	{
+		LOG_WARNING << "Failed to read default config file (" << default_config_path << ")";
+		std::string default_config = 
+			"[general]"
+			"config_missing = true"
+			;
+
+		ini_config = std::make_unique<INIReader>(default_config.c_str(), default_config.length());
+		if (ini_config->ParseError() < 0)
+		{
+			LOG_ERROR << "The default generated config is invalid!";
+		}
+	}
+	else
+	{
+		LOG_INFO << "Found and read default config file (" << default_config_path << ")";
+	}
+	main_state.config = ini_config.get();
+
+	// Get window config
+	auto initial_resx = main_state.config->GetInteger("general", "resx", 1280);
+	auto initial_resy = main_state.config->GetInteger("general", "resy", 720);
+	auto msaa = main_state.config->GetInteger("general", "msaa", 2);
+
 	// GLFW setup
 	glfwSetErrorCallback(glfw_error_callback);
 	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 2);
+	glfwWindowHint(GLFW_SAMPLES, msaa);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
@@ -128,7 +159,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, main_state.gl_debug ? GLFW_TRUE : GLFW_FALSE);
 
 	// GLFW window creation
-	main_state.window = glfwCreateWindow(1280, 720, "bunsen", nullptr, nullptr);
+	main_state.window = glfwCreateWindow(initial_resx, initial_resy, "bunsen", nullptr, nullptr);
 	if (main_state.window == nullptr)
 	{
 		LOG_ERROR << "glfwCreateWindow() failed! Terminating...";
