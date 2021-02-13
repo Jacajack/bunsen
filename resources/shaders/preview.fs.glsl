@@ -44,6 +44,6 @@ void main()
 		f_color = vec4(color, 1);
 
 	// f_color = vec4(mix(color, vec3(0.8, 0.7, 0.0), float(selected) * 0.4), 1);
-	// f_color = N;
+	// f_color = vec4(N, 1);
 	//  f_color = vec3(1.0, 0.0, 0.0);
 }

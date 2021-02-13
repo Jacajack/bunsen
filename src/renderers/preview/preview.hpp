@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include "../gl/shader.hpp"
-#include "../scene.hpp"
-#include "../camera.hpp"
+#include "../../gl/shader.hpp"
+#include "../../scene.hpp"
+#include "../../camera.hpp"
 
 namespace bu {
 
@@ -17,6 +17,7 @@ private:
 	std::unique_ptr<bu::shader_program> program;
 	std::unique_ptr<bu::shader_program> grid_program;
 	gl_vertex_array vao;
+	gl_vertex_array vao_2d;
 };
 
 }

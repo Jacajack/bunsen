@@ -109,14 +109,11 @@ void camera_orbiter::update_camera(camera &cam) const
 	cam.up = glm::cross(right, forward);
 }
 
-void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &inputs, const glm::ivec2 &window_size)
+void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &inputs, const glm::vec2 &scale)
 {
-	auto normalize_mouse_pos = [window_size](glm::vec2 pos)
+	auto normalize_mouse_pos = [scale](glm::vec2 pos)
 	{
-		// Making controls independent from window size seems to be
-		// a better solution
-		// return pos / glm::vec2(window_size);
-		return pos / glm::vec2(1440, 960);
+		return pos / scale;
 	};
 
 	// Orbiting camera control

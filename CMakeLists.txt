@@ -1,6 +1,8 @@
 project(bunsen)
 cmake_minimum_required(VERSION 3.3)
 
+option(GL_DEBUG "Should OpenGL debugging be enabled? (meaningless in Debug builds)" OFF)
+
 set(OpenGL_GL_PREFERENCE GLVND)
 
 include(cmake/get_imgui.cmake)
@@ -25,11 +27,12 @@ add_executable(bunsen
 	"src/bunsen.cpp"
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
-	"src/preview/preview.cpp"
+	"src/renderers/preview/preview.cpp"
+	"src/editor/editor.cpp"
 	"src/camera.cpp"
 	"src/log.cpp"
 	"src/scene.cpp"
-	"src/ui.cpp"
+	"src/editor/ui/ui.cpp"
 	"src/utils.cpp"
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
@@ -48,7 +51,11 @@ target_link_libraries(bunsen PRIVATE
 	tracy
 	inih
 	)
-	
+
+if (GL_DEBUG)
+	target_compile_definitions(bunsen PRIVATE GL_DEBUG)
+endif()
+
 add_custom_target(
 	symlink_resources ALL
 	COMMAND ${CMAKE_COMMAND} -E create_symlink

@@ -10,6 +10,8 @@ in struct VS_OUT
 	vec3 v_far;
 } vs_out;
 
+uniform vec3 cam_pos;
+uniform vec3 cam_dir;
 uniform float cam_near;
 uniform float cam_far;
 uniform mat4 mat_view;
@@ -58,7 +60,11 @@ void main()
 	vec3 pos = near + t * (far - near);
 
 	// float opacity = 1 - min(length(fwidth(pos.xz)), 1); // works but is quite sharp
-	float opacity = max(0, 0.8 - 8 * get_linear_depth(pos));
+	// float opacity = max(0, 0.8 - 8 * get_linear_depth(pos));
+	float angle = abs(atan(cam_pos.y, length(cam_pos.xz - pos.xz)));
+	float dist = length(pos - cam_pos);
+	float atten = dot(normalize(pos - cam_pos), cam_dir);
+	float opacity = atten * smoothstep(0, radians(20), angle) * smoothstep(40, 25, dist);
 	vec4 color = grid(pos.xz);
 	f_color = vec4(color.rgb, color.a * (t > 0 ? opacity : 0));
 	gl_FragDepth = get_depth(pos);

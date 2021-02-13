@@ -12,11 +12,9 @@
 #include <INIReader.h>
 
 #include "gl/gl.hpp"
-#include "camera.hpp"
-#include "ui.hpp"
-#include "preview/preview.hpp"
-#include "assimp_loader.hpp"
 #include "input.hpp"
+#include "editor/editor.hpp"
+#include "assimp_loader.hpp"
 #include "log.hpp"
 
 static void glfw_error_callback(int error, const char *message)
@@ -50,15 +48,13 @@ static void glfw_mouse_button_callback(GLFWwindow *window, int button, int actio
 
 void main_loop(bu::bunsen_state &main_state)
 {
-	// TEMP
-	bu::scene scene;
-	main_state.current_scene = &scene;
-	bu::preview_renderer preview;
-	bu::camera_orbiter orbiter;
-	bu::ui_state ui_state;
+	// The main editor and scene
+	bu::scene main_scene;
+	bu::bunsen_editor main_editor;
+	main_editor.scene = &main_scene;
 
 	// TEMP
-	scene.root_node.children.emplace_back(bu::load_mesh_from_file("resources/monkey.obj"));
+	// main_scene.root_node.children.emplace_back(bu::load_mesh_from_file("resources/monkey.obj"));
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
@@ -86,14 +82,9 @@ void main_loop(bu::bunsen_state &main_state)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, window_size.x, window_size.y);
 
-		// TEMP
-		bu::camera cam;
-		cam.aspect = float(window_size.x) / window_size.y;
-		bu::update_camera_orbiter_from_mouse(orbiter, main_state.user_input, window_size);
-		orbiter.update_camera(cam);
-		preview.draw(*main_state.current_scene, cam, ui_state.selected_node);
-		bu::draw_ui(ui_state, main_state);
-		
+		// The main editor
+		main_editor.draw(main_state);
+
 		// --- GL debug end
 		if (main_state.gl_debug)
 			glDisable(GL_DEBUG_OUTPUT);
@@ -117,6 +108,11 @@ int main(int argc, char *argv[])
 	main_state.gl_debug = false;
 	#if defined(GL_DEBUG) || defined(DEBUG)
 	main_state.gl_debug = true;
+	#endif
+
+	main_state.debug = false;
+	#if defined(DEBUG)
+	main_state.debug = true;
 	#endif
 
 	// Read config
