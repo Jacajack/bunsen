@@ -175,9 +175,6 @@ static void window_editor(bunsen_editor &ed)
 {
 	static bool debug_window_open = false;
 
-	// Dialogs
-	
-
 	if (ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar))
 	{
 		// Titlebar menu
@@ -237,7 +234,24 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 	dialog_import_model(ed);
 	window_editor(ed);
 	if (debug_window_open && debug) window_debug_cheats(ed);
+}
 
+/**
+	\brief Draws a 3D line in an ImGui window
+*/
+static void imgui_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &col = glm::vec4{1.f})
+{
+	a /= a.w;
+	b /= b.w;
+	auto ws = ImGui::GetWindowSize();
+	glm::vec2 A = (glm::vec2(a.x, -a.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
+	glm::vec2 B = (glm::vec2(b.x, -b.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
+	ImU32 c = 0;
+	c |= int(col.a * 255) << 24;
+	c |= int(col.b * 255) << 16;
+	c |= int(col.g * 255) << 8;
+	c |= int(col.r * 255) << 0;
+	ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), c);
 }
 
 void bunsen_editor::draw(const bu::bunsen_state &main_state)
@@ -264,4 +278,17 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 
 	// The UI
 	editor_ui(*this, main_state.debug || main_state.gl_debug);
+
+	// The overlay
+	ImGui::Begin("overlay", nullptr,
+		ImGuiWindowFlags_NoBackground
+		| ImGuiWindowFlags_NoDecoration
+		| ImGuiWindowFlags_NoInputs);
+	ImGui::SetWindowPos(ImVec2(0, 0));
+	ImGui::SetWindowSize(ImVec2(window_size.x, window_size.y));
+	// ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), 0xffffffff);
+	// imgui_3d_line(a, b, glm::vec4(1, 1, 0, 1));
+	// ImGui::GetWindowDrawList()->AddLine(ImVec2(window_size.x - 100, window_size.y - 100), ImVec2(window_size.x, window_size.y), 0xffffffff);
+	ImGui::End();
+
 }
