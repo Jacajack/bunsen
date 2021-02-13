@@ -16,11 +16,10 @@ struct bunsen_state
 	GLFWwindow *window;
 	ImGuiIO *imgui_io;
 	bu::input_event_queue user_input;
-
-	bu::scene *current_scene; // \todo get rid of this
-	bool gl_debug;
-
 	INIReader *config;
+	
+	bool gl_debug;
+	bool debug;
 };
 
 }

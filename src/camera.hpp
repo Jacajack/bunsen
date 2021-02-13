@@ -46,6 +46,6 @@ struct camera_orbiter
 };
 
 struct input_event_queue;
-void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &mouse, const glm::ivec2 &window_size);
+void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &mouse, const glm::vec2 &scale = glm::vec2(1440, 960));
 
 }

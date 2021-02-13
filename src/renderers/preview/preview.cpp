@@ -1,7 +1,7 @@
 #include "preview.hpp"
 #include <memory>
 #include <stack>
-#include "../utils.hpp"
+#include "../../utils.hpp"
 
 using bu::preview_renderer;
 
@@ -120,9 +120,12 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 	}
 	
 	// Draw grid
+	glBindVertexArray(vao_2d.id());
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glUseProgram(grid_program->id());
+	glUniform3fv(grid_program->get_uniform_location("cam_pos"), 1, &camera.position[0]);
+	glUniform3fv(grid_program->get_uniform_location("cam_dir"), 1, &camera.direction[0]);
 	glUniform1f(grid_program->get_uniform_location("cam_near"), camera.near);
 	glUniform1f(grid_program->get_uniform_location("cam_far"), camera.far);
 	glUniformMatrix4fv(grid_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);

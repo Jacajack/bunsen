@@ -98,7 +98,7 @@ GLint shader_program::get_uniform_location(const std::string &name)
 	auto it = m_uniforms.find(name);
 	if (it == m_uniforms.end())
 	{
-		LOG_DEBUG << "Requested nonexistent uniform '" << name << "'";
+		// LOG_DEBUG << "Requested nonexistent uniform '" << name << "'";
 		return -1;
 	}
 	return it->second;
