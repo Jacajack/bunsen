@@ -27,7 +27,7 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 			"OBJ files (*.obj){.obj},"
 			"Collada files (*.dae){.dae},"
 			"GLTF (*.gltf *.glb){.gltf,.glb}",
-			"."
+			""
 		);
 	}
 
@@ -282,97 +282,46 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 	if (debug_window_open && debug) window_debug_cheats(ed);
 }
 
-/**
-	\brief Draws a 3D line in an ImGui window
-*/
-static void imgui_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &col = glm::vec4{1.f})
-{
-	a /= a.w;
-	b /= b.w;
-	auto ws = ImGui::GetWindowSize();
-	glm::vec2 A = (glm::vec2(a.x, -a.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
-	glm::vec2 B = (glm::vec2(b.x, -b.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
-	ImU32 c = 0;
-	c |= int(col.a * 255) << 24;
-	c |= int(col.b * 255) << 16;
-	c |= int(col.g * 255) << 8;
-	c |= int(col.r * 255) << 0;
-	ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), c);
-}
+// /**
+// 	\brief Draws a 3D line in an ImGui window
+// */
+// static void imgui_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &col = glm::vec4{1.f})
+// {
+// 	a /= a.w;
+// 	b /= b.w;
+// 	auto ws = ImGui::GetWindowSize();
+// 	glm::vec2 A = (glm::vec2(a.x, -a.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
+// 	glm::vec2 B = (glm::vec2(b.x, -b.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
+// 	ImU32 c = 0;
+// 	c |= int(col.a * 255) << 24;
+// 	c |= int(col.b * 255) << 16;
+// 	c |= int(col.g * 255) << 8;
+// 	c |= int(col.r * 255) << 0;
+// 	ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), c);
+// }
 
-static void abort_scene_transform(bu::bunsen_editor &ed)
-{
-	for (const auto &n : ed.transform_nodes)
-		n->dissolve();
-	ed.transform_nodes.clear();
-	ed.is_transform_pending = false;
-}
+// static void test(bu::bunsen_editor &ed)
+// {
+// 	ImGui::Begin("Transform test");
 
-static void apply_scene_transform(bu::bunsen_editor &ed)
-{
-	for (const auto &n : ed.transform_nodes)
-		n->apply();
-	ed.transform_nodes.clear();
-	ed.is_transform_pending = false;
-}
+// 	if (ImGui::Button("Start transform"))
+// 		start_scene_transform(ed);
 
-/**
-	Starts transform on selected nodes
-*/
-static void start_scene_transform(bu::bunsen_editor &ed)
-{
-	if (ed.is_transform_pending)
-		abort_scene_transform(ed);
-	ed.is_transform_pending = true;
+// 	if (ImGui::Button("Apply transform"))
+// 		apply_scene_transform(ed);
 
-	// TODO compute LCA nodes
+// 	if (ImGui::Button("Abort transform"))
+// 		abort_scene_transform(ed);
 
-	ed.transform_matrix = glm::mat4{1.f};
+// 	static glm::vec3 T = glm::vec3{0.f};
+// 	static glm::vec3 R = glm::vec3{0.f};
+// 	ImGui::SliderFloat3("Translate", &T[0], -10, 10);
+// 	ImGui::SliderFloat3("Rotate", &R[0], -4, 4);
 
-	// Insert transform nodes
-	try
-	{
-		for (auto &sn : ed.selected_nodes)
-		{
-			if (auto node = sn.lock())
-			{
-				std::shared_ptr<bu::scene_node> parent{node->get_parent()};
-				auto tn = std::make_shared<bu::transform_node>(&ed.transform_matrix);
-				parent->add_child(tn);
-				tn->add_child(node);
-				ed.transform_nodes.push_back(std::move(tn));
-			}
-		}
-	}
-	catch (const std::exception &ex)
-	{
-		LOG_WARNING << "Failed to initate scene transform! (" << ex.what() << ")";
-		abort_scene_transform(ed);
-	}
-}
+// 	ed.transform_matrix = glm::translate(glm::orientate4(R), T);
 
-static void test(bu::bunsen_editor &ed)
-{
-	ImGui::Begin("Transform test");
-
-	if (ImGui::Button("Start transform"))
-		start_scene_transform(ed);
-
-	if (ImGui::Button("Apply transform"))
-		apply_scene_transform(ed);
-
-	if (ImGui::Button("Abort transform"))
-		abort_scene_transform(ed);
-
-	static glm::vec3 T = glm::vec3{0.f};
-	static glm::vec3 R = glm::vec3{0.f};
-	ImGui::SliderFloat3("Translate", &T[0], -10, 10);
-	ImGui::SliderFloat3("Rotate", &R[0], -4, 4);
-
-	ed.transform_matrix = glm::translate(glm::orientate4(R), T);
-
-	ImGui::End();
-}
+// 	ImGui::End();
+// }
 
 void bunsen_editor::draw(const bu::bunsen_state &main_state)
 {
@@ -385,8 +334,12 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 
 	// Update camera
 	this->viewport_camera.aspect = float(window_size.x) / window_size.y;
-	bu::update_camera_orbiter_from_mouse(this->orbit_manipulator, main_state.user_input);
+	if (!layout_ed.is_transform_pending())
+		bu::update_camera_orbiter_from_mouse(this->orbit_manipulator, main_state.user_input);
 	this->orbit_manipulator.update_camera(this->viewport_camera);
+
+	// Update layout editor
+	layout_ed.update(main_state.user_input, selected_nodes, viewport_camera, glm::vec2{window_size}, overlay);
 
 	// Draw scene in preview mode
 	// \todo fix selection!
@@ -397,8 +350,8 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 	}
 
 	// The UI
-	editor_ui(*this, main_state.debug || main_state.gl_debug);
-	test(*this);
+	if (!layout_ed.is_transform_pending())
+		editor_ui(*this, main_state.debug || main_state.gl_debug);
 
 	// The overlay
 	ImGui::Begin("overlay", nullptr,
@@ -407,6 +360,7 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 		| ImGuiWindowFlags_NoInputs);
 	ImGui::SetWindowPos(ImVec2(0, 0));
 	ImGui::SetWindowSize(ImVec2(window_size.x, window_size.y));
+	overlay.draw();
 	// ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), 0xffffffff);
 	// imgui_3d_line(a, b, glm::vec4(1, 1, 0, 1));
 	// ImGui::GetWindowDrawList()->AddLine(ImVec2(window_size.x - 100, window_size.y - 100), ImVec2(window_size.x, window_size.y), 0xffffffff);
