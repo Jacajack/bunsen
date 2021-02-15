@@ -62,7 +62,7 @@ void mesh_data::unbuffer()
 bu::scene::scene() :
 	root_node(std::make_shared<scene_node>())
 {
-	// root_node.name = "root";
+	root_node->set_name("root");
 }
 
 
@@ -213,6 +213,31 @@ void scene_node::set_parent(std::shared_ptr<scene_node> p)
 
 	m_parent = p;
 	p->add_child(shared_from_this());
+}
+
+const std::vector<std::shared_ptr<scene_node>> &scene_node::get_children() const
+{
+	return m_children;
+}
+
+const std::string &scene_node::get_name() const
+{
+	return m_name;
+}
+
+void scene_node::set_name(const std::string &name)
+{
+	m_name = name;
+}
+
+bool scene_node::is_visible() const
+{
+	return m_visible;
+}
+
+void scene_node::set_visible(bool v)
+{
+	m_visible = v;
 }
 
 scene_node::~scene_node()

@@ -128,6 +128,13 @@ public:
 	// Iterating
 	dfs_iterator begin();
 	dfs_iterator end();
+	const std::vector<std::shared_ptr<scene_node>> &get_children() const;
+
+	// Properties
+	const std::string &get_name() const;
+	void set_name(const std::string &name);
+	bool is_visible() const;
+	void set_visible(bool v);
 
 	virtual ~scene_node();
 
@@ -147,7 +154,6 @@ protected:
 	
 	// Attributes
 	bool m_visible = true;
-	bool m_selected = false;
 
 };
 
