@@ -153,7 +153,7 @@ std::shared_ptr<scene_node> scene_node::remove_child(scene_node *c)
 	for (auto i = 0u; i < m_children.size(); i++)
 	{
 		auto p = m_children[i];
-		if (p.get() == this)
+		if (p.get() == c)
 		{
 			m_children[i] = std::move(m_children.back());
 			m_children.pop_back();
@@ -313,7 +313,8 @@ bu::transform_node::transform_node(const glm::mat4 *ext_mat)
 void bu::transform_node::apply()
 {
 	auto p = m_parent.lock();
-	auto local_transform = glm::inverse(*transform_ptr * p->get_transform());
+	auto pt = p->get_final_transform();
+	auto local_transform = glm::inverse(pt) * *transform_ptr * pt;
 
 	for (auto &c : m_children)
 	{
@@ -327,5 +328,6 @@ void bu::transform_node::apply()
 glm::mat4 transform_node::get_transform() const
 {
 	auto p = m_parent.lock();
-	return glm::inverse(*transform_ptr * p->get_transform());
+	auto pt = p->get_final_transform();
+	return glm::inverse(pt) * *transform_ptr * pt;
 }
