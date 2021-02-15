@@ -282,47 +282,6 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 	if (debug_window_open && debug) window_debug_cheats(ed);
 }
 
-// /**
-// 	\brief Draws a 3D line in an ImGui window
-// */
-// static void imgui_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &col = glm::vec4{1.f})
-// {
-// 	a /= a.w;
-// 	b /= b.w;
-// 	auto ws = ImGui::GetWindowSize();
-// 	glm::vec2 A = (glm::vec2(a.x, -a.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
-// 	glm::vec2 B = (glm::vec2(b.x, -b.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
-// 	ImU32 c = 0;
-// 	c |= int(col.a * 255) << 24;
-// 	c |= int(col.b * 255) << 16;
-// 	c |= int(col.g * 255) << 8;
-// 	c |= int(col.r * 255) << 0;
-// 	ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), c);
-// }
-
-// static void test(bu::bunsen_editor &ed)
-// {
-// 	ImGui::Begin("Transform test");
-
-// 	if (ImGui::Button("Start transform"))
-// 		start_scene_transform(ed);
-
-// 	if (ImGui::Button("Apply transform"))
-// 		apply_scene_transform(ed);
-
-// 	if (ImGui::Button("Abort transform"))
-// 		abort_scene_transform(ed);
-
-// 	static glm::vec3 T = glm::vec3{0.f};
-// 	static glm::vec3 R = glm::vec3{0.f};
-// 	ImGui::SliderFloat3("Translate", &T[0], -10, 10);
-// 	ImGui::SliderFloat3("Rotate", &R[0], -4, 4);
-
-// 	ed.transform_matrix = glm::translate(glm::orientate4(R), T);
-
-// 	ImGui::End();
-// }
-
 void bunsen_editor::draw(const bu::bunsen_state &main_state)
 {
 	// Set theme
@@ -361,9 +320,5 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 	ImGui::SetWindowPos(ImVec2(0, 0));
 	ImGui::SetWindowSize(ImVec2(window_size.x, window_size.y));
 	overlay.draw();
-	// ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), 0xffffffff);
-	// imgui_3d_line(a, b, glm::vec4(1, 1, 0, 1));
-	// ImGui::GetWindowDrawList()->AddLine(ImVec2(window_size.x - 100, window_size.y - 100), ImVec2(window_size.x, window_size.y), 0xffffffff);
 	ImGui::End();
-
 }

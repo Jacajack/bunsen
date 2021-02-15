@@ -30,10 +30,10 @@ vec4 grid(vec2 p)
 	float minz = min(dp.y, 1);
 
 	if (abs(p.x) < 0.5 * minx)
-		color.r = 1;
+		color.b = 1;
 
 	if (abs(p.y) < 0.5 * minz)
-		color.g = 1;
+		color.r = 1;
 
 	return vec4(color, opacity);
 }

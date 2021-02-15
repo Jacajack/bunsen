@@ -94,17 +94,24 @@ void layout_editor::update(
 			auto delta = current_intersect - origin_intersect;
 			transform_matrix = glm::translate(glm::mat4{1.f}, delta);
 	
-			// Axes (TODO)0
+			// Axes
 			auto vp_mat = cam.get_projection_matrix() * cam.get_view_matrix();
 			auto orig = transform_matrix * glm::vec4{transform_origin, 1};
-			// auto proj = cam.get_projection_matrix();
-			// overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{1, 0, 0, 0.001}, glm::vec4{0, 1, 0, 1});
-			// overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{-1, 0, 0, 0.001}, glm::vec4{0, 1, 0, 1});
+			auto proj = cam.get_projection_matrix();
+			glm::vec4 color_x{1.0, 0.4, 0.4, 1.0};
+			glm::vec4 color_y{0.4, 1.0, 0.4, 1.0};
+			glm::vec4 color_z{0.4, 0.4, 1.0, 1.0};
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{1, 0, 0, 0},  color_x);
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{-1, 0, 0, 0}, color_x);
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{0, 1, 0, 0},  color_y);
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{0, -1, 0, 0}, color_y);
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{0, 0, 1, 0},  color_z);
+			overlay.add_3d_line(vp_mat * orig, vp_mat * glm::vec4{0, 0, -1, 0}, color_z);
 
 			if (was_clicked(0))
 				apply();
 
-			if (was_pressed(GLFW_KEY_G) || was_pressed(GLFW_KEY_ESCAPE))
+			if (was_clicked(1) || was_pressed(GLFW_KEY_G) || was_pressed(GLFW_KEY_ESCAPE))
 				abort();
 			break;
 		}
@@ -118,13 +125,13 @@ void layout_editor::update(
 			auto angle_1 = std::atan2(delta_1.y, delta_1.x);
 			auto angle_2 = std::atan2(delta_2.y, delta_2.x);
 
-			transform_matrix = glm::rotate(angle_1 - angle_2, cam.direction);
+			transform_matrix = glm::translate(glm::mat4{1.f}, transform_origin) * glm::rotate(angle_1 - angle_2, cam.direction) * glm::translate(glm::mat4{1.f}, -transform_origin);
 			overlay.add_line(to_projected, normalize_mouse_pos(mouse_pos));
 
 			if (was_clicked(0))
 				apply();
 
-			if (was_pressed(GLFW_KEY_R) || was_pressed(GLFW_KEY_ESCAPE))
+			if (was_clicked(1) || was_pressed(GLFW_KEY_R) || was_pressed(GLFW_KEY_ESCAPE))
 				abort();
 			
 			break;
