@@ -153,9 +153,9 @@ void layout_editor::update(
 				);
 
 			// Restrict to one axis
-			if (was_pressed(GLFW_KEY_X)) state = action_state::GRAB_X;
-			if (was_pressed(GLFW_KEY_Y)) state = action_state::GRAB_Y;
-			if (was_pressed(GLFW_KEY_Z)) state = action_state::GRAB_Z;
+			if (was_pressed(GLFW_KEY_X)) state = state == action_state::GRAB_X ? action_state::GRAB : action_state::GRAB_X;
+			if (was_pressed(GLFW_KEY_Y)) state = state == action_state::GRAB_Y ? action_state::GRAB : action_state::GRAB_Y;
+			if (was_pressed(GLFW_KEY_Z)) state = state == action_state::GRAB_Z ? action_state::GRAB : action_state::GRAB_Z;
 
 			if (was_clicked(0))
 				apply();
@@ -213,9 +213,9 @@ void layout_editor::update(
 				);
 
 			// Restrict to one axis
-			if (was_pressed(GLFW_KEY_X)) state = action_state::ROTATE_X;
-			if (was_pressed(GLFW_KEY_Y)) state = action_state::ROTATE_Y;
-			if (was_pressed(GLFW_KEY_Z)) state = action_state::ROTATE_Z;
+			if (was_pressed(GLFW_KEY_X)) state = state == action_state::ROTATE_X ? action_state::ROTATE : action_state::ROTATE_X;
+			if (was_pressed(GLFW_KEY_Y)) state = state == action_state::ROTATE_Y ? action_state::ROTATE : action_state::ROTATE_Y;
+			if (was_pressed(GLFW_KEY_Z)) state = state == action_state::ROTATE_Z ? action_state::ROTATE : action_state::ROTATE_Z;
 
 			if (was_clicked(0))
 				apply();
