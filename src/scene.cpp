@@ -238,7 +238,8 @@ void scene_node::set_name(const std::string &name)
 
 bool scene_node::is_visible() const
 {
-	return m_visible;
+	auto p = m_parent.lock();
+	return m_visible && (!p || p->is_visible());
 }
 
 void scene_node::set_visible(bool v)

@@ -85,6 +85,9 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 		auto node_ptr = &*it;
 		auto mesh_node_ptr = dynamic_cast<mesh_node*>(node_ptr);
 
+		// Skip invisible
+		if (!node_ptr->is_visible()) continue;
+
 		if (mesh_node_ptr)
 		{
 			bool is_selected = false;
@@ -109,49 +112,6 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 		}
 	}
 
-	// std::stack<scene_node*> node_stack;
-	// std::stack<glm::mat4> transform_stack;
-	// std::stack<bool> selection_stack;
-	// node_stack.push(&scene.root_node);
-	// transform_stack.push(scene.root_node.transform);
-	// selection_stack.push(selected_node == &scene.root_node);
-
-	// while (node_stack.size())
-	// {
-	// 	auto &node = *node_stack.top();
-	// 	auto mat = transform_stack.top();
-	// 	auto is_selected = selection_stack.top();
-	// 	node_stack.pop();		
-	// 	transform_stack.pop();
-	// 	selection_stack.pop();
-
-	// 	if (!node.visible) continue;
-
-	// 	for (auto &c : node.children)
-	// 	{
-	// 		node_stack.push(&c);
-	// 		transform_stack.push(mat * c.transform);
-	// 		selection_stack.push(is_selected || &c == selected_node);
-	// 	}
-
-	// 	for (auto &mesh : node.meshes)
-	// 	{
-	// 		if (!mesh.data) continue;
-	// 		auto &mesh_data = *mesh.data;
-
-	// 		if (!mesh_data.gl_buffers)
-	// 			mesh_data.buffer();
-
-	// 		glUniform1i(program->get_uniform_location("selected"), is_selected);
-	// 		glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
-
-	// 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
-	// 		glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
-	// 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
-	// 		glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
-	// 	}
-	// }
-	
 	// Draw grid
 	glBindVertexArray(vao_2d.id());
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
