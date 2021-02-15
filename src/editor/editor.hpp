@@ -33,6 +33,9 @@ struct bunsen_editor
 	editor_action current_action = editor_action::NONE;
 	std::list<std::weak_ptr<bu::scene_node>> selected_nodes;
 
+	bool is_transform_pending = false;
+	std::vector<std::shared_ptr<bu::transform_node>> transform_nodes;
+	glm::mat4 transform_matrix;
 
 	// Current scene
 	bu::scene *scene = nullptr;

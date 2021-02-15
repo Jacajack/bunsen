@@ -134,31 +134,43 @@ static void ui_scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 		if (selection_contains(node_ptr))
 			node_flags |= ImGuiTreeNodeFlags_Selected;
 
-		// Draw the node
-		bool node_open = ImGui::TreeNodeEx(node_ptr.get(), node_flags, "%s", node_ptr->get_name().c_str());
-		
-		// On normal click - select or deselect
-		// Ctrl + click - toggle
-		if (ImGui::IsItemClicked())
+		// Assume the node is open (because of temporary transform nodes)
+		bool node_open = true;
+		bool display_node = true;
+
+		// Do not display transform nodes on the list
+		if (dynamic_cast<bu::transform_node*>(node_ptr.get()))
+			display_node = false;
+
+		if (display_node)
 		{
-			bool already_selected = selection_contains(node_ptr);
-			if (ImGui::GetIO().KeyCtrl)
+			node_open = ImGui::TreeNodeEx(node_ptr.get(), node_flags, "%s", node_ptr->get_name().c_str());
+			
+			// On normal click - select or deselect
+			// Ctrl + click - toggle
+			if (ImGui::IsItemClicked())
 			{
-				if (already_selected) selection_remove(node_ptr);
-				else selection.push_back(node_ptr);
+				bool already_selected = selection_contains(node_ptr);
+				if (ImGui::GetIO().KeyCtrl)
+				{
+					if (already_selected) selection_remove(node_ptr);
+					else selection.push_back(node_ptr);
+				}
+				else
+				{
+					selection.clear();
+					if (!already_selected) selection.push_back(node_ptr);
+				}
 			}
-			else
-			{
-				selection.clear();
-				if (!already_selected) selection.push_back(node_ptr);
-			}
-		}	
+		}
 
 		// If open, draw children
 		if (node_open)
 		{
 			// Push end marker and children on stack
-			node_stack.push(nullptr);
+			if (display_node)
+				node_stack.push(nullptr);
+
 			for (auto &c : node_ptr->get_children())
 				node_stack.push(c);
 
@@ -288,6 +300,80 @@ static void imgui_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &col = glm::
 	ImGui::GetWindowDrawList()->AddLine(ImVec2(A.x, A.y), ImVec2(B.x, B.y), c);
 }
 
+static void abort_scene_transform(bu::bunsen_editor &ed)
+{
+	for (const auto &n : ed.transform_nodes)
+		n->dissolve();
+	ed.transform_nodes.clear();
+	ed.is_transform_pending = false;
+}
+
+static void apply_scene_transform(bu::bunsen_editor &ed)
+{
+	for (const auto &n : ed.transform_nodes)
+		n->apply();
+	ed.transform_nodes.clear();
+	ed.is_transform_pending = false;
+}
+
+/**
+	Starts transform on selected nodes
+*/
+static void start_scene_transform(bu::bunsen_editor &ed)
+{
+	if (ed.is_transform_pending)
+		abort_scene_transform(ed);
+	ed.is_transform_pending = true;
+
+	// TODO compute LCA nodes
+
+	ed.transform_matrix = glm::mat4{1.f};
+
+	// Insert transform nodes
+	try
+	{
+		for (auto &sn : ed.selected_nodes)
+		{
+			if (auto node = sn.lock())
+			{
+				std::shared_ptr<bu::scene_node> parent{node->get_parent()};
+				auto tn = std::make_shared<bu::transform_node>(&ed.transform_matrix);
+				parent->add_child(tn);
+				tn->add_child(node);
+				ed.transform_nodes.push_back(std::move(tn));
+			}
+		}
+	}
+	catch (const std::exception &ex)
+	{
+		LOG_WARNING << "Failed to initate scene transform! (" << ex.what() << ")";
+		abort_scene_transform(ed);
+	}
+}
+
+static void test(bu::bunsen_editor &ed)
+{
+	ImGui::Begin("Transform test");
+
+	if (ImGui::Button("Start transform"))
+		start_scene_transform(ed);
+
+	if (ImGui::Button("Apply transform"))
+		apply_scene_transform(ed);
+
+	if (ImGui::Button("Abort transform"))
+		abort_scene_transform(ed);
+
+	static glm::vec3 T = glm::vec3{0.f};
+	static glm::vec3 R = glm::vec3{0.f};
+	ImGui::SliderFloat3("Translate", &T[0], -10, 10);
+	ImGui::SliderFloat3("Rotate", &R[0], -4, 4);
+
+	ed.transform_matrix = glm::translate(glm::orientate4(R), T);
+
+	ImGui::End();
+}
+
 void bunsen_editor::draw(const bu::bunsen_state &main_state)
 {
 	// Set theme
@@ -312,6 +398,7 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 
 	// The UI
 	editor_ui(*this, main_state.debug || main_state.gl_debug);
+	test(*this);
 
 	// The overlay
 	ImGui::Begin("overlay", nullptr,
