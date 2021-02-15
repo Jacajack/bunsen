@@ -1,0 +1,1 @@
+Arch dependencies: `cmake glfw-x11 glew glm assimp nlohmann-json`
