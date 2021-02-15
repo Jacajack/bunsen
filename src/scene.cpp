@@ -137,12 +137,16 @@ const std::weak_ptr<scene_node> scene_node::get_parent() const
 */
 void scene_node::add_child(std::shared_ptr<scene_node> c)
 {
+	auto childs_parent = c->get_parent().lock();
+
 	// Check if the child is already ours
-	if (c->get_parent().lock().get() == this) return;
+	if (childs_parent == shared_from_this()) return;
 	
 	// Add child and change its parent
+	if (childs_parent)
+		c->remove_from_parent();
+	c->m_parent = shared_from_this();
 	m_children.push_back(c);
-	c->set_parent(shared_from_this());
 }
 
 /**
@@ -171,12 +175,19 @@ std::shared_ptr<scene_node> scene_node::remove_child(scene_node *c)
 void scene_node::dissolve()
 {
 	// Give all children to the parent
-	auto p = m_parent.lock();
-	for (auto &c : m_children)
-		p->add_child(c);
-	
-	// Remove itself from the parent
-	remove_from_parent();
+	if (auto p = m_parent.lock())
+	{
+		LOG_DEBUG << "dissolving " << this << " (parent " << p << ")";		
+		while (m_children.size())
+			p->add_child(m_children[0]);
+		
+		// Remove itself from the parent
+		remove_from_parent();
+	}
+	else
+	{
+		LOG_ERROR << "dissolve() called on node without parent!";
+	}
 }
 
 /**
@@ -207,11 +218,6 @@ void scene_node::remove_from_parent() noexcept
 */
 void scene_node::set_parent(std::shared_ptr<scene_node> p)
 {
-	auto current_parent = m_parent.lock();
-	if (current_parent)
-		remove_from_parent();
-
-	m_parent = p;
 	p->add_child(shared_from_this());
 }
 
@@ -242,7 +248,11 @@ void scene_node::set_visible(bool v)
 
 scene_node::~scene_node()
 {
-	remove_from_parent();
+	if (auto p = m_parent.lock())
+	{
+		LOG_ERROR << "node " << this << " is being destructed while still owned by the parent " << p << "!";
+		remove_from_parent();
+	}
 }
 
 scene_node::dfs_iterator scene_node::begin()
