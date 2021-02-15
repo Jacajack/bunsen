@@ -7,6 +7,7 @@ using bu::mesh_gl_buffers;
 using bu::mesh;
 using bu::mesh_data;
 using bu::scene_node;
+using bu::transform_node;
 
 void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
 {
@@ -165,6 +166,20 @@ std::shared_ptr<scene_node> scene_node::remove_child(scene_node *c)
 }
 
 /**
+	\brief Transfers children to parent node and then removes itself from parent
+*/
+void scene_node::dissolve()
+{
+	// Give all children to the parent
+	auto p = m_parent.lock();
+	for (auto &c : m_children)
+		p->add_child(c);
+	
+	// Remove itself from the parent
+	remove_from_parent();
+}
+
+/**
 	\brief Removes this node from its parent
 
 	If the node has no parent, nothing happens.
@@ -260,4 +275,32 @@ bool scene_node::dfs_iterator::operator==(const dfs_iterator &rhs) const
 glm::mat4 scene_node::dfs_iterator::get_transform()
 {
 	return transform_stack.back();
+}
+
+bu::transform_node::transform_node(const glm::mat4 *ext_mat)
+{
+	transform_ptr = ext_mat ? ext_mat : &this->m_transform;
+}
+
+/**
+	\warning Calling this results in a call to dissolve()
+*/
+void bu::transform_node::apply()
+{
+	auto p = m_parent.lock();
+	auto local_transform = glm::inverse(*transform_ptr * p->get_transform());
+
+	for (auto &c : m_children)
+	{
+		if (c->get_transform_origin() == node_transform_origin::PARENT)
+			c->set_transform(local_transform * c->get_transform());
+	}
+
+	dissolve();
+}
+
+glm::mat4 transform_node::get_transform() const
+{
+	auto p = m_parent.lock();
+	return glm::inverse(*transform_ptr * p->get_transform());
 }

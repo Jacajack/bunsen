@@ -123,6 +123,7 @@ public:
 	const std::weak_ptr<scene_node> get_parent() const;
 	void add_child(std::shared_ptr<scene_node> c);
 	std::shared_ptr<scene_node> remove_child(scene_node *c);
+	void dissolve();
 
 	// Iterating
 	dfs_iterator begin();
@@ -135,6 +136,12 @@ protected:
 	glm::mat4 m_transform = glm::mat4{1.f};
 	node_transform_origin m_transform_origin = node_transform_origin::PARENT;
 
+	// Parenting
+	std::weak_ptr<scene_node> m_parent;
+	std::vector<std::shared_ptr<scene_node>> m_children;
+
+	void remove_from_parent() noexcept;
+	void set_parent(std::shared_ptr<scene_node> p);
 
 	std::string m_name;
 	
@@ -142,13 +149,6 @@ protected:
 	bool m_visible = true;
 	bool m_selected = false;
 
-private:
-	// Parenting
-	std::weak_ptr<scene_node> m_parent;
-	std::vector<std::shared_ptr<scene_node>> m_children;
-
-	void remove_from_parent() noexcept;
-	void set_parent(std::shared_ptr<scene_node> p);
 };
 
 /**
@@ -185,17 +185,23 @@ private:
 	\brief A node for making transformations easier
 
 	Transformations applied by this node behave differently when the origin is
-	set to WORLD. The children are then transformed in world space but without
-	affecting parent nodes.
+	set to WORLD. The children are then transformed in world space without
+	affecting parent nodes or childrens' transform modes.
 
-	When apply() is called, the node
+	The transform node can contain a pointer to a transform matrix. If not null,
+	this matrix will be used for the transform instead of the internal one.
+
+	When apply() is called, the node applies the transform on its children.
 */
 class transform_node : public scene_node
 {
 public:
-	void apply();
+	transform_node(const glm::mat4 *ext_mat = nullptr);
 
+	void apply();
 	glm::mat4 get_transform() const override;
+
+	const glm::mat4 *transform_ptr;
 };
 
 struct mesh_node : public scene_leaf
