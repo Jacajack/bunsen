@@ -34,7 +34,7 @@ void layout_editor::update(
 	auto was_clicked = [&input](int button)
 	{
 		for (auto &ev : input.get_queue())
-			if (ev.type == input_event_type::CLICK && ev.key == button)
+			if (ev.type == input_event_type::MOUSE_BUTTON && ev.action == GLFW_PRESS && ev.key == button)
 				return true;
 		return false;
 	};
