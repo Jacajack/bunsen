@@ -88,7 +88,7 @@ glm::mat4 scene_node::get_transform_relative_to(const scene_node *what) const
 	while (n && n != what)
 	{
 		t = n->get_transform() * t;
-		if (n->get_transform_origin() == node_transform_origin::PARENT)
+		if (n->get_transform_origin() == node_transform_origin::WORLD)
 			break;
 		n = n->get_parent().lock().get();
 	}
