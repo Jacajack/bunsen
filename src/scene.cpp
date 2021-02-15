@@ -302,9 +302,9 @@ glm::mat4 scene_node::dfs_iterator::get_transform()
 	return transform_stack.back();
 }
 
-bu::transform_node::transform_node(const glm::mat4 *ext_mat)
+bu::transform_node::transform_node(const glm::mat4 *ext_mat) :
+	transform_ptr(ext_mat)
 {
-	transform_ptr = ext_mat ? ext_mat : &this->m_transform;
 }
 
 /**
@@ -314,7 +314,8 @@ void bu::transform_node::apply()
 {
 	auto p = m_parent.lock();
 	auto pt = p->get_final_transform();
-	auto local_transform = glm::inverse(pt) * *transform_ptr * pt;
+	const auto &t = transform_ptr ? *transform_ptr : m_transform;
+	auto local_transform = glm::inverse(pt) * t * pt;
 
 	for (auto &c : m_children)
 	{
@@ -329,5 +330,6 @@ glm::mat4 transform_node::get_transform() const
 {
 	auto p = m_parent.lock();
 	auto pt = p->get_final_transform();
-	return glm::inverse(pt) * *transform_ptr * pt;
+	const auto &t = transform_ptr ? *transform_ptr : m_transform;
+	return glm::inverse(pt) * t * pt;
 }

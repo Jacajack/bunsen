@@ -3,6 +3,8 @@
 #include "../scene.hpp"
 #include "../camera.hpp"
 #include "../renderers/preview/preview.hpp"
+#include "layout_editor.hpp"
+#include "imgui_overlay.hpp"
 #include <memory>
 #include <list>
 
@@ -10,32 +12,12 @@ namespace bu {
 
 struct bunsen_editor
 {
-	enum class editor_action
-	{
-		NONE,
-		
-		GRAB,
-		GRAB_X,
-		GRAB_Y,
-		GRAB_Z,
+	using scene_selection = std::list<std::weak_ptr<bu::scene_node>>;
+	scene_selection selected_nodes;
 
-		ROTATE,
-		ROTATE_X,
-		ROTATE_Y,
-		ROTATE_Z,
-
-		SCALE,
-		SCALE_X,
-		SCALE_Y,
-		SCALE_Z,
-	};
-
-	editor_action current_action = editor_action::NONE;
-	std::list<std::weak_ptr<bu::scene_node>> selected_nodes;
-
-	bool is_transform_pending = false;
-	std::vector<std::shared_ptr<bu::transform_node>> transform_nodes;
-	glm::mat4 transform_matrix;
+	// Layout editor
+	bu::layout_editor layout_ed;
+	bu::imgui_overlay overlay;
 
 	// Current scene
 	bu::scene *scene = nullptr;
@@ -49,7 +31,5 @@ struct bunsen_editor
 
 	void draw(const bu::bunsen_state &main_state);
 };
-
-
 
 }

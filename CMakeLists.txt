@@ -33,6 +33,8 @@ add_executable(bunsen
 	"src/log.cpp"
 	"src/scene.cpp"
 	"src/editor/ui/ui.cpp"
+	"src/editor/layout_editor.cpp"
+	"src/editor/imgui_overlay.cpp"
 	"src/utils.cpp"
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
