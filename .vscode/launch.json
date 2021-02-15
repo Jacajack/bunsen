@@ -8,7 +8,7 @@
 			"name": "(gdb) Launch",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/build/borealis",
+			"program": "${workspaceFolder}/build/bunsen",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}/build",

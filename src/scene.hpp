@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <functional>
+#include <stack>
 #include "camera.hpp"
 #include "gl/gl.hpp"
 #include <glm/gtc/matrix_transform.hpp>
@@ -92,32 +92,127 @@ struct mesh
 
 /**
 	\brief Basic element of a scene.
-
-	Nodes can be transformed relative to their parents. They can contain and own
-	light sources and cameras. 
-	
 */
-struct scene_node
+class scene_node : public std::enable_shared_from_this<scene_node>
 {
-	std::string name;
-	glm::mat4 transform = glm::mat4{1.f};
-	bool visible = true;
-	
-	std::vector<scene_node> children;
-	std::vector<mesh> meshes;
-	std::vector<camera> cameras;
-	std::vector<light> lights;
-
-	scene_node &find_node(const std::string &name) const;
-
-	template <typename T>
-	void foreach_node(std::function<T> f)
+public:
+	enum class node_transform_origin
 	{
-		f(*this);
-		for (auto &c : children)
-			c.foreach_node(f);
-	}
+		PARENT,
+		WORLD
+	};
+
+	friend class dfs_iterator;
+	class dfs_iterator;
+
+	// Constructors
+	scene_node();
+
+	// Transforms
+	virtual glm::mat4 get_transform() const;
+	glm::mat4 get_final_transform() const;
+	glm::mat4 get_transform_relative_to(const scene_node *what) const;
+	void set_transform(const glm::mat4 &t);
+	node_transform_origin get_transform_origin() const;
+	void set_transform_origin(node_transform_origin o);
+
+	// Parenting
+	bool has_parent() const;
+	bool is_orphan() const;
+	std::weak_ptr<scene_node> get_parent();
+	const std::weak_ptr<scene_node> get_parent() const;
+	void add_child(std::shared_ptr<scene_node> c);
+	std::shared_ptr<scene_node> remove_child(scene_node *c);
+
+	// Iterating
+	dfs_iterator begin();
+	dfs_iterator end();
+
+	virtual ~scene_node();
+
+protected:
+	// Transform
+	glm::mat4 m_transform = glm::mat4{1.f};
+	node_transform_origin m_transform_origin = node_transform_origin::PARENT;
+
+
+	std::string m_name;
+	
+	// Attributes
+	bool m_visible = true;
+	bool m_selected = false;
+
+private:
+	// Parenting
+	std::weak_ptr<scene_node> m_parent;
+	std::vector<std::shared_ptr<scene_node>> m_children;
+
+	void remove_from_parent() noexcept;
+	void set_parent(std::shared_ptr<scene_node> p);
 };
+
+/**
+	\brief Iterates over the scene in a DFS manner
+*/
+class scene_node::dfs_iterator
+{
+public:
+	struct end_tag {};
+
+	dfs_iterator(end_tag);
+	dfs_iterator(scene_node &n);
+	scene_node &operator*();
+	dfs_iterator &operator++();
+	bool operator==(const dfs_iterator &rhs) const;
+	glm::mat4 get_transform();
+
+private:
+	std::vector<scene_node*> node_stack;
+	std::vector<glm::mat4> transform_stack;
+	int counter = 0;
+};
+
+/**
+	\brief Like scene_node, but cannot have children
+*/
+class scene_leaf : public scene_node
+{
+private:
+		// Children-related functions
+};
+
+/**
+	\brief A node for making transformations easier
+
+	Transformations applied by this node behave differently when the origin is
+	set to WORLD. The children are then transformed in world space but without
+	affecting parent nodes.
+
+	When apply() is called, the node
+*/
+class transform_node : public scene_node
+{
+public:
+	void apply();
+
+	glm::mat4 get_transform() const override;
+};
+
+struct mesh_node : public scene_leaf
+{
+	std::vector<mesh> meshes;
+};
+
+struct light_node : public scene_leaf
+{
+};
+
+struct camera_node : public scene_leaf
+{
+};
+
+
+
 
 /**
 	\brief The scene.
@@ -126,7 +221,7 @@ struct scene
 {
 	scene();
 
-	scene_node root_node;
+	std::shared_ptr<scene_node> root_node;
 };
 
 }
