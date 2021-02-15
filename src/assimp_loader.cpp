@@ -65,6 +65,7 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 		auto process_node_impl = [&](const aiScene *scene, aiNode *n, auto &ref)->std::shared_ptr<bu::scene_node>
 		{
 			auto node = std::make_shared<bu::mesh_node>();
+			node->set_name(n->mName.C_Str());
 			node->set_transform(assimp_mat4_to_glm(n->mTransformation));
 
 			for (auto i = 0u; i < n->mNumMeshes; i++)

@@ -4,6 +4,7 @@
 #include "../camera.hpp"
 #include "../renderers/preview/preview.hpp"
 #include <memory>
+#include <list>
 
 namespace bu {
 
@@ -30,7 +31,8 @@ struct bunsen_editor
 	};
 
 	editor_action current_action = editor_action::NONE;
-	void *scene_selection = nullptr;
+	std::list<std::weak_ptr<bu::scene_node>> selected_nodes;
+
 
 	// Current scene
 	bu::scene *scene = nullptr;

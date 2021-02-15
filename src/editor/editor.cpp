@@ -61,94 +61,126 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 	\brief Responsible for displaying the scene tree
 	\todo refactor
 */
-#if 0
-static void ui_scene_graph(const bu::scene &scene)
+static void ui_scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
 {
-	static bool is_node = false;
-	static bool is_mesh = false;
-	static const void *selection = nullptr;
-	bool selection_valid = false;
+	auto selection_remove_invalid = [&selection]()
+	{
+		std::vector<std::list<std::weak_ptr<bu::scene_node>>::iterator> invalid;
+		for (auto it = selection.begin(); it != selection.end(); ++it)
+		{
+			auto ps = it->lock();
+			if (!ps)
+				invalid.push_back(it);
+		}
+
+		for (auto &it : invalid)
+			selection.erase(it);
+	};
+
+	auto selection_remove = [&selection](std::shared_ptr<bu::scene_node> &x)
+	{
+		for (auto it = selection.begin(); it != selection.end(); ++it)
+		{
+			auto ps = it->lock();
+			if (ps && ps.get() == x.get())
+			{
+				selection.erase(it);
+				break;
+			}
+
+		}
+	};
+
+	auto selection_contains = [&selection](std::shared_ptr<bu::scene_node> &x)
+	{
+		for (auto it = selection.begin(); it != selection.end(); ++it)
+		{
+			auto ps = it->lock();
+			if (ps && ps.get() == x.get())
+					return true;
+		}
+
+		return false;
+	};
 
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
 	ImGui::BeginChild("Scene Tree", ImVec2(ImGui::GetWindowContentRegionWidth(), 200), false, window_flags);
 
-	std::stack<const bu::scene_node*> node_stack;
-	node_stack.push(&scene.root_node);
+	// Remove invalid nodes from selection
+	selection_remove_invalid();
+
+	std::stack<std::shared_ptr<bu::scene_node>> node_stack;
+	node_stack.push(scene.root_node);
 	while (node_stack.size())
 	{
 		auto node_ptr = node_stack.top();
 		node_stack.pop();		
 
-		if (node_ptr)
+		// Going up
+		if (!node_ptr)
 		{
-			auto &node = *node_ptr;
-			ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
-				| ImGuiTreeNodeFlags_OpenOnDoubleClick 
-				| ImGuiTreeNodeFlags_SpanFullWidth 
-				| ImGuiTreeNodeFlags_SpanAvailWidth;
-			if (is_node && selection == node_ptr)
+			ImGui::TreePop();
+			continue;
+		}
+
+		// Default node flags
+		ImGuiTreeNodeFlags node_flags = 
+			ImGuiTreeNodeFlags_OpenOnArrow 
+			| ImGuiTreeNodeFlags_OpenOnDoubleClick 
+			| ImGuiTreeNodeFlags_SpanFullWidth 
+			| ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		// Highlight if selected
+		if (selection_contains(node_ptr))
+			node_flags |= ImGuiTreeNodeFlags_Selected;
+
+		// Draw the node
+		bool node_open = ImGui::TreeNodeEx(node_ptr.get(), node_flags, "%s", node_ptr->get_name().c_str());
+		
+		// On normal click - select or deselect
+		// Ctrl + click - toggle
+		if (ImGui::IsItemClicked())
+		{
+			bool already_selected = selection_contains(node_ptr);
+			if (ImGui::GetIO().KeyCtrl)
 			{
-				node_flags |= ImGuiTreeNodeFlags_Selected;
-				selection_valid = true;
+				if (already_selected) selection_remove(node_ptr);
+				else selection.push_back(node_ptr);
 			}
-			bool node_open = ImGui::TreeNodeEx(node_ptr, node_flags, "%s", node.name.c_str());
-			if (ImGui::IsItemClicked())
+			else
 			{
-				if (selection != node_ptr)
-				{
-					is_mesh = false;
-					is_node = true;
-					selection = node_ptr;
-				}
-				else
-				{
-					selection = nullptr;
-				}
-			}	
+				selection.clear();
+				if (!already_selected) selection.push_back(node_ptr);
+			}
+		}	
 
-			if (node_open)
+		// If open, draw children
+		if (node_open)
+		{
+			// Push end marker and children on stack
+			node_stack.push(nullptr);
+			for (auto &c : node_ptr->get_children())
+				node_stack.push(c);
+
+			// List meshes
+			if (auto mesh_node_ptr = dynamic_cast<bu::mesh_node*>(node_ptr.get()))
 			{
-				node_stack.push(nullptr);
-				for (auto &c : node.children)
-					node_stack.push(&c);
+				ImGuiTreeNodeFlags leaf_flags = 
+					ImGuiTreeNodeFlags_SpanAvailWidth 
+					| ImGuiTreeNodeFlags_SpanFullWidth 
+					| ImGuiTreeNodeFlags_Leaf 
+					| ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-				for (auto &mesh : node.meshes)
+				for (const auto &mesh : mesh_node_ptr->meshes)
 				{
-					ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
-						| ImGuiTreeNodeFlags_OpenOnDoubleClick 
-						| ImGuiTreeNodeFlags_SpanAvailWidth 
-						| ImGuiTreeNodeFlags_SpanFullWidth 
-						| ImGuiTreeNodeFlags_Leaf 
-						| ImGuiTreeNodeFlags_NoTreePushOnOpen;
-					if (is_mesh && selection == &mesh)
-					{
-						node_flags |= ImGuiTreeNodeFlags_Selected;
-						selection_valid = true;
-					}
-					ImGui::TreeNodeEx(&mesh, node_flags, "[M] %s", mesh.data->name.c_str());
-					if (ImGui::IsItemClicked())
-					{
-						if (selection != &mesh)
-						{
-							is_mesh = true;
-							is_node = false;
-							selection = &mesh;
-						}
-						else
-						{
-							selection = nullptr;
-						}
-					}	
+					ImGui::TreeNodeEx(&mesh, leaf_flags, "[M] %s", mesh.data->name.c_str());
 				}
 			}
 		}
-		else
-			ImGui::TreePop();
 	}
 
 	ImGui::EndChild();
 }
-#endif
 
 /**
 	\brief Displays a window with some debugging cheats
@@ -196,8 +228,8 @@ static void window_editor(bunsen_editor &ed)
 			ImGui::EndMenuBar();
 		}
 		
-		// if (ed.scene)
-		// 	ui_scene_graph(*ed.scene);
+		if (ed.scene)
+			ui_scene_graph(*ed.scene, ed.selected_nodes);
 	
 	}
 
