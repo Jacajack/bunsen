@@ -123,6 +123,8 @@ public:
 	const std::weak_ptr<scene_node> get_parent() const;
 	void add_child(std::shared_ptr<scene_node> c);
 	std::shared_ptr<scene_node> remove_child(scene_node *c);
+	void remove_from_parent() noexcept;
+	void set_parent(std::shared_ptr<scene_node> p);
 	void dissolve();
 
 	// Iterating
@@ -146,9 +148,6 @@ protected:
 	// Parenting
 	std::weak_ptr<scene_node> m_parent;
 	std::vector<std::shared_ptr<scene_node>> m_children;
-
-	void remove_from_parent() noexcept;
-	void set_parent(std::shared_ptr<scene_node> p);
 
 	std::string m_name;
 	
@@ -184,7 +183,9 @@ private:
 class scene_leaf : public scene_node
 {
 private:
-		// Children-related functions
+	// Children-related functions
+	void add_child(std::shared_ptr<scene_node> c);
+	std::shared_ptr<scene_node> remove_child(scene_node *c);
 };
 
 /**
@@ -210,7 +211,7 @@ public:
 	const glm::mat4 *transform_ptr;
 };
 
-struct mesh_node : public scene_leaf
+struct mesh_node : public scene_node
 {
 	std::vector<mesh> meshes;
 };
@@ -222,9 +223,6 @@ struct light_node : public scene_leaf
 struct camera_node : public scene_leaf
 {
 };
-
-
-
 
 /**
 	\brief The scene.
