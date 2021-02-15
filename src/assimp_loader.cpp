@@ -12,7 +12,10 @@ glm::mat4 assimp_mat4_to_glm(const aiMatrix4x4 &m)
 	return glm::transpose(glm::make_mat4(&m.a1));
 }
 
-bu::scene_node bu::load_mesh_from_file(const std::string &path)
+/**
+	\todo UVs
+*/
+std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 {
 	Assimp::Importer importer;
 
@@ -27,7 +30,6 @@ bu::scene_node bu::load_mesh_from_file(const std::string &path)
 	{
 		auto mesh_data = std::make_shared<bu::mesh_data>();
 		mesh_data->name = m->mName.C_Str();
-		LOG_DEBUG << "Processing mesh '" << mesh_data->name << "'";
 
 		for (auto i = 0u; i < m->mNumVertices; i++)
 		{
@@ -57,24 +59,25 @@ bu::scene_node bu::load_mesh_from_file(const std::string &path)
 		return mesh_data;
 	};
 
-	// Recursively converts aiNode to br::scene_node
+	// Recursively converts aiNode to bu::scene_node
 	auto process_node = [&](const aiScene *scene, aiNode *n)
 	{
-		auto process_node_impl = [&](const aiScene *scene, aiNode *n, auto &ref)->bu::scene_node
+		auto process_node_impl = [&](const aiScene *scene, aiNode *n, auto &ref)->std::shared_ptr<bu::scene_node>
 		{
-			bu::scene_node node;
-			node.name = n->mName.C_Str();
-			node.transform = assimp_mat4_to_glm(n->mTransformation);
-			LOG_DEBUG << "Processing node '" << node.name << "'";
+			auto node = std::make_shared<bu::mesh_node>();
+			node->set_transform(assimp_mat4_to_glm(n->mTransformation));
 
 			for (auto i = 0u; i < n->mNumMeshes; i++)
 			{
 				auto mesh_data = process_mesh(scene->mMeshes[n->mMeshes[i]]);
-				node.meshes.push_back(bu::mesh{mesh_data, nullptr});
+				node->meshes.push_back(bu::mesh{mesh_data, nullptr});
 			}
 
 			for (auto i = 0u; i < n->mNumChildren; i++)
-				node.children.emplace_back(ref(scene, n->mChildren[i], ref));
+			{
+				// LOG_DEBUG << "adding child to " << n->mName.C_Str() << "(" << node << ")"; 
+				node->add_child(ref(scene, n->mChildren[i], ref));
+			}
 
 			return node;
 		};

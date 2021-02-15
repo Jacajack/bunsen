@@ -5,6 +5,6 @@
 
 namespace bu {
 
-bu::scene_node load_mesh_from_file(const std::string &path);
+std::shared_ptr<bu::scene_node> load_mesh_from_file(const std::string &path);
 
 }

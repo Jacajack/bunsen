@@ -40,7 +40,7 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 			{
 				try
 				{
-					ed.scene->root_node.children.emplace_back(bu::load_mesh_from_file(path));
+					ed.scene->root_node->add_child(bu::load_mesh_from_file(path));
 				}
 				catch (const std::exception &ex)
 				{
@@ -61,6 +61,7 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 	\brief Responsible for displaying the scene tree
 	\todo refactor
 */
+#if 0
 static void ui_scene_graph(const bu::scene &scene)
 {
 	static bool is_node = false;
@@ -147,6 +148,7 @@ static void ui_scene_graph(const bu::scene &scene)
 
 	ImGui::EndChild();
 }
+#endif
 
 /**
 	\brief Displays a window with some debugging cheats
@@ -194,8 +196,8 @@ static void window_editor(bunsen_editor &ed)
 			ImGui::EndMenuBar();
 		}
 		
-		if (ed.scene)
-			ui_scene_graph(*ed.scene);
+		// if (ed.scene)
+		// 	ui_scene_graph(*ed.scene);
 	
 	}
 
