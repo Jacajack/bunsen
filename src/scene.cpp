@@ -80,6 +80,10 @@ glm::mat4 scene_node::get_final_transform() const
 	return get_transform_relative_to(nullptr);
 }
 
+/**
+	Nodes transformed relative to WORLD are not affected by their parents
+	**unless** the parent is a transform_node and is relative to WORLD as well.
+*/
 glm::mat4 scene_node::get_transform_relative_to(const scene_node *what) const
 {
 	glm::mat4 t{1.f};
@@ -88,9 +92,21 @@ glm::mat4 scene_node::get_transform_relative_to(const scene_node *what) const
 	while (n && n != what)
 	{
 		t = n->get_transform() * t;
+		auto p = n->get_parent().lock();
+
+		// Transform nodes need to be taken into account
 		if (n->get_transform_origin() == node_transform_origin::WORLD)
+		{
+			if (auto ptn = std::dynamic_pointer_cast<bu::transform_node>(p))
+			{
+				if (ptn->get_transform_origin() == node_transform_origin::WORLD)
+				{
+					t = ptn->get_raw_transform() * t;
+				}
+			}
 			break;
-		n = n->get_parent().lock().get();
+		}
+		n = p.get();
 	}
 	
 	return t;
@@ -285,14 +301,43 @@ scene_node &scene_node::dfs_iterator::operator*()
 scene_node::dfs_iterator &scene_node::dfs_iterator::operator++()
 {
 	scene_node *n = node_stack.back();
+	auto tn = dynamic_cast<bu::transform_node*>(n);
 	glm::mat4 t = transform_stack.back();
 	node_stack.pop_back();
 	transform_stack.pop_back();
 
 	for (const auto &c : n->m_children)
 	{
+		bool child_world_transform = c->get_transform_origin() == bu::scene_node::node_transform_origin::WORLD;
+
+		if (child_world_transform)
+		{
+			if (tn)
+			{
+				// World-relative transform node with world-relative child (apply transform)
+				// Parent-relative transform node with world-relative child (do not apply transform)
+				if (tn->get_transform_origin() == bu::scene_node::node_transform_origin::WORLD)
+					transform_stack.push_back(tn->get_raw_transform() * c->get_transform());
+				else
+					transform_stack.push_back(c->get_transform());
+			}
+			else
+			{
+				// Regular node with child world-relative transform node (apply transform)
+				// Regular node with child world-relative regular node (child overrides)
+				if (auto ctn = std::dynamic_pointer_cast<bu::transform_node>(c))
+					transform_stack.push_back(t * c->get_transform());
+				else
+					transform_stack.push_back(c->get_transform());
+			}
+		}
+		else
+		{
+			// Parent-relative child
+			transform_stack.push_back(t * c->get_transform());
+		}
+		
 		node_stack.push_back(c.get());
-		transform_stack.push_back(t * c->get_transform());
 	}
 
 	counter++;
@@ -316,6 +361,7 @@ glm::mat4 scene_node::dfs_iterator::get_transform()
 bu::transform_node::transform_node(const glm::mat4 *ext_mat) :
 	transform_ptr(ext_mat)
 {
+	set_transform_origin(node_transform_origin::WORLD);
 }
 
 /**
@@ -323,24 +369,55 @@ bu::transform_node::transform_node(const glm::mat4 *ext_mat) :
 */
 void bu::transform_node::apply()
 {
-	auto p = m_parent.lock();
-	auto pt = p->get_final_transform();
-	const auto &t = transform_ptr ? *transform_ptr : m_transform;
-	auto local_transform = glm::inverse(pt) * t * pt;
+	// Transform for children nodes
+	glm::mat4 local_transform;
+
+	// Used matrix
+	const auto &T = get_raw_transform();
+
+	if (get_transform_origin() == node_transform_origin::WORLD)
+	{
+		auto p = m_parent.lock();
+		auto pt = p->get_final_transform();
+		local_transform = glm::inverse(pt) * T * pt;
+	}
+	else
+	{
+		local_transform = T;
+	}
 
 	for (auto &c : m_children)
 	{
-		if (c->get_transform_origin() == node_transform_origin::PARENT)
-			c->set_transform(local_transform * c->get_transform());
+		// Here we distinguish between children transformed relative 
+		// to the world (where we simply apply the transform) and
+		// children transformed relative to the parent where
+		// we need to cancel out the parent transforms first
+		if (c->get_transform_origin() == node_transform_origin::WORLD)
+		{
+			if (get_transform_origin() == node_transform_origin::WORLD)
+				c->set_transform(T * c->get_transform());
+		}
+		else
+			c->set_transform(local_transform * c->get_transform());			
 	}
 
 	dissolve();
 }
 
+/**
+*/
 glm::mat4 transform_node::get_transform() const
 {
 	auto p = m_parent.lock();
 	auto pt = p->get_final_transform();
-	const auto &t = transform_ptr ? *transform_ptr : m_transform;
-	return glm::inverse(pt) * t * pt;
+	const auto &T = get_raw_transform();
+	if (get_transform_origin() == node_transform_origin::WORLD)
+		return glm::inverse(pt) * T * pt;
+	else
+		return T;
+}
+
+const glm::mat4 &transform_node::get_raw_transform() const
+{
+	return transform_ptr ? *transform_ptr : m_transform;
 }

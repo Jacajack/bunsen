@@ -195,10 +195,17 @@ private:
 	set to WORLD. The children are then transformed in world space without
 	affecting parent nodes or childrens' transform modes.
 
+	When transform origin is set to PARENT the transform node behaves just
+	like any other scene node.
+
+	The transform nodes relative to WORLD are the only type of node that affect
+	their children with transform origin set to WORLD.
+
 	The transform node can contain a pointer to a transform matrix. If not null,
 	this matrix will be used for the transform instead of the internal one.
 
 	When apply() is called, the node applies the transform on its children.
+	Simply dissolving the node won't apply the transform.
 */
 class transform_node : public scene_node
 {
@@ -207,6 +214,7 @@ public:
 
 	void apply();
 	glm::mat4 get_transform() const override;
+	const glm::mat4 &get_raw_transform() const;
 
 	const glm::mat4 *transform_ptr;
 };
