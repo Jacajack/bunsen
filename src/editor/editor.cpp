@@ -342,18 +342,20 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 	pop_disable(disable_group);
 
 	// Duplicate nodes
-	// push_disable(disable_duplicate);
-	// ImGui::SameLine();
-	// if (ImGui::Button("Duplicate nodes"))
-	// {
-	// 	for (auto &n : nodes)
-	// 	{
-	// 		auto p = n->get_parent().lock();
-	// 		auto dup = std::make_shared<bu::scene_node>(*n);
-	// 		dup->set_name(dup->get_name() + " (dup)");
-	// 	}
-	// }
-	// pop_disable(disable_duplicate);
+	push_disable(disable_duplicate);
+	ImGui::SameLine();
+	if (ImGui::Button("Duplicate nodes"))
+	{
+		for (auto &n : nodes)
+		{
+			auto p = n->get_parent().lock();
+			auto dup = n->clone(p);
+			dup->set_name(dup->get_name() + " (dup)");
+			selection.clear();
+			selection.push_back(dup);
+		}
+	}
+	pop_disable(disable_duplicate);
 
 
 	ImGui::Dummy(ImVec2(0.f, 10.f));
