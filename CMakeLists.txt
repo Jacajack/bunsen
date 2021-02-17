@@ -14,7 +14,7 @@ include(cmake/get_inih.cmake)
 find_package(glm 0.9.9 REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(OpenGL 4.3 REQUIRED)
+find_package(OpenGL 4.2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(ASSIMP REQUIRED)
 

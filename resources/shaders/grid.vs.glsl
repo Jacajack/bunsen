@@ -1,4 +1,4 @@
-#version 430 core
+#version 420 core
 
 uniform mat4 mat_view;
 uniform mat4 mat_proj;
