@@ -245,20 +245,20 @@ void bu::imgui_cherry_theme()
     // [...]
     style.Colors[ImGuiCol_ModalWindowDimBg]  = BG( 0.73f);
 
-    style.WindowPadding            = ImVec2(6, 4);
-    style.WindowRounding           = 0.0f;
-    style.FramePadding             = ImVec2(5, 2);
-    style.FrameRounding            = 3.0f;
-    style.ItemSpacing              = ImVec2(7, 1);
-    style.ItemInnerSpacing         = ImVec2(1, 1);
-    style.TouchExtraPadding        = ImVec2(0, 0);
-    style.IndentSpacing            = 6.0f;
-    style.ScrollbarSize            = 12.0f;
-    style.ScrollbarRounding        = 16.0f;
-    style.GrabMinSize              = 20.0f;
-    style.GrabRounding             = 2.0f;
+    // style.WindowPadding            = ImVec2(6, 4);
+    // style.WindowRounding           = 0.0f;
+    // style.FramePadding             = ImVec2(5, 2);
+    // style.FrameRounding            = 3.0f;
+    // style.ItemSpacing              = ImVec2(7, 1);
+    // style.ItemInnerSpacing         = ImVec2(1, 1);
+    // style.TouchExtraPadding        = ImVec2(0, 0);
+    // style.IndentSpacing            = 6.0f;
+    // style.ScrollbarSize            = 12.0f;
+    // style.ScrollbarRounding        = 16.0f;
+    // style.GrabMinSize              = 20.0f;
+    // style.GrabRounding             = 2.0f;
 
-    style.WindowTitleAlign.x = 0.50f;
+    // style.WindowTitleAlign.x = 0.50f;
 
     style.Colors[ImGuiCol_Border] = ImVec4(0.539f, 0.479f, 0.255f, 0.162f);
     style.FrameBorderSize = 0.0f;
