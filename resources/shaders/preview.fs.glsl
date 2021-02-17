@@ -1,4 +1,4 @@
-#version 430 core
+#version 420 core
 
 in struct VS_OUT
 {

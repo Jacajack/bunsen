@@ -1,4 +1,4 @@
-#version 430 core
+#version 420 core
 
 /*
 	Strongly inspired by http://asliceofrendering.com/scene%20helper/2020/01/05/InfiniteGrid/
