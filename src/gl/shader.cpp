@@ -82,13 +82,14 @@ shader_program::shader_program(std::initializer_list<const gl_shader*> shaders)
 	GLint count;
 	glGetProgramiv(id(), GL_ACTIVE_UNIFORMS, &count);
 
-	for (int loc = 0; loc < count; loc++)
+	for (int i = 0; i < count; i++)
 	{
 		char buf[256];
 		GLsizei length;
 		GLint size;
 		GLenum type;
-		glGetActiveUniform(id(), loc, sizeof(buf), &length, &size, &type, buf);
+		glGetActiveUniform(id(), i, sizeof(buf), &length, &size, &type, buf);
+		auto loc = glGetUniformLocation(id(), buf);
 		m_uniforms[buf] = loc;
 	}
 }
