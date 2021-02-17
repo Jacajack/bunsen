@@ -65,9 +65,48 @@ bu::scene::scene() :
 	root_node->set_name("root");
 }
 
-
-bu::scene_node::scene_node()
+scene_node &scene_node::operator=(scene_node &&rhs)
 {
+	if (this == &rhs) return *this;
+
+	// No need to call base class move operators (enable_shader_from_this)
+
+	// Copy trivial members
+	m_transform = rhs.m_transform;
+	m_transform_origin = rhs.m_transform_origin;
+	m_name = std::move(rhs.m_name);
+	m_visible = rhs.m_visible;
+
+	// Steal the children
+	while (rhs.m_children.size())
+		rhs.m_children[0]->set_parent(shared_from_this());
+	
+	// Assign yourself the parent and remove the old node from its parent
+	if (auto p = rhs.get_parent().lock())
+		set_parent(p);
+	rhs.remove_from_parent();
+
+	return *this;
+}
+
+std::shared_ptr<scene_node> bu::scene_node::clone(std::shared_ptr<scene_node> parent) const
+{
+	auto cl = std::make_shared<scene_node>();
+
+	// Copy trivial members
+	cl->m_transform = m_transform;
+	cl->m_transform_origin = m_transform_origin;
+	cl->m_name = m_name;
+	cl->m_visible = m_visible;
+	
+	// Clone children and parent them to the new node
+	for (const auto &c : m_children)
+		c->clone(cl);
+	
+	if (parent)
+		cl->set_parent(parent);
+
+	return cl;
 }
 
 glm::mat4 scene_node::get_transform() const
@@ -364,6 +403,13 @@ bu::transform_node::transform_node(const glm::mat4 *ext_mat) :
 	set_transform_origin(node_transform_origin::WORLD);
 }
 
+std::shared_ptr<scene_node> bu::transform_node::clone(std::shared_ptr<scene_node> parent) const
+{
+	auto cl = std::make_shared<transform_node>(transform_ptr);
+	*std::dynamic_pointer_cast<scene_node>(cl) = std::move(*scene_node::clone(parent));
+	return cl;
+}
+
 /**
 	\warning Calling this results in a call to dissolve()
 */
@@ -420,4 +466,12 @@ glm::mat4 transform_node::get_transform() const
 const glm::mat4 &transform_node::get_raw_transform() const
 {
 	return transform_ptr ? *transform_ptr : m_transform;
+}
+
+std::shared_ptr<scene_node> bu::mesh_node::clone(std::shared_ptr<scene_node> parent) const
+{
+	auto cl = std::make_shared<mesh_node>();
+	*std::dynamic_pointer_cast<scene_node>(cl) = std::move(*scene_node::clone(parent));
+	cl->meshes = meshes;
+	return cl;
 }

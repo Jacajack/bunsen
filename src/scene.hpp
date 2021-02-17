@@ -106,7 +106,16 @@ public:
 	class dfs_iterator;
 
 	// Constructors
-	scene_node();
+	scene_node() = default;
+	scene_node(const scene_node &) = delete;
+	scene_node &operator=(const scene_node &) = delete;
+	
+	// Move semantics
+	scene_node(scene_node &&rhs);
+	scene_node &operator=(scene_node &&src);
+
+	// Perhaps move this to abstract base
+	virtual std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const;
 
 	// Transforms
 	virtual glm::mat4 get_transform() const;
@@ -179,6 +188,7 @@ private:
 
 /**
 	\brief Like scene_node, but cannot have children
+	\todo abandone leaf nodes idea
 */
 class scene_leaf : public scene_node
 {
@@ -212,6 +222,8 @@ class transform_node : public scene_node
 public:
 	transform_node(const glm::mat4 *ext_mat = nullptr);
 
+	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
+
 	void apply();
 	glm::mat4 get_transform() const override;
 	const glm::mat4 &get_raw_transform() const;
@@ -221,6 +233,7 @@ public:
 
 struct mesh_node : public scene_node
 {
+	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
 	std::vector<mesh> meshes;
 };
 
