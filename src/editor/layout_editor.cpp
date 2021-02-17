@@ -162,6 +162,12 @@ void layout_editor::update(
 
 			if (was_clicked(1) || was_pressed(GLFW_KEY_G) || was_pressed(GLFW_KEY_ESCAPE))
 				abort();
+
+			if (was_pressed(GLFW_KEY_R))
+				state = action_state::ROTATE;
+
+			if (was_pressed(GLFW_KEY_S))
+				state = action_state::SCALE;
 			break;
 		}
 
@@ -222,6 +228,12 @@ void layout_editor::update(
 
 			if (was_clicked(1) || was_pressed(GLFW_KEY_R) || was_pressed(GLFW_KEY_ESCAPE))
 				abort();
+
+			if (was_pressed(GLFW_KEY_G))
+				state = action_state::GRAB;
+
+			if (was_pressed(GLFW_KEY_S))
+				state = action_state::SCALE;
 			
 			break;
 		}
@@ -244,6 +256,12 @@ void layout_editor::update(
 			if (was_clicked(1) || was_pressed(GLFW_KEY_S) || was_pressed(GLFW_KEY_ESCAPE))
 				abort();
 			
+			if (was_pressed(GLFW_KEY_G))
+				state = action_state::GRAB;
+
+			if (was_pressed(GLFW_KEY_R))
+				state = action_state::ROTATE;
+
 			break;
 		}
 
