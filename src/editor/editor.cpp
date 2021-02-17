@@ -1,11 +1,12 @@
 #include "editor.hpp"
 #include <stack>
-#include <imgui.h>
-#include <ImGuiFileDialog.h>
-#include "../assimp_loader.hpp"
+#include <cstring>
 #include "ui/ui.hpp"
+#include "../assimp_loader.hpp"
 #include "../log.hpp"
+#include <imgui.h>
 #include <imgui_internal.h>
+#include <ImGuiFileDialog.h>
 using bu::bunsen_editor;
 
 /**
@@ -143,6 +144,17 @@ static void ui_scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 		if (dynamic_cast<bu::transform_node*>(node_ptr.get()))
 			display_node = false;
 
+		// Check if the node is visible
+		bool visible = node_ptr->is_visible();
+
+		// Dim if invisible
+		if (!visible)
+		{
+			auto col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+			col.w *= 0.5;
+			ImGui::PushStyleColor(ImGuiCol_Text, col);
+		}
+
 		if (display_node)
 		{
 			std::string name_tags;
@@ -202,6 +214,10 @@ static void ui_scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 				}
 			}
 		}
+
+		// Pop dim
+		if (!visible)
+			ImGui::PopStyleColor();
 	}
 
 	ImGui::EndChild();
@@ -209,21 +225,29 @@ static void ui_scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 
 /**
 	\brief Property editor for nodes (transforms, names)
+	\todo Make transform UI affect the objects
 */
-static void ui_node_properties(std::shared_ptr<bu::scene_node> node)
+static void ui_node_properties(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
 {
+	std::shared_ptr<bu::scene_node> node;
+	if (!selection.empty()) node = selection.front().lock();
+	if (selection.size() != 1 || !node)
+	{
+		ImGui::TextWrapped("Nothing to see here, buddy...");
+		return;
+	}
+
 	bool visible = node->is_visible();
 	bool local_transform = node->get_transform_origin() == bu::scene_node::node_transform_origin::PARENT;
-	static glm::vec3 translate;
-	static glm::vec3 rotation;
-	// static float scale;
 	
-
+	// Name buffer
+	const auto name_max_len = 32u;
 	std::string name = node->get_name();
-	std::vector<char> buf(std::max(32u, static_cast<unsigned int>(name.size()) + 1));
+	std::vector<char> buf(std::max(name_max_len, static_cast<unsigned int>(name.size()) + 1));
 	std::copy(name.begin(), name.end(), buf.begin());
 
-
+	// Decompose transform
+	glm::vec3 translate;
 	glm::mat4 mat = node->get_transform();
 	translate = mat[3];
 	mat[3] = glm::vec4{0.f};
@@ -233,31 +257,36 @@ static void ui_node_properties(std::shared_ptr<bu::scene_node> node)
 	mat[2] /= scale.z;
 	auto quat = glm::quat_cast(mat);
 
-	// if (ImGui::CollapsingHeader("Node properties"))
-	{
-		// ImGui::Separator();
-		// ImGui::Dummy(ImVec2(0.f, 5.f));
-		// ImGui::Text("Node property editor");
-		ImGui::InputText("Name", buf.data(), 32);
-		ImGui::Dummy(ImVec2(0.f, 10.f));
-		
-		ImGui::DragFloat3("Translation", &translate[0], 0.1f, 0, 0);
-		ImGui::DragFloat4("Rotation", &quat[0], 0.1f, 0, 0);
-		ImGui::DragFloat3("Scale", &scale[0], 0.1f, 0, 0);
-		ImGui::Dummy(ImVec2(0.f, 10.f));
+	// Reassemble matrix
+	// quat = glm::normalize(quat);
+	// mat = glm::translate(glm::scale(glm::mat4_cast(quat), scale), translate);
 
-		// ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - 30);
-		ImGui::Checkbox("Local transform", &local_transform);
-		ImGui::Checkbox("Visible", &visible);
-	}
+	// Name 
+	ImGui::InputText("Name", buf.data(), name_max_len);
+	ImGui::Dummy(ImVec2(0.f, 5.f));
+	
+	// Transforms (currently disabled)
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+	ImGui::DragFloat3("Translation", &translate[0], 0.1f, 0, 0);
+	ImGui::DragFloat4("Rotation", &quat[0], 0.1f, 0, 0);
+	ImGui::DragFloat3("Scale", &scale[0], 0.1f, 0, 0);
+	ImGui::PopItemFlag();
+	ImGui::PopStyleVar();
+	ImGui::Dummy(ImVec2(0.f, 5.f));
 
-	quat = glm::normalize(quat);
-	mat = glm::translate(glm::scale(glm::mat4_cast(quat), scale), translate);
-
-	node->set_visible(visible);
-	node->set_transform_origin(local_transform ? bu::scene_node::node_transform_origin::PARENT : bu::scene_node::node_transform_origin::WORLD);
+	// Other attributes
+	bool changed_local_transform = ImGui::Checkbox("Local transform", &local_transform);
+	bool changed_visible = ImGui::Checkbox("Visible", &visible);
+	
+	// Write back to the node
+	if (changed_visible) node->set_visible(visible);
+	if (changed_local_transform) node->set_transform_origin(local_transform ? bu::scene_node::node_transform_origin::PARENT : bu::scene_node::node_transform_origin::WORLD);
 	// node->set_transform(mat);
-	node->set_name(std::string{buf.begin(), buf.end()});
+
+	// Do not pass entire buffer to std::string{} because it contains terminating NULs
+	auto len = std::strlen(buf.data());
+	node->set_name(std::string{buf.begin(), buf.begin() + len});
 }
 
 /**
@@ -288,8 +317,11 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 	bool disable_delete = selection_empty || contains_root_node;
 	bool disable_dissolve = selection_empty || contains_root_node;
 	bool disable_group = selection_empty || contains_root_node || !have_common_parent || !common_parent;
-	bool disable_properties = multiple_selection || selection_empty;
 	bool disable_duplicate = selection_empty || contains_root_node;
+	bool clicked_delete = false;
+	bool clicked_dissolve = false;
+	bool clicked_group = false;
+	bool clicked_duplicate = false;
 
 	auto push_disable = [](bool disable)
 	{
@@ -307,31 +339,51 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 
 	ImGui::Dummy(ImVec2(0.f, 10.f));
 
+	if (ImGui::BeginTable("split", 2))
+	{
+		auto button_size = [](){return ImVec2(ImGui::GetContentRegionAvailWidth(), 0);};
+
+		ImGui::TableNextColumn();
+		push_disable(disable_delete);
+		clicked_delete = ImGui::Button("Delete", button_size());
+		pop_disable(disable_delete);
+
+		ImGui::TableNextColumn();	
+		push_disable(disable_dissolve);
+		clicked_dissolve = ImGui::Button("Dissolve", button_size());
+		pop_disable(disable_dissolve);
+
+		ImGui::TableNextColumn();
+		push_disable(disable_group);
+		clicked_group = ImGui::Button("Group", button_size());
+		pop_disable(disable_group);
+
+		ImGui::TableNextColumn();
+		push_disable(disable_duplicate);
+		clicked_duplicate = ImGui::Button("Duplicate", button_size());
+		pop_disable(disable_duplicate);
+
+		ImGui::EndTable();
+	}
+
 	// Delete node
-	push_disable(disable_delete);
-	if (ImGui::Button("Delete node"))
+	if (clicked_delete)
 	{
 		for (auto &n : nodes)
 			n->remove_from_parent();
 		selection.clear();
 	}
-	pop_disable(disable_delete);
 
 	// Dissolve node
-	push_disable(disable_dissolve);
-	ImGui::SameLine();
-	if (ImGui::Button("Dissolve node"))
+	if (clicked_dissolve)
 	{
 		for (auto &n : nodes)
 			n->dissolve();
 		selection.clear();
 	}
-	pop_disable(disable_dissolve);
 
 	// Group nodes
-	push_disable(disable_group);
-	ImGui::SameLine();
-	if (ImGui::Button("Group nodes"))
+	if (clicked_group)
 	{
 		auto group_node = std::make_shared<bu::scene_node>();
 		group_node->set_name("Group Node");
@@ -339,12 +391,9 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 			n->set_parent(group_node);
 		group_node->set_parent(common_parent);
 	}
-	pop_disable(disable_group);
 
 	// Duplicate nodes
-	push_disable(disable_duplicate);
-	ImGui::SameLine();
-	if (ImGui::Button("Duplicate nodes"))
+	if (clicked_duplicate)
 	{
 		for (auto &n : nodes)
 		{
@@ -354,18 +403,6 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 			selection.clear();
 			selection.push_back(dup);
 		}
-	}
-	pop_disable(disable_duplicate);
-
-
-	ImGui::Dummy(ImVec2(0.f, 10.f));
-
-	// Node properties (only if a single one is selected)
-	if (!disable_properties)
-	{
-		auto node = *nodes.begin();
-		if (ImGui::CollapsingHeader("Node properties"))
-			ui_node_properties(node);
 	}
 }
 
@@ -455,6 +492,10 @@ static void window_editor(bunsen_editor &ed)
 		{
 			ui_scene_graph(*ed.scene, ed.selected_nodes);
 			ui_node_controls(*ed.scene, ed.selected_nodes);		
+
+			if (ImGui::CollapsingHeader("Node properties"))
+				ui_node_properties(*ed.scene, ed.selected_nodes);
+
 			if (ImGui::CollapsingHeader("Meshes info"))
 				ui_mesh_info(*ed.scene, ed.selected_nodes);
 		}

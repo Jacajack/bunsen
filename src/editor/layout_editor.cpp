@@ -90,12 +90,6 @@ void layout_editor::update(
 
 	// Mouse position and delta in pixels
 	auto mouse_pos = input.get_position();
-	auto mouse_delta = mouse_pos - mouse_origin;
-
-	// auto mr = mouse_raydir(mouse_pos);
-	// auto vp_mat = cam.get_projection_matrix() * cam.get_view_matrix();
-	// overlay.add_3d_line(vp_mat * glm::vec4{cam.position + mr * 1.f, 1}, glm::vec4{0, 0, 0, 1});
-	// overlay.add_3d_line(vp_mat * glm::vec4{cam.position + mr * 1.f, 1}, vp_mat * glm::vec4{0, 0, 0, 1});
 
 	switch (state)
 	{
