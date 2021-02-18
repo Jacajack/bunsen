@@ -189,7 +189,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 			glUseProgram(light_program->id());
 			glUniformMatrix4fv(light_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 			glUniformMatrix4fv(light_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
-			glUniform1f(light_program->get_uniform_location("size"), 1.f);
+			glUniform1f(light_program->get_uniform_location("size"), 0.05f);
 			glUniform3fv(light_program->get_uniform_location("position"), 1, &transform[3][0]);
 			glUniform3fv(light_program->get_uniform_location("color"), 1, &color[0]);
 			glDrawArrays(GL_TRIANGLES, 0, 6);

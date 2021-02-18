@@ -14,7 +14,7 @@ out vec4 f_color;
 void main()
 {
 	vec2 pos = vs_out.v_pos;
-	float z = length(pos) * 4;
+	float z = length(pos) * 1.5;
 	float arg = atan(pos.y, pos.x);
 	float narg = arg / 2.0 / M_PI;
 
