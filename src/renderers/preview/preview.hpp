@@ -18,6 +18,7 @@ private:
 	std::unique_ptr<bu::shader_program> program;
 	std::unique_ptr<bu::shader_program> grid_program;
 	std::unique_ptr<bu::shader_program> outline_program;
+	std::unique_ptr<bu::shader_program> light_program;
 	gl_vertex_array vao;
 	gl_vertex_array vao_2d;
 };
