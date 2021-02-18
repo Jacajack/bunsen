@@ -9,7 +9,7 @@ in struct VS_OUT
 uniform vec3 world_color;
 uniform vec3 base_color;
 uniform float specular_int;
-uniform bool selected;
+// uniform bool selected;
 
 out vec4 f_color;
 
@@ -40,9 +40,9 @@ void main()
 
 	vec3 color = ambient * ambient_int + diffuse * diffuse_int + specular * specular_int;
 
-	if (selected)
-		f_color = vec4(mix(vec3(0.7, 0.3, 0.0), color, 0.3), 1);
-	else
+	// if (selected)
+		// f_color = vec4(mix(vec3(0.7, 0.3, 0.0), color, 0.3), 1);
+	// else
 		f_color = vec4(color, 1);
 
 	// f_color = vec4(mix(color, vec3(0.8, 0.7, 0.0), float(selected) * 0.4), 1);
