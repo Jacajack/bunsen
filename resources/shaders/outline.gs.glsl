@@ -22,6 +22,18 @@ void main()
 
 	vec2 E0 = v1 - v0;
 	vec2 E1 = v2 - v1;
+
+	// Reorder vertices if the triangle is back-facing
+	// We don't want the outline to be culled on thin backfacing objects
+	if (E0.x * E1.y - E0.y * E1.x < 0)
+	{
+		vec2 v = v0;
+		v0 = v1;
+		v1 = v;
+		E0 = v1 - v0;
+		E1 = v2 - v1;
+	}
+
 	vec2 E2 = v0 - v2;
 
 	vec2 n0 = normalize(E0 * vec2(-1, 1)).yx;
