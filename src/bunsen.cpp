@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <memory>
+#include <filesystem>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -104,6 +105,11 @@ int main(int argc, char *argv[])
 
 	// Debug announcement
 	LOG_DEBUG << "Debug output is enabled!";
+
+	// Change directory to executable dir
+	std::filesystem::path exec_path(argv[0]);
+	std::filesystem::current_path(exec_path.parent_path());
+	LOG_INFO << "Working directory: " << std::filesystem::current_path();
 
 	main_state.gl_debug = false;
 	#if defined(GL_DEBUG) || defined(DEBUG)
