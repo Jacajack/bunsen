@@ -2,12 +2,12 @@ project(bunsen)
 cmake_minimum_required(VERSION 3.3)
 
 option(GL_DEBUG "Should OpenGL debugging be enabled? (meaningless in Debug builds)" OFF)
+option(SANITIZE "Should sanitizer be enabled in debug builds? (can conflict with debuggers)" ON)
 
 set(OpenGL_GL_PREFERENCE GLVND)
 
 include(cmake/get_imgui.cmake)
 include(cmake/get_imgui_file_dialog.cmake)
-#include(cmake/get_tinygltf.cmake)
 include(cmake/get_tracy.cmake)
 include(cmake/get_inih.cmake)
 
@@ -19,25 +19,37 @@ find_package(nlohmann_json REQUIRED)
 find_package(ASSIMP REQUIRED)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter --std=c++17 -pthread")
-# set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
-set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
+set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DNDEBUG")
+
+if (SANITIZE)
+	message("Sanitizers will be enabled!")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined")
+endif()
 
 add_executable(bunsen 
 	"src/bunsen.cpp"
-	"src/gl/gl.cpp"
-	"src/gl/shader.cpp"
-	"src/renderers/preview/preview.cpp"
-	"src/editor/editor.cpp"
+	"src/utils.cpp"
 	"src/camera.cpp"
 	"src/log.cpp"
 	"src/scene.cpp"
-	"src/editor/ui/ui.cpp"
-	"src/editor/layout_editor.cpp"
-	"src/editor/imgui_overlay.cpp"
-	"src/utils.cpp"
+	"src/mesh.cpp"
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
+
+	"src/gl/gl.cpp"
+	"src/gl/shader.cpp"
+
+	"src/renderers/preview/preview.cpp"
+
+	"src/editor/editor.cpp"
+	"src/editor/layout_editor.cpp"
+	"src/editor/imgui_overlay.cpp"
+
+	"src/editor/ui/ui.cpp"
+	"src/editor/ui/scene_control.cpp"
+	"src/editor/ui/material_editor.cpp"
+	"src/editor/ui/mesh_control.cpp"
 	)
 
 target_link_libraries(bunsen PRIVATE 
@@ -49,7 +61,6 @@ target_link_libraries(bunsen PRIVATE
 	${ASSIMP_LIBRARIES}
 	imgui_glfw
 	imgui_file_dialog
-	# tinygltf
 	tracy
 	inih
 	)
