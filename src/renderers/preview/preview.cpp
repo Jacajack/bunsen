@@ -29,6 +29,12 @@ preview_renderer::preview_renderer()
 		outline_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &gs, &fs});
 	}
 
+	{
+		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/bilboard.vs.glsl"));
+		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/bilboard_light.fs.glsl"));
+		light_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
+	}
+
 
 	// VAO setup
 	glVertexArrayAttribFormat( // Position
@@ -79,7 +85,6 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
-	glBindVertexArray(vao.id());
 	glUseProgram(program->id());
 
 	auto mat_view = camera.get_view_matrix();
@@ -92,16 +97,16 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 	for (auto it = scene.root_node->begin(); !(it == scene.root_node->end()); ++it)
 	{
 		auto node_ptr = &*it;
-		auto mesh_node_ptr = dynamic_cast<mesh_node*>(node_ptr);
 
 		// Skip invisible
 		if (!node_ptr->is_visible()) continue;
 
-		if (mesh_node_ptr)
-		{
-			bool is_selected = selection.count(node_ptr->shared_from_this());
-			glm::mat4 mat = it.get_transform();
+		bool is_selected = selection.count(node_ptr->shared_from_this());
+		glm::mat4 transform = it.get_transform();
 
+		// Mesh nodes
+		if (auto mesh_node_ptr = dynamic_cast<mesh_node*>(node_ptr))
+		{
 			for (const auto &mesh : mesh_node_ptr->meshes)
 			{
 				if (!mesh.data) continue;
@@ -137,10 +142,12 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 				else
 					glDisable(GL_STENCIL_TEST);
 
+				glBindVertexArray(vao.id());
+				glUseProgram(program->id());
 				glUniform1f(program->get_uniform_location("specular_int"), specular_intensity);
 				glUniform3fv(program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniform1i(program->get_uniform_location("selected"), is_selected);
-				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
+				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
 				glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
@@ -156,7 +163,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 					glEnable(GL_CULL_FACE);
 					glUseProgram(outline_program->id());
 					glUniform1f(outline_program->get_uniform_location("aspect"), camera.aspect);
-					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
+					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 					glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
@@ -168,6 +175,28 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 				}
 			}
 		}
+
+		// Light nodes
+		if (auto light_node = dynamic_cast<bu::light_node*>(node_ptr))
+		{
+			glm::vec3 color{0.f};
+			if (is_selected) color = glm::vec3{0.8f, 0.4f, 0.0};
+
+			glBindVertexArray(vao_2d.id());
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glEnable(GL_BLEND);
+			// glDepthMask(GL_FALSE);
+			glUseProgram(light_program->id());
+			glUniformMatrix4fv(light_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+			glUniformMatrix4fv(light_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+			glUniform1f(light_program->get_uniform_location("size"), 1.f);
+			glUniform3fv(light_program->get_uniform_location("position"), 1, &transform[3][0]);
+			glUniform3fv(light_program->get_uniform_location("color"), 1, &color[0]);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			glDisable(GL_BLEND);
+			// glDepthMask(GL_TRUE);
+		}
+
 	}
 
 	// Draw grid
