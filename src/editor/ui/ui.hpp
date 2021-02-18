@@ -2,7 +2,7 @@
 
 #include "../../bunsen.hpp"
 
-namespace bu {
+namespace bu::ui {
 
 /**
 	A cherry ImGui theme to use before I come up with my own one
