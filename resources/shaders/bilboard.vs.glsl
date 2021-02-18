@@ -26,13 +26,14 @@ void main()
 		vec2(1, -1), vec2(1, 1), vec2(-1, 1)
 	);
 
-	// Compute depth
+	// Compute depth and calculate how to compensate size
 	vec4 center = mat_proj * mat_view * vec4(position, 1);
-	center /= center.w;
+	float w = center.w;
+	center /= w;
 	vs_out.depth = center.z * 0.5 + 0.5;
 
 	vec4 v = mat_view * vec4(position, 1);
-	v.xy += quad[gl_VertexID] * size;
+	v.xy += quad[gl_VertexID] * size * w;
 	vs_out.v_pos = quad[gl_VertexID];
 	gl_Position = mat_proj * v;
 }
