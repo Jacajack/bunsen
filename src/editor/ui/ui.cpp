@@ -207,7 +207,7 @@ void bu::imgui_cherry_theme()
     style.Colors[ImGuiCol_Text]                  = TEXT(0.78f);
     style.Colors[ImGuiCol_TextDisabled]          = TEXT(0.28f);
     style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
-    style.Colors[ImGuiCol_WindowBg]         = BG( 0.58f);
+    style.Colors[ImGuiCol_WindowBg]         = BG( 0.8f);
     style.Colors[ImGuiCol_PopupBg]               = BG( 0.9f);
     style.Colors[ImGuiCol_Border]                = ImVec4(0.31f, 0.31f, 1.00f, 0.00f);
     style.Colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);

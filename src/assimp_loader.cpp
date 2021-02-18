@@ -1,5 +1,7 @@
 #include "assimp_loader.hpp"
 #include "log.hpp"
+#include "material.hpp"
+#include "materials/diffuse_material.hpp"
 #include <stdexcept>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -7,9 +9,34 @@
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 
-glm::mat4 assimp_mat4_to_glm(const aiMatrix4x4 &m)
+static glm::mat4 assimp_mat4_to_glm(const aiMatrix4x4 &m)
 {
 	return glm::transpose(glm::make_mat4(&m.a1));
+}
+
+static glm::vec3 assimp_rgb_to_glm(const aiColor3D &c)
+{
+	return glm::vec3{c.r, c.g, c.b};
+}
+
+static std::shared_ptr<bu::material_data> convert_assimp_material(const aiMaterial *am)
+{
+	auto mat = std::make_shared<bu::material_data>();
+	auto surf = std::make_unique<bu::diffuse_material>();
+
+	// Get name
+	aiString aname;
+	am->Get(AI_MATKEY_NAME, aname);
+	mat->name = aname.C_Str();
+	LOG_INFO << "Processing material '" << mat->name << "'";
+
+	// Get color
+	aiColor3D col;
+	am->Get(AI_MATKEY_COLOR_DIFFUSE, col);
+	surf->color = assimp_rgb_to_glm(col);
+
+	mat->surface = std::move(surf);
+	return mat;
 }
 
 /**
@@ -70,8 +97,10 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 
 			for (auto i = 0u; i < n->mNumMeshes; i++)
 			{
-				auto mesh_data = process_mesh(scene->mMeshes[n->mMeshes[i]]);
-				node->meshes.push_back(bu::mesh{mesh_data, nullptr});
+				const auto &assimp_mesh = scene->mMeshes[n->mMeshes[i]];
+				auto mesh_data = process_mesh(assimp_mesh);
+				auto material_data = convert_assimp_material(scene->mMaterials[assimp_mesh->mMaterialIndex]);
+				node->meshes.push_back(bu::mesh{mesh_data, material_data});
 			}
 
 			for (auto i = 0u; i < n->mNumChildren; i++)

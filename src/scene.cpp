@@ -62,7 +62,7 @@ void mesh_data::unbuffer()
 bu::scene::scene() :
 	root_node(std::make_shared<scene_node>())
 {
-	root_node->set_name("root");
+	root_node->set_name("Scene Root");
 }
 
 scene_node &scene_node::operator=(scene_node &&rhs)

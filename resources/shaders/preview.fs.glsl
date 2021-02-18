@@ -7,6 +7,8 @@ in struct VS_OUT
 } vs_out;
 
 uniform vec3 world_color;
+uniform vec3 base_color;
+uniform float specular_int;
 uniform bool selected;
 
 out vec4 f_color;
@@ -15,10 +17,10 @@ void main()
 {
 	const vec3 light_pos = vec3(-2, 1, 1); // In camera space
 	const vec3 light_color = vec3(1);
-	const vec3 base_color = vec3(0.8);
+	// const vec3 base_color = vec3(0.8);
 	const float ambient_int = 0.5;
 	const float diffuse_int = 1.0;
-	const float specular_int = 0.2;
+	// const float specular_int = 0.2;
 	const float specular_exp = 10.0;
 
 	// float light_distance = length(light_pos - vs_out.v_pos);
