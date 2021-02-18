@@ -3,6 +3,11 @@
 #include <cstring>
 #include "ui/ui.hpp"
 #include "../assimp_loader.hpp"
+#include "../material.hpp"
+#include "../materials/diffuse_material.hpp"
+#include "../materials/generic_material.hpp"
+#include "../materials/glass_material.hpp"
+#include "../materials/generic_volume.hpp"
 #include "../log.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -295,7 +300,6 @@ static void ui_node_properties(const bu::scene &scene, std::list<std::weak_ptr<b
 static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
 {
 	bool selection_empty = selection.empty();
-	bool multiple_selection = selection.size() > 1;
 	bool contains_root_node = false;
 	bool have_common_parent = true;
 	std::shared_ptr<bu::scene_node> common_parent;
@@ -407,28 +411,129 @@ static void ui_node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu:
 }
 
 /**
+	\todo Maybe don't make this a separate window
+*/
+static void ui_material_editor(std::shared_ptr<bu::material_data> mat)
+{
+	ImGui::Begin("Material editor");
+
+	// Name buffer
+	const auto name_max_len = 32u;
+	std::string name = mat->name;
+	std::vector<char> buf(std::max(name_max_len, static_cast<unsigned int>(name.size()) + 1));
+	std::copy(name.begin(), name.end(), buf.begin());
+
+	if (ImGui::InputText("Material name", buf.data(), name_max_len))
+	{
+		auto len = std::strlen(buf.data());
+		mat->name = std::string{buf.begin(), buf.begin() + len};
+	}
+
+	// Volume and surface type names
+	static const std::map<std::uint64_t, std::string> material_type_names{
+		{typeid(bu::diffuse_material).hash_code(), "Diffuse material"},
+		{typeid(bu::generic_material).hash_code(), "Generic material"},
+		{typeid(bu::glass_material).hash_code(), "Glass material"},
+		{typeid(bu::generic_volume).hash_code(), "Generic volume"},
+	};
+
+	// Surface type
+	std::string surface_name = "None";
+	if (mat->surface)
+		surface_name = material_type_names.at(typeid(*mat->surface).hash_code());
+	if (ImGui::BeginCombo("Surface", surface_name.c_str()))
+	{
+		if (ImGui::Selectable("None"))
+			mat->surface.reset();
+
+		if (ImGui::Selectable("Diffuse material"))
+			mat->surface = std::make_unique<bu::diffuse_material>();
+
+		if (ImGui::Selectable("Generic material"))
+			mat->surface = std::make_unique<bu::generic_material>();
+
+		if (ImGui::Selectable("Glass material"))
+			mat->surface = std::make_unique<bu::glass_material>();
+
+		ImGui::EndCombo();
+	}
+
+	// Volume type
+	std::string volume_name = "None";
+	if (mat->volume)
+		volume_name = material_type_names.at(typeid(*mat->volume).hash_code());
+	if (ImGui::BeginCombo("Volume", volume_name.c_str()))
+	{
+		if (ImGui::Selectable("None"))
+			mat->volume.reset();
+
+		if (ImGui::Selectable("Generic volume"))
+			mat->volume = std::make_unique<bu::generic_volume>();
+
+		ImGui::EndCombo();
+	}
+
+	ImGui::Dummy(ImVec2(0.f, 5.f));
+
+	if (mat->surface && ImGui::CollapsingHeader("Surface"))
+	{
+		// Diffuse material
+		if (auto surf = dynamic_cast<bu::diffuse_material*>(mat->surface.get()))
+		{
+			ImGui::ColorEdit3("Base color", &surf->color[0]);
+		}
+
+		// Generic material
+		if (auto surf = dynamic_cast<bu::generic_material*>(mat->surface.get()))
+		{
+			ImGui::ColorEdit3("Base color", &surf->color[0]);
+			ImGui::ColorEdit3("Emission", &surf->emission[0]);
+			ImGui::SliderFloat("Roughness", &surf->roughness, 0, 1);
+			ImGui::SliderFloat("Metallic", &surf->metallic, 0, 1);
+			ImGui::SliderFloat("Transmission", &surf->transmission, 0, 1);
+			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
+		}
+	}
+
+	if (mat->volume && ImGui::CollapsingHeader("Volume"))
+	{
+	}
+
+	ImGui::End();
+}
+
+/**
 	\brief Displays mesh info (vertex count, etc.) and list of all meshes in the selected nodes
 */
 static void ui_mesh_info(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
 {
 	std::set<std::shared_ptr<bu::scene_node>> nodes;
-	std::set<const bu::mesh*> meshes;
+	std::set<bu::mesh*> meshes;
 
-	auto extract_meshes = [&meshes](const bu::scene_node &n)
+	// Pointers to available mesh data and materials
+	std::set<std::shared_ptr<bu::mesh_data>> mesh_data_ptrs;
+	std::set<std::shared_ptr<bu::material_data>> material_ptrs;
+
+	auto extract_meshes = [&meshes, &mesh_data_ptrs, &material_ptrs](bu::scene_node &n)
 	{
-		auto extract_meshes_impl = [&meshes](const bu::scene_node &n, auto &ref)->void
+		auto extract_meshes_impl = [&meshes,  &mesh_data_ptrs, &material_ptrs](bu::scene_node &n, auto &ref)->void
 		{
-			if (auto mn = dynamic_cast<const bu::mesh_node*>(&n))
+			if (auto mn = dynamic_cast<bu::mesh_node*>(&n))
 				for (auto &mesh : mn->meshes)
+				{
 					meshes.insert(&mesh);
+					if (mesh.data) mesh_data_ptrs.insert(mesh.data);
+					if (mesh.mat) material_ptrs.insert(mesh.mat);
+				}
 			
-			for (const auto &c : n.get_children())
+			for (auto &c : n.get_children())
 				ref(*c, ref);
 		};
 
 		return extract_meshes_impl(n, extract_meshes_impl);
 	};
 
+	// Get all unique nodes and extract meshes from them
 	for (auto &wp : selection)
 		if (auto node = wp.lock())
 		{
@@ -436,10 +541,70 @@ static void ui_mesh_info(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 			extract_meshes(*node);
 		}
 
-	ImGui::Indent();
-	for (auto &mesh_ptr : meshes)
-		ImGui::BulletText("%s", mesh_ptr->data->name.c_str());
-	ImGui::Unindent();
+
+	static bu::mesh *selected_mesh; //TODO remove static
+	bool selected_mesh_valid = false;
+
+	// Show list box with meshes if there's more than one
+	if (meshes.size() > 1)
+	{
+		ImGui::ListBoxHeader("Meshes");
+		for (auto &mesh_ptr : meshes)
+		{
+			std::string text = mesh_ptr->data->name;
+
+			bool selected = mesh_ptr == selected_mesh;
+			selected_mesh_valid |= selected;
+			if (ImGui::Selectable(text.c_str(), selected))
+				selected_mesh = mesh_ptr;
+		}
+		ImGui::ListBoxFooter();
+		ImGui::Separator();
+	}
+	else if (meshes.size() == 1)
+	{
+		selected_mesh = *meshes.begin();
+		selected_mesh_valid = true;
+	}
+
+	// Get mesh data an material pointers
+	if (!selected_mesh_valid) return;
+	auto mesh_data = selected_mesh->data;
+	auto material_data = selected_mesh->mat;
+
+	// Table with mesh info
+	ImGui::Text("Basic mesh info:");
+	if (ImGui::BeginTable("Mesh info", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable))
+	{
+		ImGui::TableNextColumn();
+		ImGui::Text("Vertices");
+		ImGui::TableNextColumn();
+		ImGui::Text("%lu", mesh_data->positions.size());
+
+		ImGui::TableNextColumn();
+		ImGui::Text("Normals");
+		ImGui::TableNextColumn();
+		ImGui::Text("%lu", mesh_data->normals.size());
+
+		ImGui::TableNextColumn();
+		ImGui::Text("UVs");
+		ImGui::TableNextColumn();
+		ImGui::Text("%lu", mesh_data->uvs.size());
+
+		ImGui::TableNextColumn();
+		ImGui::Text("Indices");
+		ImGui::TableNextColumn();
+		ImGui::Text("%lu", mesh_data->indices.size());
+
+		ImGui::TableNextColumn();
+		ImGui::Text("Triangles");
+		ImGui::TableNextColumn();
+		ImGui::Text("%lu", mesh_data->indices.size() / 3);
+
+		ImGui::EndTable();
+	}
+
+	ui_material_editor(material_data);
 }
 
 /**
@@ -467,8 +632,6 @@ static void window_debug_cheats(bunsen_editor &ed)
 
 static void window_editor(bunsen_editor &ed)
 {
-	static bool debug_window_open = false;
-
 	if (ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar))
 	{
 		// Titlebar menu
@@ -499,7 +662,6 @@ static void window_editor(bunsen_editor &ed)
 			if (ImGui::CollapsingHeader("Meshes info"))
 				ui_mesh_info(*ed.scene, ed.selected_nodes);
 		}
-	
 	}
 
 	ImGui::End();
