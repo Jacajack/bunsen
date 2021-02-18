@@ -1,6 +1,8 @@
 #include "preview.hpp"
 #include <memory>
 #include <stack>
+#include "../../material.hpp"
+#include "../../materials/diffuse_material.hpp"
 #include "../../log.hpp"
 #include "../../utils.hpp"
 
@@ -101,9 +103,22 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 				if (!mesh_data.gl_buffers)
 					mesh_data.buffer();
 				
+				// Material properties
+				glm::vec3 base_color{0.8f};
+				float specular_intensity = 0.2f;
+				if (mesh.mat)
+				{
+					if (auto mat = dynamic_cast<const bu::diffuse_material*>(mesh.mat->surface.get()))
+					{
+						base_color = mat->color;
+						specular_intensity = 0.2;
+					}
+				}
+
+				glUniform1f(program->get_uniform_location("specular_int"), specular_intensity);
+				glUniform3fv(program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniform1i(program->get_uniform_location("selected"), is_selected);
 				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
-
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
 				glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());

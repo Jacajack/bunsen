@@ -6,6 +6,7 @@
 #include <memory>
 #include <stack>
 #include "camera.hpp"
+#include "material.hpp"
 #include "gl/gl.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
@@ -33,32 +34,8 @@ struct mesh_gl_buffers
 	void buffer_mesh(const mesh_data &m);
 };
 
-/**
-	\brief Abstract surface material
-*/
-struct surface_material
-{
-};
-
-/**
-	\brief Abstract volume material
-*/
-struct volume_material
-{
-};
-
 struct light
 {
-};
-
-/**
-	\brief Material data holds and owns shaders for both surface and volume shading
-*/
-struct material_data
-{
-	std::string name;
-	std::unique_ptr<surface_material> surface;
-	std::unique_ptr<volume_material> volume;
 };
 
 /**
