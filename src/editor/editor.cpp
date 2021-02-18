@@ -720,11 +720,10 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 	layout_ed.update(main_state.user_input, selected_nodes, viewport_camera, glm::vec2{window_size}, overlay);
 
 	// Draw scene in preview mode
-	// \todo fix selection!
 	if (this->scene)
 	{
 		if (this->preview)
-			preview->draw(*this->scene, this->viewport_camera, nullptr);
+			preview->draw(*this->scene, this->viewport_camera, {selected_nodes.begin(), selected_nodes.end()});
 	}
 
 	// The UI

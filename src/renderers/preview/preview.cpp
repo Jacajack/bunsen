@@ -22,6 +22,13 @@ preview_renderer::preview_renderer()
 		grid_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
 	}
 
+	{
+		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/outline.vs.glsl"));
+		auto gs = bu::make_shader(GL_GEOMETRY_SHADER, bu::slurp_txt("resources/shaders/outline.gs.glsl"));
+		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/outline.fs.glsl"));
+		outline_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &gs, &fs});
+	}
+
 
 	// VAO setup
 	glVertexArrayAttribFormat( // Position
@@ -64,7 +71,7 @@ preview_renderer::preview_renderer()
 /**
 	\todo selection and visibility
 */
-void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const scene_node *selected_node)
+void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const std::set<std::shared_ptr<bu::scene_node>> &selection)
 {
 	const glm::vec3 world_color{0.1, 0.1, 0.1};
 
@@ -92,7 +99,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 
 		if (mesh_node_ptr)
 		{
-			bool is_selected = false;
+			bool is_selected = selection.count(node_ptr->shared_from_this());
 			glm::mat4 mat = it.get_transform();
 
 			for (const auto &mesh : mesh_node_ptr->meshes)
@@ -115,6 +122,21 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 					}
 				}
 
+				/*
+					When an object is selected, a mask of 0x01's is drawn in the
+					stencil buffer
+				*/
+				if (is_selected)
+				{
+					static const GLint zero = 0;
+					glClearBufferiv(GL_STENCIL, 0, &zero);
+					glEnable(GL_STENCIL_TEST);
+					glStencilFuncSeparate(GL_FRONT_AND_BACK, GL_ALWAYS, 1, 0xff);
+					glStencilOpSeparate(GL_FRONT_AND_BACK, GL_REPLACE, GL_REPLACE, GL_REPLACE);
+				}
+				else
+					glDisable(GL_STENCIL_TEST);
+
 				glUniform1f(program->get_uniform_location("specular_int"), specular_intensity);
 				glUniform3fv(program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniform1i(program->get_uniform_location("selected"), is_selected);
@@ -123,6 +145,27 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const sc
 				glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
 				glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
+
+				if (is_selected)
+				{
+					// Do not draw on top of the selected object
+					glStencilFuncSeparate(GL_FRONT_AND_BACK, GL_NOTEQUAL, 1, 0xff);
+					glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+
+					// Cull faces so the outline doesn't go crazy when the camera is inside the object
+					glEnable(GL_CULL_FACE);
+					glUseProgram(outline_program->id());
+					glUniform1f(outline_program->get_uniform_location("aspect"), camera.aspect);
+					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &mat[0][0]);
+					glUniformMatrix4fv(outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+					glUniformMatrix4fv(outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+					glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
+					
+					// Go back to normal state
+					glUseProgram(program->id());
+					glDisable(GL_CULL_FACE);
+					glDisable(GL_STENCIL_TEST);
+				}
 			}
 		}
 	}
