@@ -1,8 +1,11 @@
 #include "assimp_loader.hpp"
 #include "log.hpp"
 #include "material.hpp"
+#include "model.hpp"
 #include "materials/diffuse_material.hpp"
 #include <stdexcept>
+#include <set>
+#include <map>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <assimp/scene.h>
@@ -86,22 +89,50 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 		return mesh_data;
 	};
 
+	// Converts assimp node to model
+	auto process_model = [&](const aiScene *scene, aiNode *n)
+	{
+		auto model = std::make_shared<bu::model>();
+
+		std::set<int> assimp_material_ids;
+
+		for (auto i = 0u; i < n->mNumMeshes; i++)
+		{
+			const auto &assimp_mesh = scene->mMeshes[n->mMeshes[i]];
+			auto mesh = process_mesh(assimp_mesh);
+			assimp_material_ids.insert(assimp_mesh->mMaterialIndex);
+			model->meshes.push_back({mesh, int(assimp_mesh->mMaterialIndex)});
+		}
+
+		// Gather all necessary materials
+		std::map<int, int> material_aliases;
+		for (auto &mesh : model->meshes)
+		{
+			auto it = material_aliases.find(mesh.material_id);
+			if (it == material_aliases.end())
+			{
+				int n = model->materials.size();
+				material_aliases[mesh.material_id] = n;
+				model->materials.push_back(convert_assimp_material(scene->mMaterials[mesh.material_id]));
+				mesh.material_id = n;
+			}
+			else
+				mesh.material_id = it->second;
+		}
+
+		return model;
+	};
+
 	// Recursively converts aiNode to bu::scene_node
 	auto process_node = [&](const aiScene *scene, aiNode *n)
 	{
-		auto process_node_impl = [&](const aiScene *scene, aiNode *n, auto &ref)->std::shared_ptr<bu::scene_node>
+		auto process_node_impl = [&](const aiScene *scene, aiNode *n, auto &ref)->std::shared_ptr<bu::model_node>
 		{
-			auto node = std::make_shared<bu::mesh_node>();
+			auto node = std::make_shared<bu::model_node>();
 			node->set_name(n->mName.C_Str());
 			node->set_transform(assimp_mat4_to_glm(n->mTransformation));
-
-			for (auto i = 0u; i < n->mNumMeshes; i++)
-			{
-				const auto &assimp_mesh = scene->mMeshes[n->mMeshes[i]];
-				auto mesh_data = process_mesh(assimp_mesh);
-				auto material_data = convert_assimp_material(scene->mMaterials[assimp_mesh->mMaterialIndex]);
-				node->meshes.push_back(bu::mesh{mesh_data, material_data});
-			}
+			auto model = process_model(scene, n);
+			node->model = model;
 
 			for (auto i = 0u; i < n->mNumChildren; i++)
 			{
@@ -115,5 +146,10 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 		return process_node_impl(scene, n, process_node_impl);
 	};
 
-	return process_node(scene, scene->mRootNode);
+	auto node = process_node(scene, scene->mRootNode);
+	
+	if (node->get_children().size() == 1 && node->model->get_mesh_count() == 0)
+		return node->get_children()[0];
+	else
+		return node;
 }

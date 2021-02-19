@@ -109,17 +109,17 @@ static void window_debug_cheats(bunsen_editor &ed)
 /**
 	\brief Recursively extracts mesh pointers from scene nodes
 */
-static void extract_meshes(std::shared_ptr<bu::scene_node> node, std::vector<bu::mesh*> meshes)
-{
-	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(node.get()))
-	{
-		for (auto &mesh : mesh_node->meshes)
-			meshes.push_back(&mesh);
-	}
+// static void extract_meshes(std::shared_ptr<bu::scene_node> node, std::vector<bu::mesh*> meshes)
+// {
+// 	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(node.get()))
+// 	{
+// 		for (auto &mesh : mesh_node->meshes)
+// 			meshes.push_back(&mesh);
+// 	}
 
-	for (auto &c : node->get_children())
-		extract_meshes(c, meshes);
-}
+// 	for (auto &c : node->get_children())
+// 		extract_meshes(c, meshes);
+// }
 
 static void window_editor(bunsen_editor &ed)
 {
@@ -154,7 +154,7 @@ static void window_editor(bunsen_editor &ed)
 		ImGui::Separator();
 
 		// Tabs
-		if (ImGui::BeginTable("tab buttons", 6))
+		if (ImGui::BeginTable("tab buttons", 7))
 		{
 			auto tab_button = [](const char *text, int id)
 			{
@@ -175,6 +175,7 @@ static void window_editor(bunsen_editor &ed)
 			};
 
 			ImGui::TableNextColumn(); tab_button(ICON_FA_MICROCHIP, 0);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_GLOBE_EUROPE, 6);
 			ImGui::TableNextColumn(); tab_button(ICON_FA_CUBE, 1);
 			ImGui::TableNextColumn(); tab_button(ICON_FA_DRAW_POLYGON, 2);
 			ImGui::TableNextColumn(); tab_button(ICON_FA_GEM, 3);
@@ -187,19 +188,19 @@ static void window_editor(bunsen_editor &ed)
 		ImGui::Separator();
 
 		// Extract meshes from selection
-		std::vector<bu::mesh*> meshes;
-		for (auto &n : ed.selection.get_nodes())
-			extract_meshes(n, meshes);
+		// std::vector<bu::mesh*> meshes;
+		// for (auto &n : ed.selection.get_nodes())
+		// 	extract_meshes(n, meshes);
 
-		std::set<std::shared_ptr<bu::mesh_data>> mesh_data;
-		std::set<std::shared_ptr<bu::material_data>> material_data;
+		// std::set<std::shared_ptr<bu::mesh_data>> mesh_data;
+		// std::set<std::shared_ptr<bu::material_data>> material_data;
 		
-		// Extract mesh and material data
-		for (auto &mp : meshes)
-		{
-			if (mp->data) mesh_data.insert(mp->data);
-			if (mp->mat) material_data.insert(mp->mat);
-		}
+		// // Extract mesh and material data
+		// for (auto &mp : meshes)
+		// {
+		// 	if (mp->data) mesh_data.insert(mp->data);
+		// 	if (mp->mat) material_data.insert(mp->mat);
+		// }
 
 		// Child window for containing the external menus
 		if (ImGui::BeginChild("tab space"))
@@ -228,6 +229,10 @@ static void window_editor(bunsen_editor &ed)
 
 				case 5:
 					ImGui::Text("Camera properties...");
+					break;
+
+				case 6:
+					ImGui::Text("World settings...");
 					break;
 			}
 

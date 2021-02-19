@@ -104,23 +104,31 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 		bool is_selected = selection.count(node_ptr->shared_from_this());
 		glm::mat4 transform = it.get_transform();
 
-		// Mesh nodes
-		if (auto mesh_node_ptr = dynamic_cast<mesh_node*>(node_ptr))
+		// Model nodes
+		if (auto model_node_ptr = dynamic_cast<bu::model_node*>(node_ptr))
 		{
-			for (const auto &mesh : mesh_node_ptr->meshes)
+			auto model = model_node_ptr->model;
+			if (!model)
 			{
-				if (!mesh.data) continue;
-				auto &mesh_data = *mesh.data;
+				LOG_DEBUG << "Model nodes with no models are present on the scene!";
+				continue;
+			}
 
-				if (!mesh_data.gl_buffers)
-					mesh_data.buffer();
+			for (int i = 0; i < model->get_mesh_count(); i++)
+			{
+				auto mesh_data = model->get_mesh(i);
+				auto material = model->get_mesh_material(i);
+
+				// Buffer the mesh if necessary
+				if (!mesh_data->gl_buffers)
+					mesh_data->buffer();
 				
 				// Material properties
 				glm::vec3 base_color{0.8f};
 				float specular_intensity = 0.2f;
-				if (mesh.mat)
+				if (material)
 				{
-					if (auto mat = dynamic_cast<const bu::diffuse_material*>(mesh.mat->surface.get()))
+					if (auto mat = dynamic_cast<const bu::diffuse_material*>(material->surface.get()))
 					{
 						base_color = mat->color;
 						specular_intensity = 0.2;
@@ -148,10 +156,10 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 				glUniform3fv(program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniform1i(program->get_uniform_location("selected"), is_selected);
 				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
-				glBindVertexBuffer(0, mesh_data.gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data.gl_buffers->index_buffer.id());
-				glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
+				glBindVertexBuffer(0, mesh_data->gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
+				glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
 
 				if (is_selected)
 				{
@@ -166,7 +174,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
-					glDrawElements(GL_TRIANGLES, mesh_data.indices.size(), GL_UNSIGNED_INT, nullptr);
+					glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
 					
 					// Go back to normal state
 					glUseProgram(program->id());

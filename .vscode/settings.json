@@ -96,7 +96,9 @@
 		"typeinfo": "cpp",
 		"valarray": "cpp",
 		"variant": "cpp",
-		"*.cl": "cpp"
+		"*.cl": "cpp",
+		"*.def": "cpp",
+		"*.ipp": "cpp"
 	},
 	"C_Cpp.default.includePath": [
 		"${default}",

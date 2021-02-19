@@ -42,6 +42,24 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 		if (selection.contains(node_ptr))
 			node_flags |= ImGuiTreeNodeFlags_Selected;
 
+		// Slightly emphasize primary selection
+		bool color_emphasis = false;
+		if (selection.is_primary(node_ptr))
+		{
+			color_emphasis = true;
+			ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Header);
+			col.x *= 1.3;
+			col.y *= 1.3;
+			col.z *= 1.3;
+			ImGui::PushStyleColor(ImGuiCol_Header, col);
+
+			col = ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered);
+			col.x *= 1.3;
+			col.y *= 1.3;
+			col.z *= 1.3;
+			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, col);
+		}
+
 		// Assume the node is open (because of temporary transform nodes)
 		bool node_open = true;
 		bool display_node = true;
@@ -64,8 +82,8 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 		if (display_node)
 		{
 			std::string name_tags;
-			if (dynamic_cast<bu::mesh_node*>(node_ptr.get()))
-				name_tags += ICON_FA_DRAW_POLYGON " ";
+			if (dynamic_cast<bu::model_node*>(node_ptr.get()))
+				name_tags += ICON_FA_CUBE " ";
 
 			if (dynamic_cast<bu::light_node*>(node_ptr.get()))
 				name_tags += ICON_FA_LIGHTBULB " ";
@@ -96,7 +114,7 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 				node_stack.push(c);
 
 			// List meshes
-			if (auto mesh_node_ptr = dynamic_cast<bu::mesh_node*>(node_ptr.get()))
+			if (auto model_node_ptr = dynamic_cast<bu::model_node*>(node_ptr.get()))
 			{
 				ImGuiTreeNodeFlags leaf_flags = 
 					ImGuiTreeNodeFlags_SpanAvailWidth 
@@ -104,20 +122,56 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 					| ImGuiTreeNodeFlags_Leaf 
 					| ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-				for (const auto &mesh : mesh_node_ptr->meshes)
-					if (mesh.data)
-						ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_DRAW_POLYGON " %s", mesh.data->name.c_str());
+				// Leafs are bit dimmed when selected
+				ImVec4 col = ImGui::GetStyleColorVec4(ImGuiCol_Header);
+				col.w *= 0.5;
+				ImGui::PushStyleColor(ImGuiCol_Header, col);
+				ImGui::PushStyleColor(ImGuiCol_HeaderHovered, col);
 
-				for (const auto &mesh : mesh_node_ptr->meshes)
-					if (mesh.mat)
-						ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_GEM " %s", mesh.mat->name.c_str());
+				// Highlight if selected
+				if (selection.contains(node_ptr))
+					leaf_flags |= ImGuiTreeNodeFlags_Selected;
 
+				bool clicked = false;
+
+				if (model_node_ptr->model)
+				{
+					for (const auto &mesh : model_node_ptr->model->meshes)
+					{
+						if (mesh.data)
+						{
+							ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_DRAW_POLYGON " %s", mesh.data->name.c_str());
+							clicked |= ImGui::IsItemClicked();
+						}
+					}
+
+					for (const auto &mat : model_node_ptr->model->materials)
+						if (mat)
+						{
+							ImGui::TreeNodeEx(mat.get(), leaf_flags, ICON_FA_GEM " %s", mat->name.c_str());
+							clicked |= ImGui::IsItemClicked();
+						}
+				}
+
+				// Clicking on leafs acts like clicking on the node
+				if (clicked)
+				{
+					bool append = ImGui::GetIO().KeyCtrl;
+					selection.click(node_ptr, append);
+				}
+
+				// Pop dimmed background colors
+				ImGui::PopStyleColor(2);
 			}
 		}
 
 		// Pop dim
 		if (!visible)
 			ImGui::PopStyleColor();
+
+		// Pop emphasized color
+		if (color_emphasis)
+			ImGui::PopStyleColor(2);
 	}
 
 	ImGui::EndChild();

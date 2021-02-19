@@ -6,8 +6,7 @@
 
 #include <glm/glm.hpp>
 
-#include "mesh.hpp"
-#include "material.hpp"
+#include "model.hpp"
 #include "light.hpp"
 #include "camera.hpp"
 
@@ -142,10 +141,13 @@ public:
 	const glm::mat4 *transform_ptr;
 };
 
-struct mesh_node : public scene_node
+/**
+	\brief Node containing the actual objects on the scene
+*/
+struct model_node : public scene_node
 {
 	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
-	std::vector<mesh> meshes;
+	std::shared_ptr<bu::model> model;
 };
 
 struct light_node : public scene_node

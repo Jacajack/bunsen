@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include <imgui.h>
+#include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
 #include "../../material.hpp"
 #include "../../materials/generic_material.hpp"
@@ -115,22 +116,29 @@ void bu::ui::material_menu(bu::scene_selection &selection)
 		return;
 	}
 
-	std::set<std::shared_ptr<bu::material_data>> material_data;
-	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(primary.get()))
-		for (auto &mesh : mesh_node->meshes)
-			material_data.insert(mesh.mat);
+	// std::set<std::shared_ptr<bu::material_data>> material_data;
+	// if (auto mesh_node = dynamic_cast<bu::mesh_node*>(primary.get()))
+	// 	for (auto &mesh : mesh_node->meshes)
+	// 		material_data.insert(mesh.mat);
 	
+	auto model_node = dynamic_cast<bu::model_node*>(primary.get());
+	if (!model_node) return;
+	auto model = model_node->model;
+	if (!model) return;
+
 	// TODO remove static
 	static std::shared_ptr<bu::material_data> selected;
 	bool selected_valid = false;
 
-	if (ImGui::ListBoxHeader("Materials"))
+	if (ImGui::ListBoxHeader("Materials", ImVec2(0, 80)))
 	{
-		for (auto &mat_data : material_data)
+		for (auto &mat_data : model->materials)
 		{
 			bool is_selected = mat_data == selected;
+			auto text = std::string{ICON_FA_GEM " "} + mat_data->name;
+
 			selected_valid |= is_selected;
-			if (ImGui::Selectable(mat_data->name.c_str(), is_selected))
+			if (ImGui::Selectable(text.c_str(), is_selected))
 			{
 				selected = mat_data;
 				selected_valid = true;

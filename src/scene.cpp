@@ -418,11 +418,11 @@ const glm::mat4 &transform_node::get_raw_transform() const
 	return transform_ptr ? *transform_ptr : m_transform;
 }
 
-std::shared_ptr<scene_node> bu::mesh_node::clone(std::shared_ptr<scene_node> parent) const
+std::shared_ptr<scene_node> bu::model_node::clone(std::shared_ptr<scene_node> parent) const
 {
-	auto cl = std::make_shared<mesh_node>();
+	auto cl = std::make_shared<model_node>();
 	*std::dynamic_pointer_cast<scene_node>(cl) = std::move(*scene_node::clone(parent));
-	cl->meshes = meshes;
+	cl->model = model;
 	return cl;
 }
 

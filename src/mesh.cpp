@@ -2,7 +2,6 @@
 #include "utils.hpp"
 
 using bu::mesh_gl_buffers;
-using bu::mesh;
 using bu::mesh_data;
 
 void mesh_gl_buffers::buffer_mesh(const mesh_data &m)

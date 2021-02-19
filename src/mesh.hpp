@@ -1,8 +1,9 @@
 #pragma once
 #include <memory>
 #include <vector>
+#include <string>
 #include "gl/gl.hpp"
-#include "material.hpp"
+#include <glm/glm.hpp>
 
 namespace bu {
 
@@ -32,6 +33,8 @@ struct mesh_gl_buffers
 
 	The mesh data may include a pointer to a struct containing the same data
 	in GL buffers.
+
+	\todo rename to mesh
 */
 struct mesh_data
 {
@@ -44,16 +47,6 @@ struct mesh_data
 	std::unique_ptr<mesh_gl_buffers> gl_buffers;
 	void buffer();
 	void unbuffer();
-};
-
-/**
-	\brief Meshes link together mesh data (vertex stuff) and material data
-		and can share this data with other meshes.
-*/
-struct mesh
-{
-	std::shared_ptr<mesh_data> data;
-	std::shared_ptr<material_data> mat;
 };
 
 }
