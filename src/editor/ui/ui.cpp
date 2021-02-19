@@ -147,7 +147,8 @@ void bu::ui::load_extra_fonts(ImGuiIO &io)
     config.GlyphMinAdvanceX = fa_size;
 
     // Load DroidSans
-	auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Cousine-Regular.ttf", 15);
+	// auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Cousine-Regular.ttf", 15);
+	auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/DejaVuSans.ttf", 15);
 	io.Fonts->AddFontFromFileTTF("resources/fonts/fa-regular-400.ttf", fa_size, &config, &fa_ranges[0]);
 	io.Fonts->AddFontFromFileTTF("resources/fonts/fa-solid-900.ttf", fa_size, &config, &fa_ranges[0]);
     
