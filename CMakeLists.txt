@@ -8,6 +8,7 @@ set(OpenGL_GL_PREFERENCE GLVND)
 
 include(cmake/get_imgui.cmake)
 include(cmake/get_imgui_file_dialog.cmake)
+include(cmake/get_imgui_icon_font_headers.cmake)
 include(cmake/get_tracy.cmake)
 include(cmake/get_inih.cmake)
 
@@ -61,6 +62,7 @@ target_link_libraries(bunsen PRIVATE
 	${ASSIMP_LIBRARIES}
 	imgui_glfw
 	imgui_file_dialog
+	imgui_icon_font_headers
 	tracy
 	inih
 	)

@@ -14,6 +14,8 @@
 #include "ui/material_editor.hpp"
 #include "ui/mesh_control.hpp"
 
+#include <imgui_icon_font_headers/IconsFontAwesome5.h>
+
 using bu::bunsen_editor;
 
 /**
@@ -72,7 +74,7 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 static void window_debug_cheats(bunsen_editor &ed)
 {
 	ImGui::Begin("Evil debug cheats");
-	
+
 	if (ImGui::Button("Reload preview renderer"))
 	{
 		ed.preview.reset();
@@ -84,6 +86,21 @@ static void window_debug_cheats(bunsen_editor &ed)
 		{
 			LOG_ERROR << "Failed to reload preview mode! - " << ex.what();
 		}
+	}
+
+	static bool show_style_editor = false;
+	ImGui::Checkbox("Show ImGui style editor", &show_style_editor);
+	if (show_style_editor)
+	{
+		ImGui::Begin("Style Editor");
+		ImGui::ShowStyleEditor(&ImGui::GetStyle());
+		ImGui::End();
+	}
+
+	static float col[3];
+	if (ImGui::ColorEdit3("Color theme base", col))
+	{
+		bu::ui::load_theme(col[0], col[1], col[2]);
 	}
 
 	ImGui::End();
@@ -110,17 +127,84 @@ static void window_editor(bunsen_editor &ed)
 			ImGui::EndMenuBar();
 		}
 		
+		static int tab_select = 0;
+	
 		if (ed.scene)
 		{
 			bu::ui::scene_graph(*ed.scene, ed.selected_nodes);
+			ImGui::Separator();
 			bu::ui::node_controls(*ed.scene, ed.selected_nodes);		
-
-			if (ImGui::CollapsingHeader("Node properties"))
-				bu::ui::node_properties(*ed.scene, ed.selected_nodes);
-
-			if (ImGui::CollapsingHeader("Meshes info"))
-				bu::ui::mesh_info(*ed.scene, ed.selected_nodes);
 		}
+
+		ImGui::Separator();
+
+		if (ImGui::BeginTable("tab buttons", 6))
+		{
+			auto tab_button = [](const char *text, int id)
+			{
+				ImU32 tab_color = ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+				ImU32 active_color = ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_TabActive));
+				ImVec2 button_size(ImGui::GetContentRegionAvail().x, 25);
+
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, active_color);
+
+				if (tab_select == id)
+					ImGui::PushStyleColor(ImGuiCol_Button, active_color);
+				else
+					ImGui::PushStyleColor(ImGuiCol_Button, tab_color);
+				
+				if (ImGui::Button(text, button_size)) tab_select = id;
+
+				ImGui::PopStyleColor(2);
+			};
+
+			ImGui::TableNextColumn(); tab_button(ICON_FA_MICROCHIP, 0);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_CUBE, 1);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_DRAW_POLYGON, 2);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_GEM, 3);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_LIGHTBULB, 4);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_CAMERA, 5);
+		
+			ImGui::EndTable();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::BeginChild("tab space"))
+		{
+			switch (tab_select)
+			{
+				case 0:
+					ImGui::Text("Renderer settings....");
+					break;
+
+				case 1:
+					bu::ui::node_properties(*ed.scene, ed.selected_nodes);
+					break;
+
+				case 2:
+					bu::ui::mesh_info(*ed.scene, ed.selected_nodes);
+					break;
+
+				case 3:
+					// bu::ui::material_editor()
+					break;
+			}
+
+			ImGui::EndChild();
+		}
+
+		// if (ed.scene)
+		// {
+		// 	bu::ui::scene_graph(*ed.scene, ed.selected_nodes);
+		// 	bu::ui::node_controls(*ed.scene, ed.selected_nodes);		
+
+		// 	if (ImGui::CollapsingHeader("Node properties"))
+		// 		bu::ui::node_properties(*ed.scene, ed.selected_nodes);
+
+		// 	if (ImGui::CollapsingHeader("Meshes info"))
+		// 		bu::ui::mesh_info(*ed.scene, ed.selected_nodes);
+		// }
 	}
 
 	ImGui::End();
@@ -162,9 +246,6 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 
 void bunsen_editor::draw(const bu::bunsen_state &main_state)
 {
-	// Set theme
-	bu::ui::imgui_cherry_theme();
-
 	// Get current window size
 	glm::ivec2 window_size;
 	glfwGetWindowSize(main_state.window, &window_size.x, &window_size.y);

@@ -221,8 +221,6 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 		ImGui::PopStyleVar();
 	};
 
-	ImGui::Dummy(ImVec2(0.f, 10.f));
-
 	if (ImGui::BeginTable("split", 2))
 	{
 		auto button_size = [](){return ImVec2(ImGui::GetContentRegionAvailWidth(), 0);};

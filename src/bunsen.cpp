@@ -15,7 +15,7 @@
 #include "gl/gl.hpp"
 #include "input.hpp"
 #include "editor/editor.hpp"
-#include "assimp_loader.hpp"
+#include "editor/ui/ui.hpp"
 #include "log.hpp"
 
 static void glfw_error_callback(int error, const char *message)
@@ -194,13 +194,15 @@ int main(int argc, char *argv[])
 			GL_DEBUG_SEVERITY_LOW, -1, "OpenGL debug output is active");
 	}
 	
-	// Initialize ImGui context
+	// Initialize ImGui context and load fonts
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	main_state.imgui_io = &ImGui::GetIO();
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(main_state.window, true);
 	ImGui_ImplOpenGL3_Init();
+	bu::ui::load_extra_fonts(*main_state.imgui_io);
+	bu::ui::load_theme();
 
 	LOG_INFO << "Init completed!";
 
