@@ -9,8 +9,11 @@ uniform mat4 mat_proj;
 
 void main()
 {
-	mat4 mat_mvp = mat_proj * mat_view * mat_model;  
-	vec4 v = mat_mvp * vec4(v_pos * 1.0, 1.0);
+	// Vertex in camera space
+	vec4 cv = mat_view * mat_model * vec4(v_pos, 1.0); 
+	vec4 v = mat_proj * cv;
 	v /= v.w;
-	gl_Position =  vec4(v.xy, 0, 1);
+	
+	// Pass on projected vertex and z value in camera space
+	gl_Position =  vec4(v.xy, cv.z, 1);
 }
