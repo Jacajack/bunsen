@@ -1,13 +1,10 @@
 #pragma once
 
-#include "../../bunsen.hpp"
+#include <imgui.h>
 
 namespace bu::ui {
 
-/**
-	A cherry ImGui theme to use before I come up with my own one
-	\author https://github.com/r-lyeh
-*/
-void imgui_cherry_theme();
+void load_theme(float r = 0.385, float g = 0.334, float b = 0.450);
+void load_extra_fonts(ImGuiIO &io);
 
 }

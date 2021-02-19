@@ -1,6 +1,12 @@
 #include "ui.hpp"
+#include "../../log.hpp"
+#include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
-void bu::ui::imgui_cherry_theme()
+/**
+	A cherry ImGui theme to use before I come up with my own one
+	\author https://github.com/r-lyeh
+*/
+static void imgui_cherry_theme()
 {
     // cherry colors, 3 intensities
     #define HI(v)   ImVec4(0.502f, 0.075f, 0.256f, v)
@@ -71,4 +77,86 @@ void bu::ui::imgui_cherry_theme()
     style.Colors[ImGuiCol_Border] = ImVec4(0.539f, 0.479f, 0.255f, 0.162f);
     style.FrameBorderSize = 0.0f;
     style.WindowBorderSize = 1.0f;
+}
+
+void bu::ui::load_theme(float r, float g, float b)
+{
+    imgui_cherry_theme();
+    auto &style = ImGui::GetStyle();
+
+    ImVec4 col_active_hi(1, 1, 1, 0.7);
+    ImVec4 col_active_med(1, 1, 1, 0.7);
+    ImVec4 col_active_low(1, 1, 1, 0.7);
+
+    float col_h, col_s, col_v;
+    
+    // col_h = 0.933;
+    // col_s = 0.565;
+    // col_v = 0.650; //455
+    // void load_theme(float h = 0.74, float s = 0.258, float v = 0.450);
+
+    ImGui::ColorConvertRGBtoHSV(r, g, b, col_h, col_s, col_v);
+    ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 1.00, col_active_hi.x, col_active_hi.y, col_active_hi.z);
+    ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 0.66, col_active_med.x, col_active_med.y, col_active_med.z);
+    ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 0.33, col_active_low.x, col_active_low.y, col_active_low.z);
+
+    // A bit of rounding
+    style.WindowRounding = 4;
+    style.FrameRounding = 4;
+    style.ChildRounding = 4;
+    style.PopupRounding = 0;
+    style.ScrollbarRounding = 3;
+    style.GrabRounding = 3;
+    style.TabRounding = 4;
+
+
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.119f, 0.119f, 0.119f, 1.000f);
+    style.Colors[ImGuiCol_TitleBg]  = ImVec4(0.232f, 0.201f, 0.271f, 1.000f);
+    style.Colors[ImGuiCol_Border]   = ImVec4(0.000f, 0.000f, 0.000f, 0.318f);
+
+    style.Colors[ImGuiCol_FrameBg]        = ImVec4(0.174f, 0.174f, 0.174f, 1.000f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.214f, 0.214f, 0.214f, 1.000f);
+    style.Colors[ImGuiCol_FrameBgActive]  = ImVec4(0.323f, 0.323f, 0.323f, 1.000f);
+
+    style.Colors[ImGuiCol_Button] = ImVec4(0.214f, 0.214f, 0.214f, 1.000f);
+    style.Colors[ImGuiCol_ButtonHovered] = col_active_med;
+    style.Colors[ImGuiCol_ButtonActive] = col_active_hi;
+
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.000f, 0.000f, 0.000f, 0.392f);
+    style.Colors[ImGuiCol_TabActive] = col_active_med;
+    style.Colors[ImGuiCol_TabHovered] = col_active_med;
+
+    style.Colors[ImGuiCol_Header] = col_active_med;
+    style.Colors[ImGuiCol_HeaderHovered] = col_active_med;
+    style.Colors[ImGuiCol_HeaderActive] = col_active_hi;
+
+    style.Colors[ImGuiCol_TitleBg] = col_active_med;
+    style.Colors[ImGuiCol_TitleBgActive] = col_active_hi;
+}
+
+void bu::ui::load_extra_fonts(ImGuiIO &io)
+{
+    io.Fonts->AddFontDefault();
+
+    static const float fa_size = 15.f;
+    static const ImWchar fa_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+
+    // Load FontAwesome
+    ImFontConfig config;
+    config.MergeMode = true;
+    config.GlyphMinAdvanceX = fa_size;
+
+    // Load DroidSans
+	auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Cousine-Regular.ttf", 15);
+	io.Fonts->AddFontFromFileTTF("resources/fonts/fa-regular-400.ttf", fa_size, &config, &fa_ranges[0]);
+	io.Fonts->AddFontFromFileTTF("resources/fonts/fa-solid-900.ttf", fa_size, &config, &fa_ranges[0]);
+    
+    // Rebuild atlas and set default font
+    io.Fonts->Build();
+    io.FontDefault = font;
+
+    // LOG_DEBUG << "droid sans  " << droid_sans;
+    // ImGui::PushFont(droid_sans);
+
+    LOG_INFO << "Loaded fonts!";
 }
