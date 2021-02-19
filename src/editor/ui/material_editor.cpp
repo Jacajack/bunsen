@@ -116,11 +116,6 @@ void bu::ui::material_menu(bu::scene_selection &selection)
 		return;
 	}
 
-	// std::set<std::shared_ptr<bu::material_data>> material_data;
-	// if (auto mesh_node = dynamic_cast<bu::mesh_node*>(primary.get()))
-	// 	for (auto &mesh : mesh_node->meshes)
-	// 		material_data.insert(mesh.mat);
-	
 	auto model_node = dynamic_cast<bu::model_node*>(primary.get());
 	if (!model_node) return;
 	auto model = model_node->model;

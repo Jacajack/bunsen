@@ -58,7 +58,7 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 	// Converts aiMesh to br::mesh_data
 	auto process_mesh = [&](aiMesh *m)
 	{
-		auto mesh_data = std::make_shared<bu::mesh_data>();
+		auto mesh_data = std::make_shared<bu::mesh>();
 		mesh_data->name = m->mName.C_Str();
 
 		for (auto i = 0u; i < m->mNumVertices; i++)

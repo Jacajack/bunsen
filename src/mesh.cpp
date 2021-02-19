@@ -2,9 +2,9 @@
 #include "utils.hpp"
 
 using bu::mesh_gl_buffers;
-using bu::mesh_data;
+using bu::mesh;
 
-void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
+void mesh_gl_buffers::buffer_mesh(const mesh &m)
 {
 	auto vertex_count = m.positions.size();
 	auto vertex_size = 3 + 3 + 2;
@@ -43,13 +43,13 @@ void mesh_gl_buffers::buffer_mesh(const mesh_data &m)
 	glNamedBufferStorage(index_buffer.id(), bu::vector_size(m.indices), m.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 }
 
-void mesh_data::buffer()
+void mesh::buffer()
 {
 	gl_buffers = std::make_unique<mesh_gl_buffers>();
 	gl_buffers->buffer_mesh(*this);
 }
 
-void mesh_data::unbuffer()
+void mesh::unbuffer()
 {
 	gl_buffers.reset();
 }

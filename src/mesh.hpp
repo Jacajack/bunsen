@@ -7,7 +7,7 @@
 
 namespace bu {
 
-struct mesh_data;
+struct mesh;
 
 /**
 	\brief Equivalent of \ref mesh_data stored in GPU buffers.
@@ -25,7 +25,7 @@ struct mesh_gl_buffers
 	gl_buffer vertex_buffer;
 	gl_buffer index_buffer;
 
-	void buffer_mesh(const mesh_data &m);
+	void buffer_mesh(const mesh &m);
 };
 
 /**
@@ -33,10 +33,8 @@ struct mesh_gl_buffers
 
 	The mesh data may include a pointer to a struct containing the same data
 	in GL buffers.
-
-	\todo rename to mesh
 */
-struct mesh_data
+struct mesh
 {
 	std::string name;
 	std::vector<glm::vec3> positions;

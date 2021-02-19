@@ -12,7 +12,7 @@
 #include "ui/ui.hpp"
 #include "ui/scene_control.hpp"
 #include "ui/material_editor.hpp"
-#include "ui/mesh_control.hpp"
+#include "ui/model_menu.hpp"
 
 #include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
@@ -35,9 +35,9 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 
 		dialog.OpenDialog("import_model",
 			"Import a model from file",
+			"GLTF (*.gltf *.glb){.gltf,.glb}"
 			"OBJ files (*.obj){.obj},"
-			"Collada files (*.dae){.dae},"
-			"GLTF (*.gltf *.glb){.gltf,.glb}",
+			"Collada files (*.dae){.dae},",
 			""
 		);
 	}
@@ -106,23 +106,14 @@ static void window_debug_cheats(bunsen_editor &ed)
 	ImGui::End();
 }
 
-/**
-	\brief Recursively extracts mesh pointers from scene nodes
-*/
-// static void extract_meshes(std::shared_ptr<bu::scene_node> node, std::vector<bu::mesh*> meshes)
-// {
-// 	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(node.get()))
-// 	{
-// 		for (auto &mesh : mesh_node->meshes)
-// 			meshes.push_back(&mesh);
-// 	}
-
-// 	for (auto &c : node->get_children())
-// 		extract_meshes(c, meshes);
-// }
-
 static void window_editor(bunsen_editor &ed)
 {
+	if (!ed.scene)
+	{
+		LOG_ERROR << "The editor won't be displayed without a loaded scene!";
+		return;
+	}
+
 	if (ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar))
 	{
 		// Titlebar menu
@@ -144,63 +135,63 @@ static void window_editor(bunsen_editor &ed)
 		
 		static int tab_select = 0;
 	
-		if (ed.scene)
-		{
-			bu::ui::scene_graph(*ed.scene, ed.selection);
-			ImGui::Separator();
-			bu::ui::node_controls(*ed.scene, ed.selection);		
-		}
+		bu::ui::scene_graph(*ed.scene, ed.selection);
+		ImGui::Separator();
+		bu::ui::node_controls(*ed.scene, ed.selection);		
 
 		ImGui::Separator();
+
+		// Check what type of node is selected so proper tabs can be dimmed out
+		auto primary = ed.selection.get_primary();
+		bool primary_valid = bool(primary);
+		bool is_model_node = dynamic_cast<bu::model_node*>(primary.get());
+		bool is_light_node = dynamic_cast<bu::light_node*>(primary.get());
+		bool is_camera_node = dynamic_cast<bu::camera_node*>(primary.get());
 
 		// Tabs
 		if (ImGui::BeginTable("tab buttons", 7))
 		{
-			auto tab_button = [](const char *text, int id)
+			auto tab_button = [](const char *text, int id, bool enable)
 			{
-				ImU32 tab_color = ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-				ImU32 active_color = ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_TabActive));
+				auto tab_color = ImGui::GetStyleColorVec4(ImGuiCol_Tab);
+				auto active_color = ImGui::GetStyleColorVec4(ImGuiCol_TabActive);
+				auto color = tab_select == id ? active_color : tab_color;
 				ImVec2 button_size(ImGui::GetContentRegionAvail().x, 25);
 
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, active_color);
+				ImGui::PushStyleColor(ImGuiCol_Button, color);
 
-				if (tab_select == id)
-					ImGui::PushStyleColor(ImGuiCol_Button, active_color);
-				else
-					ImGui::PushStyleColor(ImGuiCol_Button, tab_color);
+				if (!enable)
+				{
+					ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.3f);
+					if (tab_select == id)
+						tab_select = 0;
+				}
 				
-				if (ImGui::Button(text, button_size)) tab_select = id;
+				if (ImGui::Button(text, button_size) && enable) tab_select = id;
+
+				if (!enable)
+				{
+					ImGui::PopItemFlag();
+					ImGui::PopStyleVar();
+				}
 
 				ImGui::PopStyleColor(2);
 			};
 
-			ImGui::TableNextColumn(); tab_button(ICON_FA_MICROCHIP, 0);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_GLOBE_EUROPE, 6);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_CUBE, 1);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_DRAW_POLYGON, 2);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_GEM, 3);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_LIGHTBULB, 4);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_VIDEO, 5);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_MICROCHIP, 0, true);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_GLOBE_EUROPE, 6, true);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_CUBE, 1, primary_valid);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_DRAW_POLYGON, 2, is_model_node);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_GEM, 3, is_model_node);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_LIGHTBULB, 4, is_light_node);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_VIDEO, 5, is_camera_node);
 		
 			ImGui::EndTable();
 		}
 
 		ImGui::Separator();
-
-		// Extract meshes from selection
-		// std::vector<bu::mesh*> meshes;
-		// for (auto &n : ed.selection.get_nodes())
-		// 	extract_meshes(n, meshes);
-
-		// std::set<std::shared_ptr<bu::mesh_data>> mesh_data;
-		// std::set<std::shared_ptr<bu::material_data>> material_data;
-		
-		// // Extract mesh and material data
-		// for (auto &mp : meshes)
-		// {
-		// 	if (mp->data) mesh_data.insert(mp->data);
-		// 	if (mp->mat) material_data.insert(mp->mat);
-		// }
 
 		// Child window for containing the external menus
 		if (ImGui::BeginChild("tab space"))
@@ -212,11 +203,11 @@ static void window_editor(bunsen_editor &ed)
 					break;
 
 				case 1:
-					// bu::ui::node_menu(*ed.scene, ed.selection.get_nodes());
+					bu::ui::node_menu(*ed.scene, ed.selection);
 					break;
 
 				case 2:
-					// bu::ui::mesh_menu(*ed.scene, ed.selection.get_nodes());
+					bu::ui::model_menu(ed.selection);
 					break;
 
 				case 3:

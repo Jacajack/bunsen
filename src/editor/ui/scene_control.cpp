@@ -138,9 +138,9 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 				{
 					for (const auto &mesh : model_node_ptr->model->meshes)
 					{
-						if (mesh.data)
+						if (mesh.mesh)
 						{
-							ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_DRAW_POLYGON " %s", mesh.data->name.c_str());
+							ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_DRAW_POLYGON " %s", mesh.mesh->name.c_str());
 							clicked |= ImGui::IsItemClicked();
 						}
 					}

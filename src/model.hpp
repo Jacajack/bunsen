@@ -18,7 +18,7 @@ struct model
 {
 	struct mesh_material_pair
 	{
-		std::shared_ptr<bu::mesh_data> data;
+		std::shared_ptr<bu::mesh> mesh;
 		int material_id;
 	};
 
@@ -30,9 +30,9 @@ struct model
 		return meshes.size();
 	}
 
-	std::shared_ptr<bu::mesh_data> get_mesh(int id) const
+	std::shared_ptr<bu::mesh> get_mesh(int id) const
 	{
-		return meshes[id].data;
+		return meshes[id].mesh;
 	}
 
 	std::shared_ptr<bu::material_data> get_mesh_material(int id) const
