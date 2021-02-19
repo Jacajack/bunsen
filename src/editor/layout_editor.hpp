@@ -1,9 +1,10 @@
 #pragma once
+#include <set>
+#include <memory>
 #include "../scene.hpp"
 #include "../camera.hpp"
 #include "imgui_overlay.hpp"
-#include <list>
-#include <memory>
+#include "scene_selection.hpp"
 
 namespace bu {
 
@@ -29,8 +30,8 @@ struct layout_editor
 		SCALE,
 	};
 
-	void update(const bu::input_event_queue &input, const std::list<std::weak_ptr<bu::scene_node>> &selection, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
-	void start(const bu::input_event_queue &input, const std::list<std::weak_ptr<bu::scene_node>> &selection, action_state new_action);
+	void update(const bu::input_event_queue &input, const bu::scene_selection &selection, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
+	void start(const bu::input_event_queue &input, const bu::scene_selection &selection, action_state new_action);
 	void apply();
 	void abort();
 	bool is_transform_pending();

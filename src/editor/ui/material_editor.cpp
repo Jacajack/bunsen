@@ -78,7 +78,7 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 
 	ImGui::Dummy(ImVec2(0.f, 5.f));
 
-	if (mat->surface && ImGui::CollapsingHeader("Surface"))
+	if (mat->surface && ImGui::TreeNode("Surface"))
 	{
 		// Diffuse material
 		if (auto surf = dynamic_cast<bu::diffuse_material*>(mat->surface.get()))
@@ -96,9 +96,54 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 			ImGui::SliderFloat("Transmission", &surf->transmission, 0, 1);
 			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
 		}
+
+		ImGui::TreePop();
 	}
 
-	if (mat->volume && ImGui::CollapsingHeader("Volume"))
+	if (mat->volume && ImGui::TreeNode("Volume"))
 	{
+		ImGui::TreePop();
 	}
+}
+
+void bu::ui::material_menu(bu::scene_selection &selection)
+{
+	auto primary = selection.get_primary();
+	if (!primary)
+	{
+		ImGui::Text("No materials are selected...");
+		return;
+	}
+
+	std::set<std::shared_ptr<bu::material_data>> material_data;
+	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(primary.get()))
+		for (auto &mesh : mesh_node->meshes)
+			material_data.insert(mesh.mat);
+	
+	// TODO remove static
+	static std::shared_ptr<bu::material_data> selected;
+	bool selected_valid = false;
+
+	if (ImGui::ListBoxHeader("Materials"))
+	{
+		for (auto &mat_data : material_data)
+		{
+			bool is_selected = mat_data == selected;
+			selected_valid |= is_selected;
+			if (ImGui::Selectable(mat_data->name.c_str(), is_selected))
+			{
+				selected = mat_data;
+				selected_valid = true;
+			}
+		}
+		
+		ImGui::ListBoxFooter();
+	}
+	
+	ImGui::Separator();
+
+	if (selected_valid)
+		bu::ui::material_editor(selected);
+	else
+		selected.reset();
 }
