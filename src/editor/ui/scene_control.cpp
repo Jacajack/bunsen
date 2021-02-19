@@ -1,62 +1,21 @@
 #include "scene_control.hpp"
 #include <set>
+#include <algorithm>
 #include <string>
 #include <cstring>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <imgui_icon_font_headers/IconsFontAwesome5.h>
 #include <glm/gtc/quaternion.hpp>
 
 /**
 	\brief Responsible for displaying the scene tree
 	\todo Dragging for regrouping the nodes
 */
-void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
+void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 {
-	auto selection_remove_invalid = [&selection]()
-	{
-		std::vector<std::list<std::weak_ptr<bu::scene_node>>::iterator> invalid;
-		for (auto it = selection.begin(); it != selection.end(); ++it)
-		{
-			auto ps = it->lock();
-			if (!ps)
-				invalid.push_back(it);
-		}
-
-		for (auto &it : invalid)
-			selection.erase(it);
-	};
-
-	auto selection_remove = [&selection](std::shared_ptr<bu::scene_node> &x)
-	{
-		for (auto it = selection.begin(); it != selection.end(); ++it)
-		{
-			auto ps = it->lock();
-			if (ps && ps.get() == x.get())
-			{
-				selection.erase(it);
-				break;
-			}
-
-		}
-	};
-
-	auto selection_contains = [&selection](std::shared_ptr<bu::scene_node> &x)
-	{
-		for (auto it = selection.begin(); it != selection.end(); ++it)
-		{
-			auto ps = it->lock();
-			if (ps && ps.get() == x.get())
-					return true;
-		}
-
-		return false;
-	};
-
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
 	ImGui::BeginChild("Scene Tree", ImVec2(ImGui::GetWindowContentRegionWidth(), 200), false, window_flags);
-
-	// Remove invalid nodes from selection
-	selection_remove_invalid();
 
 	std::stack<std::shared_ptr<bu::scene_node>> node_stack;
 	node_stack.push(scene.root_node);
@@ -80,7 +39,7 @@ void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 			| ImGuiTreeNodeFlags_SpanAvailWidth;
 
 		// Highlight if selected
-		if (selection_contains(node_ptr))
+		if (selection.contains(node_ptr))
 			node_flags |= ImGuiTreeNodeFlags_Selected;
 
 		// Assume the node is open (because of temporary transform nodes)
@@ -106,13 +65,13 @@ void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 		{
 			std::string name_tags;
 			if (dynamic_cast<bu::mesh_node*>(node_ptr.get()))
-				name_tags += "[M] ";
+				name_tags += ICON_FA_DRAW_POLYGON " ";
 
 			if (dynamic_cast<bu::light_node*>(node_ptr.get()))
-				name_tags += "[L] ";
+				name_tags += ICON_FA_LIGHTBULB " ";
 
 			if (dynamic_cast<bu::camera_node*>(node_ptr.get()))
-				name_tags += "[C] ";
+				name_tags += ICON_FA_VIDEO " ";
 
 			node_open = ImGui::TreeNodeEx(node_ptr.get(), node_flags, "%s%s", name_tags.c_str(), node_ptr->get_name().c_str());
 			
@@ -121,18 +80,8 @@ void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 			// If multiple items are selected, and control is not held - select
 			if (ImGui::IsItemClicked())
 			{
-				bool already_selected = selection_contains(node_ptr);
-				bool multiple_selection = selection.size() > 1;
-				if (ImGui::GetIO().KeyCtrl)
-				{
-					if (already_selected) selection_remove(node_ptr);
-					else selection.push_back(node_ptr);
-				}
-				else
-				{
-					selection.clear();
-					if (multiple_selection || !already_selected) selection.push_back(node_ptr);
-				}
+				bool append = ImGui::GetIO().KeyCtrl;
+				selection.click(node_ptr, append);
 			}
 		}
 
@@ -156,9 +105,13 @@ void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 					| ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
 				for (const auto &mesh : mesh_node_ptr->meshes)
-				{
-					ImGui::TreeNodeEx(&mesh, leaf_flags, "[mesh] %s", mesh.data->name.c_str());
-				}
+					if (mesh.data)
+						ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_DRAW_POLYGON " %s", mesh.data->name.c_str());
+
+				for (const auto &mesh : mesh_node_ptr->meshes)
+					if (mesh.mat)
+						ImGui::TreeNodeEx(&mesh, leaf_flags, ICON_FA_GEM " %s", mesh.mat->name.c_str());
+
 			}
 		}
 
@@ -173,26 +126,21 @@ void bu::ui::scene_graph(const bu::scene &scene, std::list<std::weak_ptr<bu::sce
 /**
 	\brief Node controls (grouping and deleting)
 */
-void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
+void bu::ui::node_controls(const bu::scene &scene, bu::scene_selection &selection)
 {
 	bool selection_empty = selection.empty();
 	bool multiple_selection = selection.size() > 1;
 	bool contains_root_node = false;
 	bool have_common_parent = true;
 	std::shared_ptr<bu::scene_node> common_parent;
-	std::set<std::shared_ptr<bu::scene_node>> nodes;
 
-	for (auto &wp : selection)
+	for (auto &node : selection.get_nodes())
 	{
-		if (auto node = wp.lock())
-		{
-			nodes.insert(node);
-			if (node == scene.root_node) contains_root_node = true;
-			if (!common_parent)
-				common_parent = node->get_parent().lock();
-			else if (common_parent != node->get_parent().lock())
-				have_common_parent = false;
-		}
+		if (node == scene.root_node) contains_root_node = true;
+		if (!common_parent)
+			common_parent = node->get_parent().lock();
+		else if (common_parent != node->get_parent().lock())
+			have_common_parent = false;
 	}
 
 	bool disable_delete = selection_empty || contains_root_node;
@@ -271,7 +219,7 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	// Delete node
 	if (clicked_delete)
 	{
-		for (auto &n : nodes)
+		for (auto &n : selection.get_nodes())
 			n->remove_from_parent();
 		selection.clear();
 	}
@@ -279,7 +227,7 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	// Dissolve node
 	if (clicked_dissolve)
 	{
-		for (auto &n : nodes)
+		for (auto &n : selection.get_nodes())
 			n->dissolve();
 		selection.clear();
 	}
@@ -289,7 +237,7 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	{
 		auto group_node = std::make_shared<bu::scene_node>();
 		group_node->set_name("Group Node");
-		for (auto &n : nodes)
+		for (auto &n : selection.get_nodes())
 			n->set_parent(group_node);
 		group_node->set_parent(common_parent);
 	}
@@ -297,13 +245,14 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	// Duplicate nodes
 	if (clicked_duplicate)
 	{
-		for (auto &n : nodes)
+		for (auto &n : selection.get_nodes())
 		{
 			auto p = n->get_parent().lock();
 			auto dup = n->clone(p);
 			dup->set_name(dup->get_name() + " (dup)");
 			selection.clear();
-			selection.push_back(dup);
+			selection.select(dup);
+			// TODO trigger grab
 		}
 	}
 
@@ -311,14 +260,14 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	if (clicked_import_mesh)
 	{
 		// TODO
-		auto parent = (*selection.begin()).lock();
+		// auto parent = (*selection.begin()).lock();
 
 	}
 
 	// Add light
 	if (clicked_add_light)
 	{
-		auto parent = (*selection.begin()).lock();
+		auto parent = scene.root_node;
 		auto light = std::make_shared<bu::light_node>();
 		light->set_name("New Light");
 		parent->add_child(light);
@@ -329,16 +278,8 @@ void bu::ui::node_controls(const bu::scene &scene, std::list<std::weak_ptr<bu::s
 	\brief Property editor for nodes (transforms, names)
 	\todo Make transform UI affect the objects
 */
-void bu::ui::node_properties(const bu::scene &scene, std::list<std::weak_ptr<bu::scene_node>> &selection)
+void bu::ui::node_properties(const std::shared_ptr<bu::scene_node> &node)
 {
-	std::shared_ptr<bu::scene_node> node;
-	if (!selection.empty()) node = selection.front().lock();
-	if (selection.size() != 1 || !node)
-	{
-		ImGui::TextWrapped("Nothing to see here, buddy...");
-		return;
-	}
-
 	bool visible = node->is_visible();
 	bool local_transform = node->get_transform_origin() == bu::scene_node::node_transform_origin::PARENT;
 	
@@ -389,4 +330,17 @@ void bu::ui::node_properties(const bu::scene &scene, std::list<std::weak_ptr<bu:
 	// Do not pass entire buffer to std::string{} because it contains terminating NULs
 	auto len = std::strlen(buf.data());
 	node->set_name(std::string{buf.begin(), buf.begin() + len});
+}
+
+void bu::ui::node_menu(const bu::scene &scene, bu::scene_selection &selection)
+{
+	std::shared_ptr<bu::scene_node> node;
+	if (selection.has_primary()) node = selection.get_primary();
+	if (selection.size() != 1 || !node)
+	{
+		ImGui::TextWrapped("Nothing to see here, buddy...");
+		return;
+	}
+	
+	bu::ui::node_properties(node);
 }

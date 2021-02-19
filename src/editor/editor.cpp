@@ -106,6 +106,21 @@ static void window_debug_cheats(bunsen_editor &ed)
 	ImGui::End();
 }
 
+/**
+	\brief Recursively extracts mesh pointers from scene nodes
+*/
+static void extract_meshes(std::shared_ptr<bu::scene_node> node, std::vector<bu::mesh*> meshes)
+{
+	if (auto mesh_node = dynamic_cast<bu::mesh_node*>(node.get()))
+	{
+		for (auto &mesh : mesh_node->meshes)
+			meshes.push_back(&mesh);
+	}
+
+	for (auto &c : node->get_children())
+		extract_meshes(c, meshes);
+}
+
 static void window_editor(bunsen_editor &ed)
 {
 	if (ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar))
@@ -131,13 +146,14 @@ static void window_editor(bunsen_editor &ed)
 	
 		if (ed.scene)
 		{
-			bu::ui::scene_graph(*ed.scene, ed.selected_nodes);
+			bu::ui::scene_graph(*ed.scene, ed.selection);
 			ImGui::Separator();
-			bu::ui::node_controls(*ed.scene, ed.selected_nodes);		
+			bu::ui::node_controls(*ed.scene, ed.selection);		
 		}
 
 		ImGui::Separator();
 
+		// Tabs
 		if (ImGui::BeginTable("tab buttons", 6))
 		{
 			auto tab_button = [](const char *text, int id)
@@ -163,13 +179,29 @@ static void window_editor(bunsen_editor &ed)
 			ImGui::TableNextColumn(); tab_button(ICON_FA_DRAW_POLYGON, 2);
 			ImGui::TableNextColumn(); tab_button(ICON_FA_GEM, 3);
 			ImGui::TableNextColumn(); tab_button(ICON_FA_LIGHTBULB, 4);
-			ImGui::TableNextColumn(); tab_button(ICON_FA_CAMERA, 5);
+			ImGui::TableNextColumn(); tab_button(ICON_FA_VIDEO, 5);
 		
 			ImGui::EndTable();
 		}
 
 		ImGui::Separator();
 
+		// Extract meshes from selection
+		std::vector<bu::mesh*> meshes;
+		for (auto &n : ed.selection.get_nodes())
+			extract_meshes(n, meshes);
+
+		std::set<std::shared_ptr<bu::mesh_data>> mesh_data;
+		std::set<std::shared_ptr<bu::material_data>> material_data;
+		
+		// Extract mesh and material data
+		for (auto &mp : meshes)
+		{
+			if (mp->data) mesh_data.insert(mp->data);
+			if (mp->mat) material_data.insert(mp->mat);
+		}
+
+		// Child window for containing the external menus
 		if (ImGui::BeginChild("tab space"))
 		{
 			switch (tab_select)
@@ -179,32 +211,30 @@ static void window_editor(bunsen_editor &ed)
 					break;
 
 				case 1:
-					bu::ui::node_properties(*ed.scene, ed.selected_nodes);
+					// bu::ui::node_menu(*ed.scene, ed.selection.get_nodes());
 					break;
 
 				case 2:
-					bu::ui::mesh_info(*ed.scene, ed.selected_nodes);
+					// bu::ui::mesh_menu(*ed.scene, ed.selection.get_nodes());
 					break;
 
 				case 3:
-					// bu::ui::material_editor()
+					bu::ui::material_menu(ed.selection);
+					break;
+
+				case 4:
+					ImGui::Text("Light source properties...");
+					break;
+
+				case 5:
+					ImGui::Text("Camera properties...");
 					break;
 			}
 
-			ImGui::EndChild();
+			
 		}
 
-		// if (ed.scene)
-		// {
-		// 	bu::ui::scene_graph(*ed.scene, ed.selected_nodes);
-		// 	bu::ui::node_controls(*ed.scene, ed.selected_nodes);		
-
-		// 	if (ImGui::CollapsingHeader("Node properties"))
-		// 		bu::ui::node_properties(*ed.scene, ed.selected_nodes);
-
-		// 	if (ImGui::CollapsingHeader("Meshes info"))
-		// 		bu::ui::mesh_info(*ed.scene, ed.selected_nodes);
-		// }
+		ImGui::EndChild();
 	}
 
 	ImGui::End();
@@ -257,13 +287,13 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 	this->orbit_manipulator.update_camera(this->viewport_camera);
 
 	// Update layout editor
-	layout_ed.update(main_state.user_input, selected_nodes, viewport_camera, glm::vec2{window_size}, overlay);
+	layout_ed.update(main_state.user_input, selection, viewport_camera, glm::vec2{window_size}, overlay);
 
 	// Draw scene in preview mode
 	if (this->scene)
 	{
 		if (this->preview)
-			preview->draw(*this->scene, this->viewport_camera, {selected_nodes.begin(), selected_nodes.end()});
+			preview->draw(*this->scene, this->viewport_camera, selection.get_nodes());
 	}
 
 	// The UI

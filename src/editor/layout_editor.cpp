@@ -18,7 +18,7 @@ static float ray_plane_intersection(const glm::vec3 &ro, const glm::vec3 &rd, co
 
 void layout_editor::update(
 	const bu::input_event_queue &input,
-	const std::list<std::weak_ptr<bu::scene_node>> &selection,
+	const bu::scene_selection &selection,
 	const bu::camera &cam,
 	const glm::vec2 &viewport_size,
 	bu::imgui_overlay &overlay)
@@ -267,7 +267,7 @@ void layout_editor::update(
 
 void layout_editor::start(
 	const bu::input_event_queue &input,
-	const std::list<std::weak_ptr<bu::scene_node>> &selection,
+	const bu::scene_selection &selection,
 	action_state new_action)
 {
 	if (is_transform_pending())
@@ -280,21 +280,18 @@ void layout_editor::start(
 
 	try
 	{
-		for (auto &sn : selection)
+		for (auto &node : selection.get_nodes())
 		{
-			if (auto node = sn.lock())
-			{
-				// Take node's origin into account
-				origin += glm::vec3(node->get_final_transform() * glm::vec4{0, 0, 0, 1});
-				node_count++;
-				
-				// Insert transform node
-				std::shared_ptr<bu::scene_node> parent{node->get_parent()};
-				auto tn = std::make_shared<bu::transform_node>(&transform_matrix);
-				parent->add_child(tn);
-				tn->add_child(node);
-				transform_nodes.push_back(std::move(tn));
-			}
+			// Take node's origin into account
+			origin += glm::vec3(node->get_final_transform() * glm::vec4{0, 0, 0, 1});
+			node_count++;
+			
+			// Insert transform node
+			std::shared_ptr<bu::scene_node> parent{node->get_parent()};
+			auto tn = std::make_shared<bu::transform_node>(&transform_matrix);
+			parent->add_child(tn);
+			tn->add_child(node);
+			transform_nodes.push_back(std::move(tn));
 		}
 	}
 	catch (const std::exception &ex)

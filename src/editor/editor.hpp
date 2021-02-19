@@ -1,19 +1,19 @@
 #pragma once
+#include <set>
+#include <memory>
 #include "../bunsen.hpp"
 #include "../scene.hpp"
 #include "../camera.hpp"
 #include "../renderers/preview/preview.hpp"
 #include "layout_editor.hpp"
 #include "imgui_overlay.hpp"
-#include <memory>
-#include <list>
+#include "scene_selection.hpp"
 
 namespace bu {
 
 struct bunsen_editor
 {
-	using scene_selection = std::list<std::weak_ptr<bu::scene_node>>;
-	scene_selection selected_nodes;
+	scene_selection selection;
 
 	// Layout editor
 	bu::layout_editor layout_ed;

@@ -46,6 +46,7 @@ add_executable(bunsen
 	"src/editor/editor.cpp"
 	"src/editor/layout_editor.cpp"
 	"src/editor/imgui_overlay.cpp"
+	"src/editor/scene_selection.cpp"
 
 	"src/editor/ui/ui.cpp"
 	"src/editor/ui/scene_control.cpp"
