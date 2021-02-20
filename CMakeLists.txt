@@ -37,6 +37,7 @@ add_executable(bunsen
 	"src/mesh.cpp"
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
+	"src/scene_export.cpp"
 
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
