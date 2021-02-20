@@ -5,16 +5,17 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <ImGuiFileDialog.h>
+#include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
 #include "../assimp_loader.hpp"
-#include "../material.hpp"
+#include "../scene_export.hpp"
 #include "../log.hpp"
 #include "ui/ui.hpp"
 #include "ui/scene_control.hpp"
-#include "ui/material_editor.hpp"
+#include "ui/light_menu.hpp"
+#include "ui/material_menu.hpp"
 #include "ui/model_menu.hpp"
-
-#include <imgui_icon_font_headers/IconsFontAwesome5.h>
+#include "ui/world_menu.hpp"
 
 using bu::bunsen_editor;
 
@@ -215,7 +216,7 @@ static void window_editor(bunsen_editor &ed)
 					break;
 
 				case 4:
-					ImGui::Text("Light source properties...");
+					bu::ui::light_menu(ed.selection);
 					break;
 
 				case 5:
@@ -223,7 +224,8 @@ static void window_editor(bunsen_editor &ed)
 					break;
 
 				case 6:
-					ImGui::Text("World settings...");
+					if (ed.scene->world)
+						bu::ui::world_menu(*ed.scene->world);
 					break;
 			}
 
@@ -246,7 +248,8 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 		if (ImGui::BeginMenu("File"))
 		{
 			ImGui::MenuItem("Load scene", "l", nullptr);
-			ImGui::MenuItem("Save scene", "s", nullptr);
+			if (ImGui::MenuItem("Save scene", "s", nullptr))
+				LOG_INFO << "Scene:\n" << bu::export_scene(*ed.scene).dump();
 			if (ImGui::MenuItem("Import model", "i", nullptr))
 				dialog_import_model(ed, true);
 

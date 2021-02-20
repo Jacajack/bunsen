@@ -1,4 +1,4 @@
-#include "material_editor.hpp"
+#include "material_menu.hpp"
 
 #include <typeinfo>
 #include <set>
@@ -95,6 +95,13 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 			ImGui::SliderFloat("Roughness", &surf->roughness, 0, 1);
 			ImGui::SliderFloat("Metallic", &surf->metallic, 0, 1);
 			ImGui::SliderFloat("Transmission", &surf->transmission, 0, 1);
+			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
+		}
+
+		// Generic material
+		if (auto surf = dynamic_cast<bu::glass_material*>(mat->surface.get()))
+		{
+			ImGui::ColorEdit3("Base color", &surf->color[0]);
 			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
 		}
 

@@ -79,17 +79,21 @@ preview_renderer::preview_renderer()
 */
 void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const std::set<std::shared_ptr<bu::scene_node>> &selection)
 {
-	const glm::vec3 world_color{0.1, 0.1, 0.1};
+	glm::vec3 world_color{0.1, 0.1, 0.1};
+
+	// Get view and projection matrices
+	auto mat_view = camera.get_view_matrix();
+	auto mat_proj = camera.get_projection_matrix();
+
+	// If world is solid_world, get the color from there
+	if (auto w = dynamic_cast<bu::solid_world*>(scene.world.get()))
+		world_color = w->color;
 
 	glClearColor(world_color.r, world_color.g, world_color.b, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
 	glUseProgram(program->id());
-
-	auto mat_view = camera.get_view_matrix();
-	auto mat_proj = camera.get_projection_matrix();
-
 	glUniform3fv(program->get_uniform_location("world_color"), 1, &world_color[0]);
 	glUniformMatrix4fv(program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 	glUniformMatrix4fv(program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
@@ -185,7 +189,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 		}
 
 		// Light nodes
-		if (auto light_node = dynamic_cast<bu::light_node*>(node_ptr))
+		if (dynamic_cast<bu::light_node*>(node_ptr))
 		{
 			glm::vec3 color{0.f};
 			if (is_selected) color = glm::vec3{0.8f, 0.4f, 0.0};

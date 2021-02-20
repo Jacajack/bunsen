@@ -10,7 +10,8 @@ using bu::scene_node;
 using bu::transform_node;
 
 bu::scene::scene() :
-	root_node(std::make_shared<scene_node>())
+	root_node(std::make_shared<scene_node>()),
+	world(std::make_shared<solid_world>())
 {
 	root_node->set_name("Scene Root");
 }

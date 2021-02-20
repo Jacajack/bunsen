@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 
+#include "world.hpp"
 #include "model.hpp"
 #include "light.hpp"
 #include "camera.hpp"
@@ -153,7 +154,7 @@ struct model_node : public scene_node
 struct light_node : public scene_node
 {
 	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
-	std::shared_ptr<light_data> light;
+	std::shared_ptr<bu::light> light;
 };
 
 struct camera_node : public scene_node
@@ -168,6 +169,7 @@ struct scene
 	scene();
 
 	std::shared_ptr<scene_node> root_node;
+	std::shared_ptr<bu::world> world;
 };
 
 }

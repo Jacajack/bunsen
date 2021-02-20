@@ -322,9 +322,11 @@ void bu::ui::node_controls(const bu::scene &scene, bu::scene_selection &selectio
 	if (clicked_add_light)
 	{
 		auto parent = scene.root_node;
-		auto light = std::make_shared<bu::light_node>();
-		light->set_name("New Light");
-		parent->add_child(light);
+		auto light_node = std::make_shared<bu::light_node>();
+		light_node->set_name("New Point Light");
+		auto light = std::make_shared<bu::point_light>();
+		light_node->light = light;
+		parent->add_child(light_node);
 	}
 }
 

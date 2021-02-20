@@ -51,8 +51,10 @@ add_executable(bunsen
 
 	"src/editor/ui/ui.cpp"
 	"src/editor/ui/scene_control.cpp"
-	"src/editor/ui/material_editor.cpp"
+	"src/editor/ui/material_menu.cpp"
+	"src/editor/ui/light_menu.cpp"
 	"src/editor/ui/model_menu.cpp"
+	"src/editor/ui/world_menu.cpp"
 	)
 
 target_link_libraries(bunsen PRIVATE 
