@@ -26,9 +26,15 @@ void main()
 	vec2 E0 = v1 - v0;
 	vec2 E1 = v2 - v1;
 	
-	// Discard back-facing triangles
+	// Flip back-facing triangles so that one-sided shapes have outlines too
 	if (E0.x * E1.y - E0.y * E1.x < 0)
-		return;
+	{
+		vec2 tmp = v0;
+		v0 = v1;
+		v1 = tmp;
+		E0 = v1 - v0;
+		E1 = v2 - v1;
+	}
 
 	vec2 E2 = v0 - v2;
 
