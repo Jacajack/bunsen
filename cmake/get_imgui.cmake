@@ -7,7 +7,7 @@ find_package(GLEW REQUIRED)
 
 FetchContent_Populate(imgui
 	GIT_REPOSITORY "https://github.com/ocornut/imgui.git"
-	GIT_TAG "v1.80"
+	GIT_TAG "origin/docking"
 	SOURCE_DIR   "${CMAKE_CURRENT_BINARY_DIR}/imgui/imgui"
 	BINARY_DIR   "${CMAKE_CURRENT_BINARY_DIR}/imgui/bin"
 	SUBBUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/imgui/subbuild"

@@ -54,9 +54,6 @@ void main_loop(bu::bunsen_state &main_state)
 	bu::bunsen_editor main_editor;
 	main_editor.scene = &main_scene;
 
-	// TEMP
-	// main_scene.root_node.children.emplace_back(bu::load_mesh_from_file("resources/monkey.obj"));
-
 	while (!glfwWindowShouldClose(main_state.window))
 	{
 		// Clear input queue and wait for events
@@ -201,6 +198,7 @@ int main(int argc, char *argv[])
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(main_state.window, true);
 	ImGui_ImplOpenGL3_Init();
+	main_state.imgui_io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;    
 	bu::ui::load_extra_fonts(*main_state.imgui_io);
 	bu::ui::load_theme();
 
