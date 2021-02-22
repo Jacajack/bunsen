@@ -21,7 +21,7 @@ public:
 	void draw(const bu::scene &scene, const bu::camera &camera);
 
 protected:
-	std::shared_ptr<bu::renderer> m_renderer;
+	std::unique_ptr<bu::renderer> m_renderer;
 
 	std::unique_ptr<bu::shader_program> m_downsample_program;
 

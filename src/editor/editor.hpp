@@ -4,6 +4,7 @@
 #include <memory>
 #include "../bunsen.hpp"
 #include "../renderers/preview/preview.hpp"
+#include "../renderers/rt/rt.hpp"
 #include "ui/window.hpp"
 
 namespace bu {
@@ -18,9 +19,8 @@ struct bunsen_editor
 	std::shared_ptr<bu::scene> scene;
 	std::list<std::unique_ptr<ui::window>> windows;
 
-	// Renderer instance shared by all the viewports
-	std::shared_ptr<bu::renderer> default_renderer;
-	std::shared_ptr<bu::preview_renderer> preview_renderer;
+	// Rendering contexts shared by all open viewports
+	std::shared_ptr<preview_renderer_context> preview_ctx;
 };
 
 }

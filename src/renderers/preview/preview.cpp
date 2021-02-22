@@ -7,8 +7,9 @@
 #include "../../utils.hpp"
 
 using bu::preview_renderer;
+using bu::preview_renderer_context;
 
-preview_renderer::preview_renderer()
+preview_renderer_context::preview_renderer_context()
 {
 	program = std::make_unique<shader_program>(bu::load_shader_program("preview"));
 	grid_program = std::make_unique<shader_program>(bu::load_shader_program("grid"));
@@ -52,7 +53,12 @@ preview_renderer::preview_renderer()
 	glVertexArrayAttribBinding(vao.id(), 1, 0);
 	glVertexArrayAttribBinding(vao.id(), 2, 0);
 
-	LOG_INFO << "Created a new instance of preview_renderer";
+	LOG_INFO << "Created a new preview renderer context.";
+}
+
+preview_renderer::preview_renderer(std::shared_ptr<preview_renderer_context> context) :
+	m_context(std::move(context))
+{
 }
 
 /**
@@ -60,6 +66,7 @@ preview_renderer::preview_renderer()
 */
 void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::vec2 &viewport_size)
 {
+	auto &ctx = *m_context;
 	glm::vec3 world_color{0.1, 0.1, 0.1};
 
 	// Get view and projection matrices
@@ -74,10 +81,10 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
-	glUseProgram(program->id());
-	glUniform3fv(program->get_uniform_location("world_color"), 1, &world_color[0]);
-	glUniformMatrix4fv(program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-	glUniformMatrix4fv(program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+	glUseProgram(ctx.program->id());
+	glUniform3fv(ctx.program->get_uniform_location("world_color"), 1, &world_color[0]);
+	glUniformMatrix4fv(ctx.program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+	glUniformMatrix4fv(ctx.program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 
 	for (auto it = scene.root_node->begin(); !(it == scene.root_node->end()); ++it)
 	{
@@ -135,12 +142,12 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 				else
 					glDisable(GL_STENCIL_TEST);
 
-				glBindVertexArray(vao.id());
-				glUseProgram(program->id());
-				glUniform1f(program->get_uniform_location("specular_int"), specular_intensity);
-				glUniform3fv(program->get_uniform_location("base_color"), 1, &base_color[0]);
-				glUniform1i(program->get_uniform_location("selected"), is_selected);
-				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
+				glBindVertexArray(ctx.vao.id());
+				glUseProgram(ctx.program->id());
+				glUniform1f(ctx.program->get_uniform_location("specular_int"), specular_intensity);
+				glUniform3fv(ctx.program->get_uniform_location("base_color"), 1, &base_color[0]);
+				glUniform1i(ctx.program->get_uniform_location("selected"), is_selected);
+				glUniformMatrix4fv(ctx.program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
 				glBindVertexBuffer(0, mesh_data->gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
 				glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
@@ -153,16 +160,16 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 
 					// Cull faces so the outline doesn't go crazy when the camera is inside the object
 					glEnable(GL_CULL_FACE);
-					glUseProgram(outline_program->id());
+					glUseProgram(ctx.outline_program->id());
 					glm::vec2 offset = glm::vec2{5} / viewport_size;
-					glUniform2fv(outline_program->get_uniform_location("offset"), 1, &offset[0]);
-					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
-					glUniformMatrix4fv(outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-					glUniformMatrix4fv(outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+					glUniform2fv(ctx.outline_program->get_uniform_location("offset"), 1, &offset[0]);
+					glUniformMatrix4fv(ctx.outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
+					glUniformMatrix4fv(ctx.outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+					glUniformMatrix4fv(ctx.outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 					glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
 					
 					// Go back to normal state
-					glUseProgram(program->id());
+					glUseProgram(ctx.program->id());
 					glDisable(GL_CULL_FACE);
 					glDisable(GL_STENCIL_TEST);
 				}
@@ -175,34 +182,32 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 			glm::vec3 color{0.f};
 			if (is_selected) color = glm::vec3{0.8f, 0.4f, 0.0};
 
-			glBindVertexArray(vao_2d.id());
+			glBindVertexArray(ctx.vao_2d.id());
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glEnable(GL_BLEND);
-			// glDepthMask(GL_FALSE);
-			glUseProgram(light_program->id());
-			glUniformMatrix4fv(light_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-			glUniformMatrix4fv(light_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
-			glUniform1f(light_program->get_uniform_location("size"), 0.05f);
-			glUniform3fv(light_program->get_uniform_location("position"), 1, &transform[3][0]);
-			glUniform3fv(light_program->get_uniform_location("color"), 1, &color[0]);
+			glUseProgram(ctx.light_program->id());
+			glUniformMatrix4fv(ctx.light_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+			glUniformMatrix4fv(ctx.light_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+			glUniform1f(ctx.light_program->get_uniform_location("size"), 0.05f);
+			glUniform3fv(ctx.light_program->get_uniform_location("position"), 1, &transform[3][0]);
+			glUniform3fv(ctx.light_program->get_uniform_location("color"), 1, &color[0]);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 			glDisable(GL_BLEND);
-			// glDepthMask(GL_TRUE);
 		}
 
 	}
 
 	// Draw grid
-	glBindVertexArray(vao_2d.id());
+	glBindVertexArray(ctx.vao_2d.id());
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
-	glUseProgram(grid_program->id());
-	glUniform3fv(grid_program->get_uniform_location("cam_pos"), 1, &camera.position[0]);
-	glUniform3fv(grid_program->get_uniform_location("cam_dir"), 1, &camera.direction[0]);
-	glUniform1f(grid_program->get_uniform_location("cam_near"), camera.near);
-	glUniform1f(grid_program->get_uniform_location("cam_far"), camera.far);
-	glUniformMatrix4fv(grid_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-	glUniformMatrix4fv(grid_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+	glUseProgram(ctx.grid_program->id());
+	glUniform3fv(ctx.grid_program->get_uniform_location("cam_pos"), 1, &camera.position[0]);
+	glUniform3fv(ctx.grid_program->get_uniform_location("cam_dir"), 1, &camera.direction[0]);
+	glUniform1f(ctx.grid_program->get_uniform_location("cam_near"), camera.near);
+	glUniform1f(ctx.grid_program->get_uniform_location("cam_far"), camera.far);
+	glUniformMatrix4fv(ctx.grid_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+	glUniformMatrix4fv(ctx.grid_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisable(GL_BLEND);
 }

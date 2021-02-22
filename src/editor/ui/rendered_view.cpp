@@ -139,7 +139,7 @@ rendered_view_window::rendered_view_window(bu::bunsen_editor &editor, int sample
 	rendered_view(samples),
 	m_editor(editor)
 {
-	m_renderer = editor.default_renderer;
+	m_renderer = std::make_unique<bu::preview_renderer>(m_editor.preview_ctx);
 }
 
 void rendered_view_window::draw()
@@ -152,7 +152,10 @@ void rendered_view_window::draw()
 		if (ImGui::BeginMenu("Renderers"))
 		{
 			if (ImGui::MenuItem("Preview renderer"))
-				m_renderer = m_editor.preview_renderer;
+				m_renderer = std::make_unique<bu::preview_renderer>(m_editor.preview_ctx);
+
+			if (ImGui::MenuItem("Path tracing"))
+				m_renderer = std::make_unique<bu::rt_renderer>();
 
 			ImGui::EndMenu();
 		}

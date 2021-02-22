@@ -46,6 +46,8 @@ add_executable(bunsen
 
 	"src/renderers/preview/preview.cpp"
 
+	"src/renderers/rt/rt.cpp"
+
 	"src/editor/editor.cpp"
 	"src/editor/layout_editor.cpp"
 	"src/editor/imgui_overlay.cpp"

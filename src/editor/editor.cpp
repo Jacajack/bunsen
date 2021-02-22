@@ -236,7 +236,7 @@ public:
 
 		if (ImGui::Button("Reload preview renderer"))
 		{
-			*m_editor.preview_renderer = bu::preview_renderer();
+			*m_editor.preview_ctx = bu::preview_renderer_context();
 		}
 	}
 
@@ -260,9 +260,8 @@ public:
 
 bunsen_editor::bunsen_editor() :
 	scene(std::make_shared<bu::scene>()),
-	preview_renderer(std::make_shared<bu::preview_renderer>())
+	preview_ctx(std::make_shared<bu::preview_renderer_context>())
 {
-	default_renderer = preview_renderer;
 	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
 }

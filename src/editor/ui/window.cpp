@@ -60,8 +60,6 @@ void window::display()
 	
 		draw();
 
-		if (!m_owns_mouse)
-			m_mouse_offset = glm::vec2{0.f};
 	}
 	ImGui::End();
 }
@@ -83,10 +81,11 @@ bool window::has_mouse() const
 
 void window::lock_mouse()
 {
-	if (can_lock_mouse())
+	if (can_lock_mouse() && !has_mouse())
 	{
 		m_mouse_locked = true;
 		m_owns_mouse = true;
+		m_mouse_offset = glm::vec2{0.f};
 	}
 }
 
