@@ -6,8 +6,6 @@
 
 namespace bu {
 
-gl_shader make_shader(GLenum type, const std::string &source);
-
 class shader_program : public gl_program
 {
 public:
@@ -18,6 +16,7 @@ private:
 	std::map<std::string, GLint> m_uniforms;
 };
 
-
+gl_shader make_shader(GLenum type, const std::string &source);
+shader_program load_shader_program(const std::string &name);
 
 }

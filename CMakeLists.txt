@@ -30,6 +30,7 @@ endif()
 
 add_executable(bunsen 
 	"src/bunsen.cpp"
+	"src/config.cpp"
 	"src/utils.cpp"
 	"src/camera.cpp"
 	"src/log.cpp"

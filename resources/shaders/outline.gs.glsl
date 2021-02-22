@@ -4,7 +4,8 @@ layout (triangles) in;
 layout (triangle_strip) out;
 layout (max_vertices = 6) out;
 
-uniform float aspect;
+// uniform float aspect;
+uniform vec2 offset;
 
 void emit(vec2 v)
 {
@@ -14,7 +15,7 @@ void emit(vec2 v)
 
 void main()
 {
-	const vec2 offset = vec2(0.003) * vec2(1, aspect);
+	// const vec2 offset = vec2(0.003) * vec2(1, aspect);
 
 	if (gl_in[0].gl_Position.z > 0 || gl_in[1].gl_Position.z > 0 || gl_in[2].gl_Position.z > 0)
 		return;

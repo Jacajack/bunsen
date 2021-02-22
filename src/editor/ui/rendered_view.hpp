@@ -22,14 +22,21 @@ public:
 
 protected:
 	std::unique_ptr<bu::renderer> m_renderer;
+
+	std::unique_ptr<bu::shader_program> m_downsample_program;
+
 	std::unique_ptr<bu::gl_texture> m_color_tex;
+	std::unique_ptr<bu::gl_texture> m_color_ms_tex;
 	std::unique_ptr<bu::gl_texture> m_depth_stencil_tex;
+	std::unique_ptr<bu::gl_texture> m_depth_stencil_ms_tex;
 	
 	bu::gl_fbo m_fbo;
+	bu::gl_fbo m_fbo_ms;
 	glm::ivec2 m_fbo_tex_size;
 	int m_samples;
 
 	void new_texture_storage(int w, int h, int samples = 0);
+	void set_content_size(const glm::vec2 &content_size, int samples = -1);
 	virtual void before() {};
 	virtual void after() {};
 	virtual void after_render() {};
@@ -38,7 +45,7 @@ protected:
 class rendered_view_window : public bu::ui::window, protected rendered_view
 {
 public:
-	rendered_view_window(bu::bunsen_editor &editor, int samples = 0);
+	rendered_view_window(bu::bunsen_editor &editor, int samples = -1);
 	void draw() override;
 
 protected:

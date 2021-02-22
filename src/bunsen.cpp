@@ -10,43 +10,39 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <INIReader.h>
-
 #include "gl/gl.hpp"
 #include "editor/editor.hpp"
 #include "editor/ui/ui.hpp"
+#include "scene.hpp"
+#include "config.hpp"
 #include "log.hpp"
+
+using bu::bunsen;
+
+std::unique_ptr<bu::bunsen> bunsen::instance_ptr;
+
+bunsen &bunsen::get()
+{
+	if (instance_ptr)
+		return *instance_ptr;
+	else
+	{
+		instance_ptr = std::unique_ptr<bunsen>(new bunsen);
+		return *instance_ptr;
+	}
+}
+
+void bunsen::destroy()
+{
+	instance_ptr.reset();
+}
 
 static void glfw_error_callback(int error, const char *message)
 {
 	LOG_ERROR << "GLFW error - " << message;
 }
 
-static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	// main_state->user_input.glfw_keyboard_event(key, action, mods);
-}
-
-static void glfw_cursor_position_callback(GLFWwindow *window, double x, double y)
-{
-	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	// main_state->user_input.glfw_position_event(x, y);
-}
-
-static void glfw_scroll_callback(GLFWwindow *window, double x, double y)
-{
-	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	// main_state->user_input.glfw_scroll_event(x, y);
-}
-
-static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
-{
-	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	// main_state->user_input.glfw_button_event(button, action, mods);
-}
-
-void main_loop(bu::bunsen_state &main_state)
+void main_loop(bu::bunsen &main_state)
 {
 	// The main editor and scene
 	bu::scene main_scene;
@@ -93,7 +89,7 @@ void main_loop(bu::bunsen_state &main_state)
 int main(int argc, char *argv[])
 {
 	// Main state
-	bu::bunsen_state main_state;
+	auto &main_state = bu::bunsen::get();
 
 	// Debug announcement
 	LOG_DEBUG << "Debug output is enabled!";
@@ -115,31 +111,15 @@ int main(int argc, char *argv[])
 
 	// Read config
 	const char *default_config_path = "bunsen.ini";
-	auto ini_config = std::make_unique<INIReader>(default_config_path);
-	if (ini_config->ParseError() < 0)
-	{
-		LOG_WARNING << "Failed to read default config file (" << default_config_path << ")";
-		std::string default_config = 
-			"[general]"
-			"config_missing = true"
-			;
-
-		ini_config = std::make_unique<INIReader>(default_config.c_str(), default_config.length());
-		if (ini_config->ParseError() < 0)
-		{
-			LOG_ERROR << "The default generated config is invalid!";
-		}
-	}
-	else
-	{
+	if (bu::read_config_from_file(main_state.config, default_config_path))
 		LOG_INFO << "Found and read default config file (" << default_config_path << ")";
-	}
-	main_state.config = ini_config.get();
+	else
+		LOG_WARNING << "Failed to read default config file (" << default_config_path << ") - assuming defaults";
 
 	// Get window config
-	auto initial_resx = main_state.config->GetInteger("general", "resx", 1280);
-	auto initial_resy = main_state.config->GetInteger("general", "resy", 720);
-	auto msaa = main_state.config->GetInteger("general", "msaa", 2);
+	auto initial_resx = main_state.config.general.resx;
+	auto initial_resy = main_state.config.general.resy;
+	auto msaa = main_state.config.general.msaa;
 
 	// GLFW setup
 	glfwSetErrorCallback(glfw_error_callback);
@@ -160,12 +140,6 @@ int main(int argc, char *argv[])
 		return 1; 
 	}
 	glfwSetWindowUserPointer(main_state.window, &main_state);
-
-	// GLFW callbacks
-	glfwSetKeyCallback(main_state.window, glfw_key_callback);
-	glfwSetCursorPosCallback(main_state.window, glfw_cursor_position_callback);
-	glfwSetScrollCallback(main_state.window, glfw_scroll_callback);
-	glfwSetMouseButtonCallback(main_state.window, glfw_mouse_button_callback);
 
 	// Load GL functions
 	glfwMakeContextCurrent(main_state.window);
@@ -198,10 +172,8 @@ int main(int argc, char *argv[])
 
 	// Load theme color from config and set ImGui theme
 	{
-		auto r = main_state.config->GetReal("theme", "r", 0.384);
-		auto g = main_state.config->GetReal("theme", "g", 0.333);
-		auto b = main_state.config->GetReal("theme", "b", 0.449);
-		bu::ui::load_theme(r, g, b);
+		auto &thm = main_state.config.theme;
+		bu::ui::load_theme(thm.r, thm.g, thm.b);
 	}
 
 	LOG_INFO << "Init completed!";
@@ -229,6 +201,6 @@ int main(int argc, char *argv[])
 
 	// GLFW cleanup
 	glfwTerminate();
-
+	bu::bunsen::destroy();
 	return 0;
 }

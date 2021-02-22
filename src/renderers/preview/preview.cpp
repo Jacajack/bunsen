@@ -77,7 +77,7 @@ preview_renderer::preview_renderer()
 /**
 	\todo selection and visibility
 */
-void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera)
+void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::vec2 &viewport_size)
 {
 	glm::vec3 world_color{0.1, 0.1, 0.1};
 
@@ -162,7 +162,6 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera)
 				glUniformMatrix4fv(program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
 				glBindVertexBuffer(0, mesh_data->gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
 				glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
 
 				if (is_selected)
@@ -174,7 +173,8 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera)
 					// Cull faces so the outline doesn't go crazy when the camera is inside the object
 					glEnable(GL_CULL_FACE);
 					glUseProgram(outline_program->id());
-					glUniform1f(outline_program->get_uniform_location("aspect"), camera.aspect);
+					glm::vec2 offset = glm::vec2{5} / viewport_size;
+					glUniform2fv(outline_program->get_uniform_location("offset"), 1, &offset[0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 					glUniformMatrix4fv(outline_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);

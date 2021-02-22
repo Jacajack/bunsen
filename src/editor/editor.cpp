@@ -205,7 +205,7 @@ class scene_editor_window : public bu::ui::window
 {
 public:
 	scene_editor_window(bunsen_editor &editor) :
-		window("Editor"),
+		window("Editor", ImGuiWindowFlags_MenuBar),
 		m_editor(editor)
 	{}
 
@@ -260,7 +260,7 @@ bunsen_editor::bunsen_editor(bu::scene *sc) :
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
 }
 
-void bunsen_editor::draw(const bu::bunsen_state &main_state)
+void bunsen_editor::draw(const bu::bunsen &main_state)
 {
 	bool debug = main_state.debug || main_state.gl_debug;
 
@@ -284,10 +284,14 @@ void bunsen_editor::draw(const bu::bunsen_state &main_state)
 		if (ImGui::BeginMenu("View"))
 		{
 			if (ImGui::MenuItem("3D view"))
-					windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
+			{
+				// int samples = main_state.config->GetInteger("general", "msaa", 0);
+				int samples = 4;
+				windows.push_back(std::make_unique<ui::rendered_view_window>(*this, samples));
+			}
 
 			if (ImGui::MenuItem("Scene editor"))
-					windows.push_back(std::make_unique<scene_editor_window>(*this));
+				windows.push_back(std::make_unique<scene_editor_window>(*this));
 
 			if (debug)
 				if (ImGui::MenuItem("Evil debug cheats"))
