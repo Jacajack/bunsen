@@ -29,10 +29,8 @@ struct layout_editor
 		SCALE,
 	};
 
-	// void update(const bu::input_event_queue &input, const bu::scene &scene, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
-	void update(const bu::scene &scene, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
-	// void start(const bu::input_event_queue &input, const bu::scene &scene, action_state new_action);
-	void start(const bu::scene &scene, action_state new_action);
+	void update(const bu::scene &scene, const bu::camera &cam, const glm::vec2 &viewport_size, const glm::vec2 &mouse_offset, bu::imgui_overlay &overlay);
+	void start(const bu::scene &scene, const glm::vec2 &mouse_offset, action_state new_action);
 	void apply();
 	void abort();
 	bool is_transform_pending();

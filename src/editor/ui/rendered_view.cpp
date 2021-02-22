@@ -96,10 +96,11 @@ void rendered_view_window::draw()
 
 	if (m_editor.scene && content_size.x > 0 && content_size.y > 0)
 	{
-		auto size = bu::to_vec2(ImGui::GetWindowSize());
 		auto pos = bu::to_vec2(ImGui::GetWindowPos());
+		auto min = pos + bu::to_vec2(ImGui::GetWindowContentRegionMin());
+		auto max = pos + bu::to_vec2(ImGui::GetWindowContentRegionMax());
 		auto click_pos = bu::to_vec2(ImGui::GetIO().MouseClickedPos[2]);
-		bool click_inside = glm::all(glm::lessThanEqual(pos, click_pos)) && glm::all(glm::lessThan(click_pos, pos + size));
+		bool click_inside = glm::all(glm::lessThanEqual(min, click_pos)) && glm::all(glm::lessThan(click_pos, max));
 		bool hovered = ImGui::IsWindowHovered();
 		bool transform_pending = m_layout_ed.is_transform_pending();
 		bool drag_from_inside = ImGui::IsMouseDragging(2) && click_inside;
@@ -107,15 +108,37 @@ void rendered_view_window::draw()
 
 		if (trap_mouse && !hovered)
 		{
-			LOG_DEBUG << "Should roll mouse";
+			auto win = glfwGetCurrentContext();
+			double mx, my;
+			glfwGetCursorPos(win, &mx, &my);
+			
+			glm::vec2 mouse_pos(mx, my);
+			glm::vec2 new_pos(mx, my);
+
+			if (mx < min.x)
+				new_pos.x = max.x - 1;
+			else if (mx >= max.x)
+				new_pos.x = min.x;
+
+			if (my < min.y)
+				new_pos.y = max.y - 1;
+			else if (my >= max.y) 
+				new_pos.y = min.y;
+
+			auto delta = new_pos - mouse_pos;
+			m_mouse_offset -= delta;
+			glfwSetCursorPos(win, new_pos.x, new_pos.y);
 		}
 
 		if (hovered)
 		{
-			bu::update_camera_orbiter_from_imgui(m_orbiter, ImGui::GetIO());
-			m_layout_ed.update(*m_editor.scene, m_camera, bu::to_vec2(content_size), m_overlay);
-			
+			bu::update_camera_orbiter_from_imgui(m_orbiter, ImGui::GetIO(), glm::vec2{1440, 960}, m_mouse_offset);
+			m_layout_ed.update(*m_editor.scene, m_camera, bu::to_vec2(content_size), m_mouse_offset, m_overlay);
 		}
+
+		if (!trap_mouse)
+			m_mouse_offset = glm::vec2{0.f};
+
 		m_orbiter.update_camera(m_camera);
 		m_camera.aspect = content_size.x / content_size.y;
 

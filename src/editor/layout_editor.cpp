@@ -21,6 +21,7 @@ void layout_editor::update(
 	const bu::scene &scene,
 	const bu::camera &cam,
 	const glm::vec2 &viewport_size,
+	const glm::vec2 &mouse_offset,
 	bu::imgui_overlay &overlay)
 {
 	auto was_pressed = [](int key)
@@ -84,19 +85,19 @@ void layout_editor::update(
 	};
 
 	// Mouse position and delta in pixels
-	auto mouse_pos = bu::to_vec2(ImGui::GetMousePos());
+	auto mouse_pos = bu::to_vec2(ImGui::GetMousePos()) + mouse_offset;
 
 	switch (state)
 	{
 		case action_state::IDLE:
 			if (was_pressed(GLFW_KEY_G))
-				start(scene, action_state::GRAB);
+				start(scene, mouse_offset, action_state::GRAB);
 
 			if (was_pressed(GLFW_KEY_R))
-				start(scene, action_state::ROTATE);
+				start(scene, mouse_offset, action_state::ROTATE);
 
 			if (was_pressed(GLFW_KEY_S))
-				start(scene, action_state::SCALE);
+				start(scene, mouse_offset, action_state::SCALE);
 			break;
 
 		case action_state::GRAB:
@@ -262,6 +263,7 @@ void layout_editor::update(
 
 void layout_editor::start(
 	const bu::scene &scene,
+	const glm::vec2 &mouse_offset,
 	action_state new_action)
 {
 	if (is_transform_pending())
@@ -302,7 +304,7 @@ void layout_editor::start(
 		abort();
 
 	// Store mouse position
-	mouse_origin = bu::to_vec2(ImGui::GetMousePos());
+	mouse_origin = bu::to_vec2(ImGui::GetMousePos()) + mouse_offset;
 }
 
 void layout_editor::apply()

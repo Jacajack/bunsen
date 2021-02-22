@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 #include <imgui.h>
+#include "utils.hpp"
 
 using bu::camera;
 using bu::camera_orbiter;
@@ -162,7 +163,7 @@ void bu::update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::inp
 	orbiter.distance *= std::pow(1.2, -inputs.get_scroll().y);
 }
 
-void bu::update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO &io, const glm::vec2 &scale)
+void bu::update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO &io, const glm::vec2 &scale, const glm::vec2 &mouse_offset)
 {
 	auto normalize_mouse_pos = [scale](glm::vec2 pos)
 	{
@@ -172,8 +173,8 @@ void bu::update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO
 	// Orbiting camera control
 	if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
 	{
-		auto d = ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
-		auto ndelta = normalize_mouse_pos(glm::vec2(d.x, d.y));
+		auto d = bu::to_vec2(ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle));
+		auto ndelta = normalize_mouse_pos(d + mouse_offset);
 		bool shift = io.KeyShift;
 		bool ctrl = io.KeyCtrl;
 		if (!shift & !ctrl)
@@ -186,8 +187,8 @@ void bu::update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO
 	
 	if (ImGui::IsMouseReleased(2))
 	{
-		auto d = ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
-		auto ndelta = normalize_mouse_pos(glm::vec2(d.x, d.y));
+		auto d = bu::to_vec2(ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle));
+		auto ndelta = normalize_mouse_pos(d + mouse_offset);
 		bool shift = io.KeyShift;
 		bool ctrl = io.KeyCtrl;
 		if (!shift & !ctrl)
