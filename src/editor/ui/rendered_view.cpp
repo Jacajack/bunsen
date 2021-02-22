@@ -163,12 +163,30 @@ void rendered_view_window::draw()
 
 		if (ImGui::BeginMenu("MSAA"))
 		{
-			// if (ImGui::MenuItem("Disabled"));
-			// if (ImGui::MenuItem("x2"));
-			// if (ImGui::MenuItem("x4"));
-			// if (ImGui::MenuItem("x8"));
-			// if (ImGui::MenuItem("x16"));
-			// if (ImGui::MenuItem("x32"));
+			bool x0 = m_samples == 0;
+			bool x2 = m_samples == 2;
+			bool x4 = m_samples == 4;
+			bool x8 = m_samples == 8;
+			bool x16 = m_samples == 16;
+			int new_msaa = -1;
+
+			if (ImGui::MenuItem("Disabled", nullptr, x0))
+				new_msaa = 0;
+
+			if (ImGui::MenuItem("x2", nullptr, x2))
+				new_msaa = 2;
+
+			if (ImGui::MenuItem("x4", nullptr, x4))
+				new_msaa = 4;
+			
+			if (ImGui::MenuItem("x8", nullptr, x8))
+				new_msaa = 8;
+
+			if (ImGui::MenuItem("x16", nullptr, x16))
+				new_msaa = 16;
+			
+			if (new_msaa >= 0)
+				set_content_size(bu::to_vec2(content_size), new_msaa);
 
 			ImGui::EndMenu();
 		}
