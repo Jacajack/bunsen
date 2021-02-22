@@ -6,17 +6,11 @@
 using bu::ui::rendered_view;
 using bu::ui::rendered_view_window;
 
-rendered_view::rendered_view(int samples) :
-	m_renderer(std::make_unique<bu::preview_renderer>())
+rendered_view::rendered_view(int samples)
 {
 	if (samples < 0) m_samples = bu::bunsen::get().config.general.msaa;
 	else m_samples = samples;
-
-	{
-		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/downsample_msaa.vs.glsl"));
-		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/downsample_msaa.fs.glsl"));
-		m_downsample_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
-	}
+	m_downsample_program = std::make_unique<shader_program>(bu::load_shader_program("downsample_msaa"));
 }
 
 /**
@@ -144,7 +138,9 @@ rendered_view_window::rendered_view_window(bu::bunsen_editor &editor, int sample
 	window("3D View", ImGuiWindowFlags_MenuBar),
 	rendered_view(samples),
 	m_editor(editor)
-{}
+{
+	m_renderer = editor.default_renderer;
+}
 
 void rendered_view_window::draw()
 {
@@ -156,7 +152,7 @@ void rendered_view_window::draw()
 		if (ImGui::BeginMenu("Renderers"))
 		{
 			if (ImGui::MenuItem("Preview renderer"))
-				m_renderer = std::make_unique<bu::preview_renderer>();
+				m_renderer = m_editor.preview_renderer;
 
 			ImGui::EndMenu();
 		}

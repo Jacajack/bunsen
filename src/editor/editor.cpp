@@ -233,10 +233,15 @@ public:
 		{
 			bu::ui::load_theme(m_color[0], m_color[1], m_color[2]);
 		}
+
+		if (ImGui::Button("Reload preview renderer"))
+		{
+			*m_editor.preview_renderer = bu::preview_renderer();
+		}
 	}
 
 private:
-	float m_color[3];
+	float m_color[3] = {0};
 	bunsen_editor &m_editor;
 };
 
@@ -253,9 +258,11 @@ public:
 	}
 };
 
-bunsen_editor::bunsen_editor(bu::scene *sc) :
-	scene(sc)
+bunsen_editor::bunsen_editor() :
+	scene(std::make_shared<bu::scene>()),
+	preview_renderer(std::make_shared<bu::preview_renderer>())
 {
+	default_renderer = preview_renderer;
 	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
 }
@@ -285,9 +292,7 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 		{
 			if (ImGui::MenuItem("3D view"))
 			{
-				// int samples = main_state.config->GetInteger("general", "msaa", 0);
-				int samples = 4;
-				windows.push_back(std::make_unique<ui::rendered_view_window>(*this, samples));
+				windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 			}
 
 			if (ImGui::MenuItem("Scene editor"))

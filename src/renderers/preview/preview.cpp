@@ -10,31 +10,10 @@ using bu::preview_renderer;
 
 preview_renderer::preview_renderer()
 {
-	{
-		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/preview.vs.glsl"));
-		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/preview.fs.glsl"));
-		program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
-	}
-
-	{
-		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/grid.vs.glsl"));
-		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/grid.fs.glsl"));
-		grid_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
-	}
-
-	{
-		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/outline.vs.glsl"));
-		auto gs = bu::make_shader(GL_GEOMETRY_SHADER, bu::slurp_txt("resources/shaders/outline.gs.glsl"));
-		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/outline.fs.glsl"));
-		outline_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &gs, &fs});
-	}
-
-	{
-		auto vs = bu::make_shader(GL_VERTEX_SHADER, bu::slurp_txt("resources/shaders/bilboard.vs.glsl"));
-		auto fs = bu::make_shader(GL_FRAGMENT_SHADER, bu::slurp_txt("resources/shaders/bilboard_light.fs.glsl"));
-		light_program = std::make_unique<shader_program>(std::initializer_list<const gl_shader*>{&vs, &fs});
-	}
-
+	program = std::make_unique<shader_program>(bu::load_shader_program("preview"));
+	grid_program = std::make_unique<shader_program>(bu::load_shader_program("grid"));
+	outline_program = std::make_unique<shader_program>(bu::load_shader_program("outline"));
+	light_program = std::make_unique<shader_program>(bu::load_shader_program("bilboard_light"));
 
 	// VAO setup
 	glVertexArrayAttribFormat( // Position
@@ -72,6 +51,8 @@ preview_renderer::preview_renderer()
 	glVertexArrayAttribBinding(vao.id(), 0, 0);
 	glVertexArrayAttribBinding(vao.id(), 1, 0);
 	glVertexArrayAttribBinding(vao.id(), 2, 0);
+
+	LOG_INFO << "Created a new instance of preview_renderer";
 }
 
 /**

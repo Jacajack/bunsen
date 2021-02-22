@@ -3,6 +3,7 @@
 #include "gl.hpp"
 #include <string>
 #include <map>
+#include <vector>
 
 namespace bu {
 
@@ -10,6 +11,7 @@ class shader_program : public gl_program
 {
 public:
 	shader_program(std::initializer_list<const gl_shader*> shaders);
+	shader_program(std::vector<const gl_shader*> shaders);
 	GLint get_uniform_location(const std::string &name);
 
 private:

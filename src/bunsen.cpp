@@ -13,7 +13,6 @@
 #include "gl/gl.hpp"
 #include "editor/editor.hpp"
 #include "editor/ui/ui.hpp"
-#include "scene.hpp"
 #include "config.hpp"
 #include "log.hpp"
 
@@ -45,8 +44,7 @@ static void glfw_error_callback(int error, const char *message)
 void main_loop(bu::bunsen &main_state)
 {
 	// The main editor and scene
-	bu::scene main_scene;
-	bu::bunsen_editor main_editor(&main_scene);
+	bu::bunsen_editor main_editor;
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
