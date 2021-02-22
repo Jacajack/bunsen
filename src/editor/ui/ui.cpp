@@ -4,7 +4,6 @@
 
 void bu::ui::load_theme(float r, float g, float b)
 {
-    // imgui_cherry_theme();
     auto &style = ImGui::GetStyle();
 
     ImVec4 col_active_hi(1, 1, 1, 0.7);
@@ -13,20 +12,17 @@ void bu::ui::load_theme(float r, float g, float b)
 
     float col_h, col_s, col_v;
     
-    // col_h = 0.933;
-    // col_s = 0.565;
-    // col_v = 0.650; //455
-    // void load_theme(float h = 0.74, float s = 0.258, float v = 0.450);
-
     ImGui::ColorConvertRGBtoHSV(r, g, b, col_h, col_s, col_v);
     ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 1.00, col_active_hi.x, col_active_hi.y, col_active_hi.z);
     ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 0.66, col_active_med.x, col_active_med.y, col_active_med.z);
     ImGui::ColorConvertHSVtoRGB(col_h, col_s, col_v * 0.33, col_active_low.x, col_active_low.y, col_active_low.z);
 
+    style.WindowTitleAlign = ImVec2(0.5, 0.5);
+
     // A bit of rounding
-    style.WindowRounding = 4;
+    style.WindowRounding = 3;
     style.FrameRounding = 4;
-    style.ChildRounding = 4;
+    style.ChildRounding = 3;
     style.PopupRounding = 0;
     style.ScrollbarRounding = 3;
     style.GrabRounding = 3;
@@ -41,10 +37,13 @@ void bu::ui::load_theme(float r, float g, float b)
     auto col_title_inactive = col_active_med;
     col_title_active.w = 1;
     col_title_inactive.w = 1;
-    style.Colors[ImGuiCol_TitleBg] = col_title_inactive;
-    style.Colors[ImGuiCol_TitleBgActive] = col_title_active;
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.085f, 0.085f, 0.085f, 1.000f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.060f, 0.060f, 0.060f, 1.000f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = style.Colors[ImGuiCol_TitleBg];
 
-    // Resizing
+
+    // Separators and resizing
+    style.Colors[ImGuiCol_Separator] = ImVec4(0.2f, 0.2f, 0.2f, 1.000f);
     style.Colors[ImGuiCol_SeparatorHovered] = col_active_med;
     style.Colors[ImGuiCol_SeparatorActive] = col_active_hi;
     style.Colors[ImGuiCol_ResizeGrip] = col_active_med;
@@ -57,7 +56,6 @@ void bu::ui::load_theme(float r, float g, float b)
     style.Colors[ImGuiCol_HeaderActive] = col_active_hi;
 
     // Frames
-    // style.Colors[ImGuiCol_FrameBg]        = ImVec4(0.174f, 0.174f, 0.174f, 1.000f);
     style.Colors[ImGuiCol_FrameBg]        = ImVec4(0.095f, 0.095f, 0.095f, 1.000f);
     style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.109f, 0.109f, 0.109f, 1.000f);
     style.Colors[ImGuiCol_FrameBgActive]  = ImVec4(0.244f, 0.244f, 0.244f, 1.000f);
@@ -71,8 +69,10 @@ void bu::ui::load_theme(float r, float g, float b)
     style.Colors[ImGuiCol_ButtonActive] = col_active_hi;
 
     // Tabs
-    style.Colors[ImGuiCol_Tab] = ImVec4(0.000f, 0.000f, 0.000f, 0.392f);
-    style.Colors[ImGuiCol_TabActive] = col_active_med;
+    style.Colors[ImGuiCol_Tab] = style.Colors[ImGuiCol_FrameBg];
+    style.Colors[ImGuiCol_TabActive] = style.Colors[ImGuiCol_Button];
+    style.Colors[ImGuiCol_TabUnfocused] = style.Colors[ImGuiCol_FrameBg];
+    style.Colors[ImGuiCol_TabUnfocusedActive] = style.Colors[ImGuiCol_WindowBg];
     style.Colors[ImGuiCol_TabHovered] = col_active_med;
 
     // Checkmarks

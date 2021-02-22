@@ -1,4 +1,5 @@
 #include "imgui_overlay.hpp"
+#include "../utils.hpp"
 
 using bu::imgui_overlay;
 
@@ -26,10 +27,12 @@ void imgui_overlay::add_3d_line(glm::vec4 a, glm::vec4 b, const glm::vec4 &color
 
 void imgui_overlay::draw()
 {
-	auto ws = ImGui::GetWindowSize();
-	auto to_window = [&ws](const glm::vec2 &p)
+	auto wp = ImGui::GetWindowPos();
+	auto cr = ImGui::GetWindowContentRegionMin();
+	auto ws = ImGui::GetContentRegionAvail();
+	auto to_window = [&](const glm::vec2 &p)
 	{
-		auto v = (glm::vec2(p.x, -p.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
+		auto v = bu::to_vec2(wp) + bu::to_vec2(cr) + (glm::vec2(p.x, -p.y) * 0.5f + 0.5f) * glm::vec2(ws.x, ws.y);
 		return ImVec2(v.x, v.y);
 	};
 

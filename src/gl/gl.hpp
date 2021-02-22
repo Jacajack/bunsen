@@ -118,4 +118,38 @@ public:
 	gl_program &operator=(gl_program &&) = default;
 };
 
+class gl_fbo : public gl_object
+{
+public:
+	gl_fbo() 
+	{
+		glCreateFramebuffers(1, &m_id);
+	}
+
+	~gl_fbo()
+	{
+		glDeleteFramebuffers(1, &m_id);
+	}
+
+	gl_fbo(gl_fbo &&) = default;
+	gl_fbo &operator=(gl_fbo &&) = default;
+};
+
+class gl_texture : public gl_object
+{
+public:
+	gl_texture(GLenum target) 
+	{
+		glCreateTextures(target, 1, &m_id);
+	}
+
+	~gl_texture()
+	{
+		glDeleteTextures(1, &m_id);
+	}
+
+	gl_texture(gl_texture &&) = default;
+	gl_texture &operator=(gl_texture &&) = default;
+};
+
 }

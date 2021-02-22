@@ -10,6 +10,7 @@
 #include "model.hpp"
 #include "light.hpp"
 #include "camera.hpp"
+#include "scene_selection.hpp"
 
 namespace bu {
 
@@ -170,6 +171,7 @@ struct scene
 
 	std::shared_ptr<scene_node> root_node;
 	std::shared_ptr<bu::world> world;
+	bu::scene_selection selection;
 };
 
 }

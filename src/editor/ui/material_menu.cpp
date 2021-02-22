@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
+#include "../../scene.hpp"
 #include "../../material.hpp"
 #include "../../materials/generic_material.hpp"
 #include "../../materials/diffuse_material.hpp"

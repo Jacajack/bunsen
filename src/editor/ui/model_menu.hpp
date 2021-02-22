@@ -2,7 +2,7 @@
 #include <set>
 #include <memory>
 #include "../../mesh.hpp"
-#include "../scene_selection.hpp"
+#include "../../scene_selection.hpp"
 
 namespace bu::ui {
 

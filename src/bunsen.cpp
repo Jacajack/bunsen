@@ -13,7 +13,6 @@
 #include <INIReader.h>
 
 #include "gl/gl.hpp"
-#include "input.hpp"
 #include "editor/editor.hpp"
 #include "editor/ui/ui.hpp"
 #include "log.hpp"
@@ -25,42 +24,37 @@ static void glfw_error_callback(int error, const char *message)
 
 static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->user_input.glfw_keyboard_event(key, action, mods);
+	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
+	// main_state->user_input.glfw_keyboard_event(key, action, mods);
 }
 
 static void glfw_cursor_position_callback(GLFWwindow *window, double x, double y)
 {
-	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->user_input.glfw_position_event(x, y);
+	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
+	// main_state->user_input.glfw_position_event(x, y);
 }
 
 static void glfw_scroll_callback(GLFWwindow *window, double x, double y)
 {
-	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->user_input.glfw_scroll_event(x, y);
+	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
+	// main_state->user_input.glfw_scroll_event(x, y);
 }
 
 static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-	auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
-	main_state->user_input.glfw_button_event(button, action, mods);
+	// auto main_state = reinterpret_cast<bu::bunsen_state*>(glfwGetWindowUserPointer(window));
+	// main_state->user_input.glfw_button_event(button, action, mods);
 }
 
 void main_loop(bu::bunsen_state &main_state)
 {
 	// The main editor and scene
 	bu::scene main_scene;
-	bu::bunsen_editor main_editor;
-	main_editor.scene = &main_scene;
+	bu::bunsen_editor main_editor(&main_scene);
 
 	while (!glfwWindowShouldClose(main_state.window))
 	{
-		// Clear input queue and wait for events
-		main_state.user_input.clear_queue();
-		main_state.user_input.clear_scroll();
-		main_state.user_input.set_inhibit_mouse(main_state.imgui_io->WantCaptureMouse);
-		main_state.user_input.set_inhibit_keyboard(main_state.imgui_io->WantCaptureKeyboard);
+		// Wait for events
 		glfwWaitEventsTimeout(1.0 / 30.0);
 
 		// Notify ImGui of new frame
@@ -77,6 +71,7 @@ void main_loop(bu::bunsen_state &main_state)
 			glEnable(GL_DEBUG_OUTPUT);
 
 		// Clear window and set proper viewport size
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, window_size.x, window_size.y);
 
@@ -200,7 +195,14 @@ int main(int argc, char *argv[])
 	ImGui_ImplOpenGL3_Init();
 	main_state.imgui_io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;    
 	bu::ui::load_extra_fonts(*main_state.imgui_io);
-	bu::ui::load_theme();
+
+	// Load theme color from config and set ImGui theme
+	{
+		auto r = main_state.config->GetReal("theme", "r", 0.384);
+		auto g = main_state.config->GetReal("theme", "g", 0.333);
+		auto b = main_state.config->GetReal("theme", "b", 0.449);
+		bu::ui::load_theme(r, g, b);
+	}
 
 	LOG_INFO << "Init completed!";
 

@@ -1,4 +1,5 @@
 #include "light_menu.hpp"
+#include "../../scene.hpp"
 #include <imgui.h>
 
 void bu::ui::light_editor(const std::shared_ptr<bu::light> &light)

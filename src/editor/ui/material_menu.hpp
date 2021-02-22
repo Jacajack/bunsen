@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 #include "../../material.hpp"
-#include "../scene_selection.hpp"
+#include "../../scene_selection.hpp"
 
 namespace bu::ui {
 

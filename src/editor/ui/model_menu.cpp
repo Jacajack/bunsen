@@ -2,6 +2,7 @@
 #include <set>
 #include <string>
 #include <imgui.h>
+#include "../../scene.hpp"
 
 /**
 	\brief Displays mesh data info (vertex count, etc.)

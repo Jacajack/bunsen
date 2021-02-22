@@ -1,8 +1,9 @@
 #include "layout_editor.hpp"
-#include "../log.hpp"
-#include "../input.hpp"
 #include <cmath>
 #include <glm/gtx/transform.hpp>
+#include <imgui.h>
+#include "../log.hpp"
+#include "../utils.hpp"
 
 using bu::layout_editor;
 
@@ -17,31 +18,25 @@ static float ray_plane_intersection(const glm::vec3 &ro, const glm::vec3 &rd, co
 }
 
 void layout_editor::update(
-	const bu::input_event_queue &input,
-	const bu::scene_selection &selection,
+	const bu::scene &scene,
 	const bu::camera &cam,
 	const glm::vec2 &viewport_size,
 	bu::imgui_overlay &overlay)
 {
-	auto was_pressed = [&input](int key)
+	auto was_pressed = [](int key)
 	{
-		for (auto &ev : input.get_queue())
-			if (ev.type == input_event_type::KEYBOARD && ev.action == GLFW_PRESS && ev.key == key)
-				return true;
-		return false;
+		return ImGui::IsKeyPressed(key);
 	};
 
-	auto was_clicked = [&input](int button)
+	auto was_clicked = [](int button)
 	{
-		for (auto &ev : input.get_queue())
-			if (ev.type == input_event_type::MOUSE_BUTTON && ev.action == GLFW_PRESS && ev.key == button)
-				return true;
-		return false;
+		return ImGui::IsMouseClicked(button);
 	};
 
 	auto normalize_mouse_pos = [&cam, &viewport_size](const glm::vec2 &pos)
 	{
-		return (pos / viewport_size * 2.f - 1.f) * glm::vec2{1, -1};
+		auto offset = bu::to_vec2(ImGui::GetWindowContentRegionMin()) + bu::to_vec2(ImGui::GetWindowPos());
+		return ((pos - offset) / viewport_size * 2.f - 1.f) * glm::vec2{1, -1};
 	};
 
 	// \todo Improve axis drawing
@@ -89,19 +84,19 @@ void layout_editor::update(
 	};
 
 	// Mouse position and delta in pixels
-	auto mouse_pos = input.get_position();
+	auto mouse_pos = bu::to_vec2(ImGui::GetMousePos());
 
 	switch (state)
 	{
 		case action_state::IDLE:
 			if (was_pressed(GLFW_KEY_G))
-				start(input, selection, action_state::GRAB);
+				start(scene, action_state::GRAB);
 
 			if (was_pressed(GLFW_KEY_R))
-				start(input, selection, action_state::ROTATE);
+				start(scene, action_state::ROTATE);
 
 			if (was_pressed(GLFW_KEY_S))
-				start(input, selection, action_state::SCALE);
+				start(scene, action_state::SCALE);
 			break;
 
 		case action_state::GRAB:
@@ -266,14 +261,14 @@ void layout_editor::update(
 }
 
 void layout_editor::start(
-	const bu::input_event_queue &input,
-	const bu::scene_selection &selection,
+	const bu::scene &scene,
 	action_state new_action)
 {
 	if (is_transform_pending())
 		abort();
 	state = new_action;
 
+	auto &selection = scene.selection;
 	auto origin = glm::vec3{0.f};
 	int node_count = 0;
 	transform_matrix = glm::mat4{1.f};
@@ -307,8 +302,7 @@ void layout_editor::start(
 		abort();
 
 	// Store mouse position
-	mouse_origin = input.get_position();
-
+	mouse_origin = bu::to_vec2(ImGui::GetMousePos());
 }
 
 void layout_editor::apply()

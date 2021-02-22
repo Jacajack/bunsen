@@ -16,6 +16,7 @@
 #include "ui/material_menu.hpp"
 #include "ui/model_menu.hpp"
 #include "ui/world_menu.hpp"
+#include "ui/rendered_view.hpp"
 
 using bu::bunsen_editor;
 
@@ -69,44 +70,6 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 	}
 }
 
-/**
-	\brief Displays a window with some debugging cheats
-*/
-static void window_debug_cheats(bunsen_editor &ed)
-{
-	ImGui::Begin("Evil debug cheats");
-
-	if (ImGui::Button("Reload preview renderer"))
-	{
-		ed.preview.reset();
-		try
-		{
-			ed.preview = std::make_unique<bu::preview_renderer>();
-		}
-		catch (const std::exception &ex)
-		{
-			LOG_ERROR << "Failed to reload preview mode! - " << ex.what();
-		}
-	}
-
-	static bool show_style_editor = false;
-	ImGui::Checkbox("Show ImGui style editor", &show_style_editor);
-	if (show_style_editor)
-	{
-		ImGui::Begin("Style Editor");
-		ImGui::ShowStyleEditor(&ImGui::GetStyle());
-		ImGui::End();
-	}
-
-	static float col[3];
-	if (ImGui::ColorEdit3("Color theme base", col))
-	{
-		bu::ui::load_theme(col[0], col[1], col[2]);
-	}
-
-	ImGui::End();
-}
-
 static void window_editor(bunsen_editor &ed)
 {
 	if (!ed.scene)
@@ -136,14 +99,14 @@ static void window_editor(bunsen_editor &ed)
 		
 		static int tab_select = 0;
 	
-		bu::ui::scene_graph(*ed.scene, ed.selection);
+		bu::ui::scene_graph(*ed.scene, ed.scene->selection);
 		ImGui::Separator();
-		bu::ui::node_controls(*ed.scene, ed.selection);		
+		bu::ui::node_controls(*ed.scene, ed.scene->selection);		
 
 		ImGui::Separator();
 
 		// Check what type of node is selected so proper tabs can be dimmed out
-		auto primary = ed.selection.get_primary();
+		auto primary = ed.scene->selection.get_primary();
 		bool primary_valid = bool(primary);
 		bool is_model_node = dynamic_cast<bu::model_node*>(primary.get());
 		bool is_light_node = dynamic_cast<bu::light_node*>(primary.get());
@@ -154,8 +117,8 @@ static void window_editor(bunsen_editor &ed)
 		{
 			auto tab_button = [](const char *text, int id, bool enable)
 			{
-				auto tab_color = ImGui::GetStyleColorVec4(ImGuiCol_Tab);
-				auto active_color = ImGui::GetStyleColorVec4(ImGuiCol_TabActive);
+				auto tab_color = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+				auto active_color = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
 				auto color = tab_select == id ? active_color : tab_color;
 				ImVec2 button_size(ImGui::GetContentRegionAvail().x, 25);
 
@@ -204,19 +167,19 @@ static void window_editor(bunsen_editor &ed)
 					break;
 
 				case 1:
-					bu::ui::node_menu(*ed.scene, ed.selection);
+					bu::ui::node_menu(*ed.scene, ed.scene->selection);
 					break;
 
 				case 2:
-					bu::ui::model_menu(ed.selection);
+					bu::ui::model_menu(ed.scene->selection);
 					break;
 
 				case 3:
-					bu::ui::material_menu(ed.selection);
+					bu::ui::material_menu(ed.scene->selection);
 					break;
 
 				case 4:
-					bu::ui::light_menu(ed.selection);
+					bu::ui::light_menu(ed.scene->selection);
 					break;
 
 				case 5:
@@ -238,9 +201,71 @@ static void window_editor(bunsen_editor &ed)
 	ImGui::End();
 }
 
-static void editor_ui(bunsen_editor &ed, bool debug = false)
+class scene_editor_window : public bu::ui::window
 {
-	static bool debug_window_open = true;
+public:
+	scene_editor_window(bunsen_editor &editor) :
+		window("Editor"),
+		m_editor(editor)
+	{}
+
+	void draw() override
+	{
+		dialog_import_model(m_editor);
+		window_editor(m_editor);
+	}
+
+private:
+	bunsen_editor &m_editor;
+};
+
+class debug_window : public bu::ui::window
+{
+public:
+	debug_window(bunsen_editor &editor) :
+		window("Evil Debug Cheats"),
+		m_editor(editor)
+	{}
+
+	void draw() override
+	{
+		if (ImGui::ColorEdit3("Color theme base", &m_color[0]))
+		{
+			bu::ui::load_theme(m_color[0], m_color[1], m_color[2]);
+		}
+	}
+
+private:
+	float m_color[3];
+	bunsen_editor &m_editor;
+};
+
+class imgui_style_editor_window : public bu::ui::window
+{
+public:
+	imgui_style_editor_window() :
+		window("ImGui Style Editor")
+	{}
+
+	void draw() override
+	{
+		ImGui::ShowStyleEditor(&ImGui::GetStyle());
+	}
+};
+
+bunsen_editor::bunsen_editor(bu::scene *sc) :
+	scene(sc)
+{
+	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
+	windows.push_back(std::make_unique<scene_editor_window>(*this));
+}
+
+void bunsen_editor::draw(const bu::bunsen_state &main_state)
+{
+	bool debug = main_state.debug || main_state.gl_debug;
+
+	// Main dockspace
+	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
 	// Main menu bar
 	if (ImGui::BeginMainMenuBar())
@@ -249,17 +274,28 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 		{
 			ImGui::MenuItem("Load scene", "l", nullptr);
 			if (ImGui::MenuItem("Save scene", "s", nullptr))
-				LOG_INFO << "Scene:\n" << bu::export_scene(*ed.scene).dump();
+				LOG_INFO << "Scene:\n" << bu::export_scene(*scene).dump();
 			if (ImGui::MenuItem("Import model", "i", nullptr))
-				dialog_import_model(ed, true);
+				dialog_import_model(*this, true);
 
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View"))
 		{
+			if (ImGui::MenuItem("3D view"))
+					windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
+
+			if (ImGui::MenuItem("Scene editor"))
+					windows.push_back(std::make_unique<scene_editor_window>(*this));
+
 			if (debug)
-				ImGui::MenuItem("Evil debug cheats", nullptr, &debug_window_open);
+				if (ImGui::MenuItem("Evil debug cheats"))
+					windows.push_back(std::make_unique<debug_window>(*this));
+
+			if (debug)
+				if (ImGui::MenuItem("ImGui style editor"))
+					windows.push_back(std::make_unique<imgui_style_editor_window>());
 
 			ImGui::EndMenu();
 		}
@@ -267,45 +303,8 @@ static void editor_ui(bunsen_editor &ed, bool debug = false)
 		ImGui::EndMainMenuBar();
 	}
 
-	// Dialogs and windows
-	dialog_import_model(ed);
-	window_editor(ed);
-	if (debug_window_open && debug) window_debug_cheats(ed);
-}
-
-void bunsen_editor::draw(const bu::bunsen_state &main_state)
-{
-	// Get current window size
-	glm::ivec2 window_size;
-	glfwGetWindowSize(main_state.window, &window_size.x, &window_size.y);
-
-	// Update camera
-	this->viewport_camera.aspect = float(window_size.x) / window_size.y;
-	if (!layout_ed.is_transform_pending())
-		bu::update_camera_orbiter_from_mouse(this->orbit_manipulator, main_state.user_input);
-	this->orbit_manipulator.update_camera(this->viewport_camera);
-
-	// Update layout editor
-	layout_ed.update(main_state.user_input, selection, viewport_camera, glm::vec2{window_size}, overlay);
-
-	// Draw scene in preview mode
-	if (this->scene)
-	{
-		if (this->preview)
-			preview->draw(*this->scene, this->viewport_camera, selection.get_nodes());
-	}
-
-	// The UI
-	if (!layout_ed.is_transform_pending())
-		editor_ui(*this, main_state.debug || main_state.gl_debug);
-
-	// The overlay
-	ImGui::Begin("overlay", nullptr,
-		ImGuiWindowFlags_NoBackground
-		| ImGuiWindowFlags_NoDecoration
-		| ImGuiWindowFlags_NoInputs);
-	ImGui::SetWindowPos(ImVec2(0, 0));
-	ImGui::SetWindowSize(ImVec2(window_size.x, window_size.y));
-	overlay.draw();
-	ImGui::End();
+	// Draw all open windows
+	windows.erase(std::remove_if(windows.begin(), windows.end(), [](auto &w){return !w->is_open();}), windows.end());
+	for (auto &w : windows)
+		w->display();
 }

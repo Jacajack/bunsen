@@ -1,9 +1,10 @@
 #pragma once
 #include <set>
 #include <memory>
-#include "../scene.hpp"
 
 namespace bu {
+
+class scene_node;
 
 class scene_selection
 {

@@ -2,6 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <glm/glm.hpp>
+#include <imgui.h>
 
 namespace bu {
 
@@ -12,6 +14,16 @@ size_t vector_size(const std::vector<T> &v)
 }
 
 std::string slurp_txt(const std::string &path);
+
+inline glm::vec2 to_vec2(const ImVec2 &v)
+{
+	return {v.x, v.y};
+}
+
+inline glm::vec4 to_vec4(const ImVec4 &v)
+{
+	return {v.x, v.y, v.z, v.w};
+}
 
 }
 

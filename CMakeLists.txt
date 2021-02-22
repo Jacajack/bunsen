@@ -38,6 +38,7 @@ add_executable(bunsen
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
 	"src/scene_export.cpp"
+	"src/scene_selection.cpp"
 
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
@@ -47,14 +48,15 @@ add_executable(bunsen
 	"src/editor/editor.cpp"
 	"src/editor/layout_editor.cpp"
 	"src/editor/imgui_overlay.cpp"
-	"src/editor/scene_selection.cpp"
 
 	"src/editor/ui/ui.cpp"
+	"src/editor/ui/window.cpp"
 	"src/editor/ui/scene_control.cpp"
 	"src/editor/ui/material_menu.cpp"
 	"src/editor/ui/light_menu.cpp"
 	"src/editor/ui/model_menu.cpp"
 	"src/editor/ui/world_menu.cpp"
+	"src/editor/ui/rendered_view.cpp"
 	)
 
 target_link_libraries(bunsen PRIVATE 

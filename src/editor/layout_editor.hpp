@@ -4,7 +4,6 @@
 #include "../scene.hpp"
 #include "../camera.hpp"
 #include "imgui_overlay.hpp"
-#include "scene_selection.hpp"
 
 namespace bu {
 
@@ -30,8 +29,10 @@ struct layout_editor
 		SCALE,
 	};
 
-	void update(const bu::input_event_queue &input, const bu::scene_selection &selection, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
-	void start(const bu::input_event_queue &input, const bu::scene_selection &selection, action_state new_action);
+	// void update(const bu::input_event_queue &input, const bu::scene &scene, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
+	void update(const bu::scene &scene, const bu::camera &cam, const glm::vec2 &viewport_size, bu::imgui_overlay &overlay);
+	// void start(const bu::input_event_queue &input, const bu::scene &scene, action_state new_action);
+	void start(const bu::scene &scene, action_state new_action);
 	void apply();
 	void abort();
 	bool is_transform_pending();

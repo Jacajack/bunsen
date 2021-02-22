@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
+struct ImGuiIO;
+
 namespace bu {
 
 struct camera
@@ -47,5 +49,6 @@ struct camera_orbiter
 
 struct input_event_queue;
 void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &mouse, const glm::vec2 &scale = glm::vec2(1440, 960));
+void update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO &io, const glm::vec2 &scale = glm::vec2(1440, 960));
 
 }

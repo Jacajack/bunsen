@@ -77,7 +77,7 @@ preview_renderer::preview_renderer()
 /**
 	\todo selection and visibility
 */
-void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const std::set<std::shared_ptr<bu::scene_node>> &selection)
+void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera)
 {
 	glm::vec3 world_color{0.1, 0.1, 0.1};
 
@@ -105,7 +105,7 @@ void preview_renderer::draw(bu::scene &scene, const bu::camera &camera, const st
 		// Skip invisible
 		if (!node_ptr->is_visible()) continue;
 
-		bool is_selected = selection.count(node_ptr->shared_from_this());
+		bool is_selected = scene.selection.contains(node_ptr->shared_from_this());
 		glm::mat4 transform = it.get_transform();
 
 		// Model nodes
