@@ -54,7 +54,6 @@ protected:
 	bu::camera_orbiter m_orbiter;
 	bu::camera m_camera;
 	bu::bunsen_editor &m_editor;
-	glm::vec2 m_mouse_offset;
 };
 
 }
