@@ -139,6 +139,21 @@ const std::weak_ptr<scene_node> scene_node::get_parent() const
 }
 
 /**
+	\note Node is considered not to be its own ancestor
+*/
+bool scene_node::is_ancestor_of(std::shared_ptr<scene_node> n) const
+{
+	auto self = shared_from_this();
+	for (; n; n = n->get_parent().lock())
+	{
+		auto parent = n->get_parent().lock();
+		if (parent == self)
+			return true;
+	}
+	return false;
+}
+
+/**
 	\brief Adds a child to this node and sets its parent node
 */
 void scene_node::add_child(std::shared_ptr<scene_node> c)

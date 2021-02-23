@@ -58,6 +58,7 @@ public:
 	std::shared_ptr<scene_node> remove_child(scene_node *c);
 	void remove_from_parent() noexcept;
 	void set_parent(std::shared_ptr<scene_node> p);
+	bool is_ancestor_of(std::shared_ptr<scene_node> n) const;
 	void dissolve();
 
 	// Iterating

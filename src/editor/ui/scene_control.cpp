@@ -92,6 +92,26 @@ void bu::ui::scene_graph(const bu::scene &scene, bu::scene_selection &selection)
 				name_tags += ICON_FA_VIDEO " ";
 
 			node_open = ImGui::TreeNodeEx(node_ptr.get(), node_flags, "%s%s", name_tags.c_str(), node_ptr->get_name().c_str());
+
+			// Drag source for all nodes other than the root
+			if (node_ptr != scene.root_node && ImGui::BeginDragDropSource())
+			{
+				ImGui::SetDragDropPayload("scene_node", node_ptr.get(), sizeof(bu::scene_node));
+				ImGui::Text("Set parent for node '%s'", node_ptr->get_name().c_str());
+				ImGui::EndDragDropSource();
+			}
+
+			// Accept dropped nodes other than itself and parents
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("scene_node"))
+				{
+					auto dropped_ptr = reinterpret_cast<bu::scene_node*>(payload->Data)->shared_from_this();
+					if (dropped_ptr && dropped_ptr != node_ptr && !dropped_ptr->is_ancestor_of(node_ptr))
+						dropped_ptr->set_parent(node_ptr);
+				}
+				ImGui::EndDragDropTarget();
+			}
 			
 			// On click - select or deselect
 			// Ctrl + click - toggle
