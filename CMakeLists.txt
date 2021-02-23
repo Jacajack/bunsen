@@ -48,6 +48,8 @@ add_executable(bunsen
 
 	"src/renderers/rt/rt.cpp"
 
+	"src/renderers/albedo/albedo.cpp"
+
 	"src/editor/editor.cpp"
 	"src/editor/layout_editor.cpp"
 	"src/editor/imgui_overlay.cpp"

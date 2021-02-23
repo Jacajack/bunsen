@@ -151,11 +151,14 @@ void rendered_view_window::draw()
 	{
 		if (ImGui::BeginMenu("Renderers"))
 		{
-			if (ImGui::MenuItem("Preview renderer"))
+			if (ImGui::MenuItem("Preview"))
 				m_renderer = std::make_unique<bu::preview_renderer>(m_editor.preview_ctx);
 
+			if (ImGui::MenuItem("Albedo"))
+				m_renderer = std::make_unique<bu::albedo_renderer>(m_editor.albedo_ctx);
+
 			if (ImGui::MenuItem("Path tracing"))
-				m_renderer = std::make_unique<bu::rt_renderer>();
+				m_renderer = std::make_unique<bu::rt_renderer>(m_editor.rt_ctx);
 
 			ImGui::EndMenu();
 		}

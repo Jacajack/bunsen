@@ -7,9 +7,9 @@
 #include "../../utils.hpp"
 
 using bu::preview_renderer;
-using bu::preview_renderer_context;
+using bu::preview_context;
 
-preview_renderer_context::preview_renderer_context()
+preview_context::preview_context()
 {
 	program = std::make_unique<shader_program>(bu::load_shader_program("preview"));
 	grid_program = std::make_unique<shader_program>(bu::load_shader_program("grid"));
@@ -56,7 +56,7 @@ preview_renderer_context::preview_renderer_context()
 	LOG_INFO << "Created a new preview renderer context.";
 }
 
-preview_renderer::preview_renderer(std::shared_ptr<preview_renderer_context> context) :
+preview_renderer::preview_renderer(std::shared_ptr<preview_context> context) :
 	m_context(std::move(context))
 {
 }

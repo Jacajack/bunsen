@@ -235,9 +235,13 @@ public:
 		}
 
 		if (ImGui::Button("Reload preview renderer"))
-		{
-			*m_editor.preview_ctx = bu::preview_renderer_context();
-		}
+			*m_editor.preview_ctx = bu::preview_context();
+
+		if (ImGui::Button("Reload Albedo"))
+			*m_editor.albedo_ctx = bu::albedo_context();
+
+		if (ImGui::Button("Reload RT"))
+			*m_editor.rt_ctx = bu::rt_context();
 	}
 
 private:
@@ -260,7 +264,9 @@ public:
 
 bunsen_editor::bunsen_editor() :
 	scene(std::make_shared<bu::scene>()),
-	preview_ctx(std::make_shared<bu::preview_renderer_context>())
+	preview_ctx(std::make_shared<bu::preview_context>()),
+	albedo_ctx(std::make_shared<bu::albedo_context>()),
+	rt_ctx(std::make_shared<bu::rt_context>())
 {
 	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
