@@ -1,11 +1,11 @@
 #include "rt.hpp"
 #include <vector>
-#include "../../log.hpp"
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
+#include "job.hpp"
+#include "../../log.hpp"
 
 using namespace std::chrono_literals;
-using bu::rt_renderer_job;
 using bu::rt_renderer;
 using bu::rt_context;
 
@@ -19,6 +19,11 @@ rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
 {
 	set_viewport_size({1024, 1024});
 	LOG_DEBUG << "Created a new RT renderer instance!";
+}
+
+rt_renderer::~rt_renderer()
+{
+	if (m_job) m_job->stop();
 }
 
 void rt_renderer::new_texture_storage(const glm::ivec2 &size)
@@ -76,6 +81,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	// If 0.5 has passed from the last change, start a new job
 	if (!m_active && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
+		if (m_job) m_job->stop();
 		m_job = std::make_shared<bu::rt_renderer_job>(m_context, m_camera, m_viewport);
 		m_job->start();
 		m_active = true;
@@ -112,94 +118,3 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 
 	FrameMarkEnd(tracy_frame);
 }
-
-
-
-rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context, const bu::camera &camera, const glm::ivec2 &viewport_size) :
-	m_context(std::move(context)),
-	m_ray_caster(camera),
-	m_image(viewport_size)
-{
-}
-
-rt_renderer_job::~rt_renderer_job()
-{
-	stop();
-}
-
-void rt_renderer_job::submit_bucket(std::unique_ptr<rt::splat_bucket> bucket)
-{
-	std::lock_guard lock{m_dirty_buckets_mutex};
-	m_dirty_buckets.emplace_back(std::move(bucket));
-}
-
-std::unique_ptr<bu::rt::splat_bucket> rt_renderer_job::acquire_bucket()
-{
-	std::lock_guard lock{m_clean_buckets_mutex};
-	if (m_clean_buckets.empty())
-		return {};
-	else
-	{
-		auto p = std::move(m_clean_buckets.back());
-		m_clean_buckets.pop_back();
-		return p;
-	}
-}
-
-const bu::rt::sampled_image &rt_renderer_job::get_image() const
-{
-	return m_image;
-}
-
-void rt_renderer_job::update()
-{
-	ZoneScoped;
-
-	// Splat all dirty buckets
-	while (m_dirty_buckets.size())
-	{
-		std::unique_ptr<rt::splat_bucket> bucket;
-		{
-			std::lock_guard lock{m_dirty_buckets_mutex};
-			if (!m_dirty_buckets.size()) break;
-			bucket = std::move(m_dirty_buckets.back());
-			m_dirty_buckets.pop_back();
-		}
-
-		m_image.splat(*bucket);
-
-		{
-			std::lock_guard lock{m_clean_buckets_mutex};
-			m_clean_buckets.push_back(std::move(bucket));
-		}
-	}
-}
-
-void rt_renderer_job::start()
-{
-	if (m_workers.empty())
-	{
-		for (int i = 0; i < 4; i++)
-			m_workers.push_back(std::make_shared<bu::rt::cpu_worker>(shared_from_this()));
-	
-		new_buckets(64, 64 * 64);
-	}
-
-	for (auto &wp : m_workers)
-		wp->start();
-}
-
-void rt_renderer_job::stop()
-{
-	for (auto &wp : m_workers)
-		wp->stop();
-}
-
-void rt_renderer_job::new_buckets(int count, int size)
-{
-	LOG_INFO << "Creating " << count << " new splat buckets (size = " << size << ")";
-	std::lock_guard lock{m_clean_buckets_mutex};
-	
-	while (count--)
-		m_clean_buckets.emplace_back(std::make_unique<rt::splat_bucket>(size));
-}	

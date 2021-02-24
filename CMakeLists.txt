@@ -48,7 +48,7 @@ add_executable(bunsen
 	"src/renderers/preview/preview.cpp"
 
 	"src/renderers/rt/rt.cpp"
-	"src/renderers/rt/worker.cpp"
+	"src/renderers/rt/job.cpp"
 	"src/renderers/rt/sampled_image.cpp"
 
 	"src/renderers/albedo/albedo.cpp"
