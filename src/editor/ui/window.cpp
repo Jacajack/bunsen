@@ -56,6 +56,7 @@ void window::display()
 			auto delta = new_pos - mouse_pos;
 			m_mouse_offset -= delta;
 			glfwSetCursorPos(win, new_pos.x, new_pos.y);
+			ImGui::GetIO().MousePos = ImVec2(new_pos.x, new_pos.y);
 		}
 	
 		draw();
