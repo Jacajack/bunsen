@@ -2,6 +2,7 @@
 #include <vector>
 #include "../../log.hpp"
 
+using namespace std::chrono_literals;
 using bu::rt_renderer_job;
 using bu::rt_renderer;
 using bu::rt_context;
@@ -42,42 +43,62 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
-	bool invalidate = false;
+	bool changed = false;
 
 	// Detect viewport change
 	if (viewport_size != m_viewport)
 	{
 		set_viewport_size(viewport_size);
-		invalidate = true;
+		changed = true;
 	}
 
-	if (invalidate)
+	// Detect camera change
+	if (camera != m_camera)
 	{
-		m_job = std::make_shared<bu::rt_renderer_job>(m_context, camera, viewport_size);
-		m_job->start();
+		m_camera = camera;
+		changed = true;
 	}
 
-	// Update image
-	m_job->update();	
+	// If changed anything, reset the timer and stop the job
+	if (changed)
+	{
+		m_last_change = std::chrono::steady_clock::now();
+		if (m_job) m_job->stop();
+		m_active = false;
+	}
 
-	// Discard old PBO contents and buffer new data
-	const auto &image_data = m_job->get_image().data;
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
+	// If 0.5 has passed from the last change, start a new job
+	if (!m_active && std::chrono::steady_clock::now() - m_last_change > 0.5s)
+	{
+		m_job = std::make_shared<bu::rt_renderer_job>(m_context, m_camera, m_viewport);
+		m_job->start();
+		m_active = true;
+	}
 
-	// Copy texture data from the PBO
-	glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport_size.x, viewport_size.y, GL_RGBA, GL_FLOAT, nullptr);
+	if (m_active)
+	{
+		// Update image
+		m_job->update();	
 
-	glDisable(GL_DEPTH_TEST);
-	glUseProgram(m_context->draw_sampled_image->id());
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
-	glUniform1i(m_context->draw_sampled_image->get_uniform_location("tex"), 0);
-	glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glEnable(GL_DEPTH_TEST);
+		// Discard old PBO contents and buffer new data
+		const auto &image_data = m_job->get_image().data;
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
+
+		// Copy texture data from the PBO
+		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport_size.x, viewport_size.y, GL_RGBA, GL_FLOAT, nullptr);
+
+		glDisable(GL_DEPTH_TEST);
+		glUseProgram(m_context->draw_sampled_image->id());
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
+		glUniform1i(m_context->draw_sampled_image->get_uniform_location("tex"), 0);
+		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glEnable(GL_DEPTH_TEST);
+	}
 }
 
 

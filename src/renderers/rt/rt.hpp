@@ -91,8 +91,12 @@ private:
 	bu::gl_buffer m_pbo;
 	glm::ivec2 m_result_tex_size;
 
-	// Viewport size
+	// Current settings
+	// Changing these will restart the job
 	glm::ivec2 m_viewport;
+	bu::camera m_camera;
+	std::chrono::time_point<std::chrono::steady_clock> m_last_change;
+	bool m_active = false;
 
 	// Current job
 	std::shared_ptr<rt_renderer_job> m_job;

@@ -58,7 +58,8 @@ void cpu_worker::start()
 void cpu_worker::stop()
 {
 	active = false;
-	thread_ptr->join();
+	if (thread_ptr->joinable())
+		thread_ptr->join();
 }
 
 void cpu_worker::job(cpu_worker *worker)
