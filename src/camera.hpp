@@ -17,6 +17,8 @@ struct camera
 	float near = 0.01f;
 	float far = 100.f;
 
+	bool operator==(const camera &rhs) const;
+	bool operator!=(const camera &rhs) const;
 	void look_at(const glm::vec3 &what);
 	glm::mat4 get_view_matrix() const;
 	glm::mat4 get_projection_matrix() const;

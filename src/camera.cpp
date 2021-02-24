@@ -8,6 +8,22 @@
 using bu::camera;
 using bu::camera_orbiter;
 
+bool camera::operator==(const camera &rhs) const
+{
+	return position == rhs.position
+		&& direction == rhs.direction
+		&& up == rhs.up
+		&& aspect == rhs.aspect
+		&& fov == rhs.fov
+		&& near == rhs.near
+		&& far == rhs.far;
+}
+
+bool camera::operator!=(const camera &rhs) const
+{
+	return !operator==(rhs);
+}
+
 void camera::look_at(const glm::vec3 &what)
 {
 	direction = glm::normalize(what - position);
