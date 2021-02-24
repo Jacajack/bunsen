@@ -8,6 +8,6 @@ albedo_renderer::albedo_renderer(std::shared_ptr<albedo_context> &context) :
 {
 }
 
-void albedo_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::vec2 &viewport_size)
+void albedo_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
 }

@@ -3,6 +3,10 @@
 #include "../../log.hpp"
 #include "../../utils.hpp"
 
+#include "../../renderers/albedo/albedo.hpp"
+#include "../../renderers/preview/preview.hpp"
+#include "../../renderers/rt/rt.hpp"
+
 using bu::ui::rendered_view;
 using bu::ui::rendered_view_window;
 

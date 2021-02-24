@@ -62,9 +62,8 @@ preview_renderer::preview_renderer(std::shared_ptr<preview_context> context) :
 }
 
 /**
-	\todo selection and visibility
 */
-void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::vec2 &viewport_size)
+void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
 	auto &ctx = *m_context;
 	glm::vec3 world_color{0.1, 0.1, 0.1};
@@ -161,7 +160,7 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 					// Cull faces so the outline doesn't go crazy when the camera is inside the object
 					glEnable(GL_CULL_FACE);
 					glUseProgram(ctx.outline_program->id());
-					glm::vec2 offset = glm::vec2{5} / viewport_size;
+					glm::vec2 offset = glm::vec2{5} / glm::vec2{viewport_size};
 					glUniform2fv(ctx.outline_program->get_uniform_location("offset"), 1, &offset[0]);
 					glUniformMatrix4fv(ctx.outline_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
 					glUniformMatrix4fv(ctx.outline_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
@@ -179,7 +178,7 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 		// Light nodes
 		if (dynamic_cast<bu::light_node*>(node_ptr))
 		{
-			glm::vec2 size = glm::vec2{60} / viewport_size;
+			glm::vec2 size = glm::vec2{60} / glm::vec2{viewport_size};
 			glm::vec3 color{0.f};
 			if (is_selected) color = glm::vec3{0.8f, 0.4f, 0.0};
 

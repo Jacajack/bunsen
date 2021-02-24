@@ -39,7 +39,7 @@ class preview_renderer : public bu::renderer
 {
 public:
 	preview_renderer(std::shared_ptr<preview_context> context);
-	void draw(const bu::scene &scene, const bu::camera &camera, const glm::vec2 &viewport_size) override;
+	void draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size) override;
 
 private:
 	std::shared_ptr<preview_context> m_context;

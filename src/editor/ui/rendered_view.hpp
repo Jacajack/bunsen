@@ -2,7 +2,6 @@
 #include <memory>
 #include "window.hpp"
 #include "../../renderer.hpp"
-#include "../../renderers/preview/preview.hpp"
 #include "../../scene.hpp"
 #include "../../gl/gl.hpp"
 #include "../layout_editor.hpp"
