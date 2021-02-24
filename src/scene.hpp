@@ -11,13 +11,14 @@
 #include "light.hpp"
 #include "camera.hpp"
 #include "scene_selection.hpp"
+#include "uid_provider.hpp"
 
 namespace bu {
 
 /**
 	\brief Basic element of a scene.
 */
-class scene_node : public std::enable_shared_from_this<scene_node>
+class scene_node : public std::enable_shared_from_this<scene_node>, public bu::uid_provider<scene_node>
 {
 public:
 	enum class node_transform_origin

@@ -398,6 +398,9 @@ void bu::ui::node_properties(const std::shared_ptr<bu::scene_node> &node)
 	bool changed_local_transform = ImGui::Checkbox("Local transform", &local_transform);
 	bool changed_visible = ImGui::Checkbox("Visible", &visible);
 	
+	ImGui::Dummy(ImVec2(0.f, 5.f));
+	ImGui::Text("Node UID: %lu", node->uid());
+
 	// Write back to the node
 	if (changed_visible) node->set_visible(visible);
 	if (changed_local_transform) node->set_transform_origin(local_transform ? bu::scene_node::node_transform_origin::PARENT : bu::scene_node::node_transform_origin::WORLD);
