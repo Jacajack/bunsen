@@ -48,6 +48,12 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 	m_viewport = viewport_size;
 }
 
+void rt_renderer::update()
+{
+	if (m_active)
+		m_job->update();
+}
+
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
 	const char *tracy_frame = "rt_renderer::draw()";
@@ -89,9 +95,6 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 
 	if (m_active)
 	{
-		// Update image
-		m_job->update();	
-
 		// Discard old PBO contents and buffer new data
 		{
 		ZoneScopedN("PBO upload")

@@ -17,15 +17,16 @@ public:
 	void display();
 	bool is_open() const;
 
+	virtual ~window();
+
+protected:
+	virtual void draw() = 0;
+	virtual void update() {}
 	bool can_lock_mouse() const;
 	bool has_mouse() const;
 	void lock_mouse();
 	void release_mouse();
 
-	virtual ~window();
-
-protected:
-	virtual void draw() = 0;
 
 	bool m_open = true;
 	ImGuiWindowFlags m_flags;

@@ -29,6 +29,7 @@ class rt_renderer : public bu::renderer
 public:
 	rt_renderer(std::shared_ptr<rt_context> context);
 	~rt_renderer() override;
+	void update() override;
 	void draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size) override;
 
 private:

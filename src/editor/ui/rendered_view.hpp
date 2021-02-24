@@ -45,6 +45,7 @@ class rendered_view_window : public bu::ui::window, protected rendered_view
 {
 public:
 	rendered_view_window(bu::bunsen_editor &editor, int samples = -1);
+	void update() override;
 	void draw() override;
 
 protected:

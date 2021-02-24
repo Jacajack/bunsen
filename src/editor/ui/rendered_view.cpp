@@ -146,6 +146,12 @@ rendered_view_window::rendered_view_window(bu::bunsen_editor &editor, int sample
 	m_renderer = std::make_unique<bu::preview_renderer>(m_editor.preview_ctx);
 }
 
+void rendered_view_window::update()
+{
+	if (m_renderer)
+		m_renderer->update();
+}
+
 void rendered_view_window::draw()
 {
 	ImGui::SetNextWindowSizeConstraints(ImVec2(100, 100), ImVec2(10000, 10000));

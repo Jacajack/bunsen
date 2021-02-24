@@ -26,6 +26,8 @@ window::window(const std::string &title, ImGuiWindowFlags flags) :
 
 void window::display()
 {
+	update();
+
 	if (ImGui::Begin(m_full_title.c_str(), &m_open, m_flags))
 	{
 		auto pos = bu::to_vec2(ImGui::GetWindowPos());
