@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.3)
 
 option(GL_DEBUG "Should OpenGL debugging be enabled? (meaningless in Debug builds)" OFF)
 option(SANITIZE "Should sanitizer be enabled in debug builds? (can conflict with debuggers)" ON)
+option(TRACY "Should Tracy be enabled?" OFF)
 
 set(OpenGL_GL_PREFERENCE GLVND)
 
@@ -81,6 +82,7 @@ target_link_libraries(bunsen PRIVATE
 	)
 
 if (GL_DEBUG)
+	message("GL_DEBUG is enabled!")
 	target_compile_definitions(bunsen PRIVATE GL_DEBUG)
 endif()
 
