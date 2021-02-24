@@ -1,4 +1,5 @@
 #include "sampled_image.hpp"
+#include <tracy/Tracy.hpp>
 
 using bu::rt::pixel_splat;
 using bu::rt::splat_bucket;
@@ -23,6 +24,8 @@ sampled_image::sampled_image(glm::ivec2 s) :
 
 void sampled_image::splat(splat_bucket &bucket)
 {
+	ZoneScoped;
+	
 	for (auto i = 0u; i < bucket.size; i++)
 	{
 		auto &splat = bucket.data[i];

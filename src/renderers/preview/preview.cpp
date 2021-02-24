@@ -1,6 +1,8 @@
 #include "preview.hpp"
 #include <memory>
 #include <stack>
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyOpenGL.hpp>
 #include "../../material.hpp"
 #include "../../materials/diffuse_material.hpp"
 #include "../../log.hpp"
@@ -65,6 +67,9 @@ preview_renderer::preview_renderer(std::shared_ptr<preview_context> context) :
 */
 void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
+	ZoneScopedN("preview_renderer::draw");
+	TracyGpuZone("Scene preview");
+
 	auto &ctx = *m_context;
 	glm::vec3 world_color{0.1, 0.1, 0.1};
 
@@ -107,6 +112,7 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 
 			for (int i = 0; i < model->get_mesh_count(); i++)
 			{
+				ZoneScopedN("Mesh");
 				auto mesh_data = model->get_mesh(i);
 				auto material = model->get_mesh_material(i);
 
@@ -153,6 +159,8 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 
 				if (is_selected)
 				{
+					ZoneScopedN("Outline");
+
 					// Do not draw on top of the selected object
 					glStencilFuncSeparate(GL_FRONT_AND_BACK, GL_NOTEQUAL, 1, 0xff);
 					glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
@@ -178,6 +186,8 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 		// Light nodes
 		if (dynamic_cast<bu::light_node*>(node_ptr))
 		{
+			ZoneScopedN("Light");
+
 			glm::vec2 size = glm::vec2{60} / glm::vec2{viewport_size};
 			glm::vec3 color{0.f};
 			if (is_selected) color = glm::vec3{0.8f, 0.4f, 0.0};
@@ -198,6 +208,7 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 	}
 
 	// Draw grid
+	ZoneNamedN(zgrid, "Grid", true);
 	glBindVertexArray(ctx.vao_2d.id());
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);

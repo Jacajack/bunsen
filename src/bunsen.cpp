@@ -10,6 +10,9 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyOpenGL.hpp>
+
 #include "gl/gl.hpp"
 #include "editor/editor.hpp"
 #include "editor/ui/ui.hpp"
@@ -46,6 +49,8 @@ void main_loop(bu::bunsen &main_state)
 	// The main editor and scene
 	bu::bunsen_editor main_editor;
 
+	TracyGpuContext;
+
 	while (!glfwWindowShouldClose(main_state.window))
 	{
 		// Wait for events
@@ -81,6 +86,8 @@ void main_loop(bu::bunsen &main_state)
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(main_state.window);
+		FrameMark;
+		TracyGpuCollect;
 	}
 }
 

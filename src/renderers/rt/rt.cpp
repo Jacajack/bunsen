@@ -1,6 +1,8 @@
 #include "rt.hpp"
 #include <vector>
 #include "../../log.hpp"
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyOpenGL.hpp>
 
 using namespace std::chrono_literals;
 using bu::rt_renderer_job;
@@ -43,6 +45,10 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
+	const char *tracy_frame = "rt_renderer::draw()";
+	FrameMarkStart(tracy_frame);
+	ZoneScopedN("rt_renderer::draw()");
+
 	bool changed = false;
 
 	// Detect viewport change
@@ -81,15 +87,19 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		m_job->update();	
 
 		// Discard old PBO contents and buffer new data
+		{
+		ZoneScopedN("PBO upload")
 		const auto &image_data = m_job->get_image().data;
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
+		}
 
 		// Copy texture data from the PBO
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport_size.x, viewport_size.y, GL_RGBA, GL_FLOAT, nullptr);
 
+		ZoneScopedN("Draw");
 		glDisable(GL_DEPTH_TEST);
 		glUseProgram(m_context->draw_sampled_image->id());
 		glActiveTexture(GL_TEXTURE0);
@@ -99,6 +109,8 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
 	}
+
+	FrameMarkEnd(tracy_frame);
 }
 
 
@@ -141,6 +153,8 @@ const bu::rt::sampled_image &rt_renderer_job::get_image() const
 
 void rt_renderer_job::update()
 {
+	ZoneScoped;
+
 	// Splat all dirty buckets
 	while (m_dirty_buckets.size())
 	{
