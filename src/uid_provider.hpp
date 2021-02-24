@@ -19,6 +19,8 @@ public:
 		m_uid = src.m_uid;
 		src.m_uid = 0;
 	}
+	
+	~uid_provider() = default;
 
 	uid_provider &operator=(uid_provider &&src) noexcept
 	{
