@@ -53,7 +53,7 @@ private:
 	std::shared_ptr<bu::rt_context> m_context;
 
 	// Camera ray caster
-	// rt::camera_ray_caster m_ray_caster;
+	bu::camera_ray_caster m_ray_caster;
 
 	// The sampled image
 	rt::sampled_image m_image;

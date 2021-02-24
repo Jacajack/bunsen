@@ -105,6 +105,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 
 rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context, const bu::camera &camera, const glm::ivec2 &viewport_size) :
 	m_context(std::move(context)),
+	m_ray_caster(camera),
 	m_image(viewport_size)
 {
 }

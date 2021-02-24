@@ -6,6 +6,7 @@
 #include "utils.hpp"
 
 using bu::camera;
+using bu::camera_ray_caster;
 using bu::camera_orbiter;
 
 bool camera::operator==(const camera &rhs) const
@@ -41,6 +42,27 @@ glm::mat4 camera::get_view_matrix() const
 glm::mat4 camera::get_projection_matrix() const
 {
 	return glm::perspective(fov, aspect, near, far);
+}
+
+camera_ray_caster::camera_ray_caster(const camera &cam) :
+	origin(cam.position)
+{
+	glm::vec3 right = glm::normalize(glm::cross(cam.direction, cam.up));
+	glm::vec3 up = glm::normalize(glm::cross(right, cam.direction));
+	glm::vec3 forward = glm::normalize(cam.direction);
+
+	float half_height = cam.near * glm::tan(cam.fov / 2);
+	float half_width = half_height * cam.aspect;
+
+	up *= half_height;
+	right *= half_width;
+
+	matrix = glm::mat3{right, up, forward};
+}
+
+glm::vec3 camera_ray_caster::get_direction(const glm::vec2 &ndc) const
+{
+	return matrix * glm::vec3{ndc, 1};
 }
 
 void camera_orbiter::spin(const glm::vec2 &d)

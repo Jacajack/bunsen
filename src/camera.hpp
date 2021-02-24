@@ -24,6 +24,16 @@ struct camera
 	glm::mat4 get_projection_matrix() const;
 };
 
+struct camera_ray_caster
+{
+	camera_ray_caster(const camera &cam);
+
+	glm::vec3 get_direction(const glm::vec2 &ndc) const;
+
+	glm::vec3 origin;
+	glm::mat3 matrix;
+};
+
 struct camera_orbiter
 {
 	glm::vec3 focus = {0, 0, 0};
