@@ -33,10 +33,6 @@ void bu::ui::load_theme(float r, float g, float b)
     style.Colors[ImGuiCol_Border]   = ImVec4(0.000f, 0.000f, 0.000f, 0.318f);
 
     // Titles
-    auto col_title_active = col_active_hi;
-    auto col_title_inactive = col_active_med;
-    col_title_active.w = 1;
-    col_title_inactive.w = 1;
     style.Colors[ImGuiCol_TitleBg] = ImVec4(0.085f, 0.085f, 0.085f, 1.000f);
     style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.060f, 0.060f, 0.060f, 1.000f);
     style.Colors[ImGuiCol_TitleBgCollapsed] = style.Colors[ImGuiCol_TitleBg];
