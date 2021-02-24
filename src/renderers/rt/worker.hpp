@@ -1,7 +1,7 @@
 #pragma once
-#include <thread>
 #include <memory>
 #include <atomic>
+#include <future>
 #include "sampled_image.hpp"
 
 namespace bu {
@@ -37,14 +37,14 @@ struct worker
 
 struct cpu_worker : public worker
 {
-	std::unique_ptr<std::thread> thread_ptr;
+	std::future<bool> fut;
 
 	using worker::worker;
 	void start() override;
 	void stop() override;
-	// ~cpu_worker() override;
+	~cpu_worker() override;
 
-	static void job(cpu_worker *worker);
+	static bool job(cpu_worker *worker);
 };
 
 }

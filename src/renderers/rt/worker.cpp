@@ -52,17 +52,21 @@ void worker::submit_bucket()
 void cpu_worker::start()
 {
 	active = true;
-	thread_ptr = std::make_unique<std::thread>(job, this);
+	fut = std::async(std::launch::async, job, this);
 }
 
 void cpu_worker::stop()
 {
 	active = false;
-	if (thread_ptr->joinable())
-		thread_ptr->join();
+	fut.wait();
 }
 
-void cpu_worker::job(cpu_worker *worker)
+cpu_worker::~cpu_worker()
+{
+	stop();
+}
+
+bool cpu_worker::job(cpu_worker *worker)
 {
 	auto &job = *worker->parent_job.lock();
 
@@ -101,4 +105,5 @@ void cpu_worker::job(cpu_worker *worker)
 	}
 
 	LOG_INFO << "RT CPU worker thread terminating!";
+	return true;
 }
