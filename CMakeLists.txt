@@ -46,6 +46,7 @@ add_executable(bunsen
 	"src/gl/shader.cpp"
 
 	"src/renderers/preview/preview.cpp"
+	"src/renderers/basic_preview/basic_preview.cpp"
 
 	"src/renderers/rt/rt.cpp"
 	"src/renderers/rt/job.cpp"

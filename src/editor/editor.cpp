@@ -249,6 +249,7 @@ public:
 bunsen_editor::bunsen_editor() :
 	scene(std::make_shared<bu::scene>()),
 	preview_ctx(std::make_shared<bu::preview_context>()),
+	basic_preview_ctx(std::make_shared<bu::basic_preview_context>()),
 	albedo_ctx(std::make_shared<bu::albedo_context>()),
 	rt_ctx(std::make_shared<bu::rt_context>())
 {

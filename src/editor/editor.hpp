@@ -4,6 +4,7 @@
 #include <memory>
 #include "../bunsen.hpp"
 #include "../renderers/preview/preview.hpp"
+#include "../renderers/basic_preview/basic_preview.hpp"
 #include "../renderers/albedo/albedo.hpp"
 #include "../renderers/rt/rt.hpp"
 #include "ui/window.hpp"
@@ -22,6 +23,7 @@ struct bunsen_editor
 
 	// Rendering contexts shared by all open viewports
 	std::shared_ptr<preview_context> preview_ctx;
+	std::shared_ptr<basic_preview_context> basic_preview_ctx;
 	std::shared_ptr<albedo_context> albedo_ctx;
 	std::shared_ptr<rt_context> rt_ctx;
 };

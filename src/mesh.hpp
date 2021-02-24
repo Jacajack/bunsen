@@ -2,8 +2,9 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "gl/gl.hpp"
 #include <glm/glm.hpp>
+#include "gl/gl.hpp"
+#include "uid_provider.hpp"
 
 namespace bu {
 
@@ -34,7 +35,7 @@ struct mesh_gl_buffers
 	The mesh data may include a pointer to a struct containing the same data
 	in GL buffers.
 */
-struct mesh
+struct mesh : public uid_provider<mesh>
 {
 	std::string name;
 	std::vector<glm::vec3> positions;
