@@ -70,16 +70,19 @@ static void dialog_import_model(bunsen_editor &ed, bool open = false)
 	}
 }
 
-static void window_editor(bunsen_editor &ed)
+class scene_editor_window : public bu::ui::window
 {
-	if (!ed.scene)
-	{
-		LOG_ERROR << "The editor won't be displayed without a loaded scene!";
-		return;
-	}
+public:
+	scene_editor_window(bunsen_editor &editor) :
+		window("Editor", ImGuiWindowFlags_MenuBar),
+		m_editor(editor)
+	{}
 
-	if (ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar))
+	void draw() override
 	{
+		auto &ed = m_editor;
+		dialog_import_model(m_editor);
+
 		// Titlebar menu
 		if (ImGui::BeginMenuBar())
 		{
@@ -98,7 +101,7 @@ static void window_editor(bunsen_editor &ed)
 		}
 		
 		static int tab_select = 0;
-	
+
 		bu::ui::scene_graph(*ed.scene, ed.scene->selection);
 		ImGui::Separator();
 		bu::ui::node_controls(*ed.scene, ed.scene->selection);		
@@ -191,28 +194,9 @@ static void window_editor(bunsen_editor &ed)
 						bu::ui::world_menu(*ed.scene->world);
 					break;
 			}
-
-			
 		}
 
 		ImGui::EndChild();
-	}
-
-	ImGui::End();
-}
-
-class scene_editor_window : public bu::ui::window
-{
-public:
-	scene_editor_window(bunsen_editor &editor) :
-		window("Editor", ImGuiWindowFlags_MenuBar),
-		m_editor(editor)
-	{}
-
-	void draw() override
-	{
-		dialog_import_model(m_editor);
-		window_editor(m_editor);
 	}
 
 private:
