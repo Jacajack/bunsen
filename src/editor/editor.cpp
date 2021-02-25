@@ -6,6 +6,7 @@
 #include <imgui_internal.h>
 #include <ImGuiFileDialog.h>
 #include <imgui_icon_font_headers/IconsFontAwesome5.h>
+#include <tracy/Tracy.hpp>
 
 #include "../assimp_loader.hpp"
 #include "../scene_export.hpp"
@@ -251,7 +252,7 @@ bunsen_editor::bunsen_editor() :
 	preview_ctx(std::make_shared<bu::preview_context>()),
 	basic_preview_ctx(std::make_shared<bu::basic_preview_context>()),
 	albedo_ctx(std::make_shared<bu::albedo_context>()),
-	rt_ctx(std::make_shared<bu::rt_context>())
+	rt_ctx(std::make_shared<bu::rt_context>(basic_preview_ctx))
 {
 	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
@@ -303,7 +304,13 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 	}
 
 	// Draw all open windows
+	{
+	ZoneScopedNC("UI windows", 0xff8888ff)
 	windows.erase(std::remove_if(windows.begin(), windows.end(), [](auto &w){return !w->is_open();}), windows.end());
 	for (auto &w : windows)
 		w->display();
+	}
+
+	// TEMP update BVH
+	rt_ctx->bvh_builder->update_from_scene(*scene);
 }

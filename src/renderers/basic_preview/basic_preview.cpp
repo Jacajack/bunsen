@@ -24,12 +24,6 @@ basic_preview_mesh::basic_preview_mesh(std::shared_ptr<bu::mesh> mesh)
 		raw[2 * i + 1] = mesh->normals[i];
 	}
 
-	// glBindBuffer(GL_VERTEX_ARRAY, vertex_buffer.id());
-	// glBufferStorage(GL_VERTEX_ARRAY, bu::vector_size(raw), raw.data(), GL_STATIC_DRAW);
-
-	// glBindBuffer(GL_INDEX_ARRAY, index_buffer.id());
-	// glBufferStorage(GL_INDEX_ARRAY, bu::vector_size(mesh->indices), mesh->indices.data(), GL_STATIC_DRAW);
-
 	glNamedBufferStorage(vertex_buffer.id(), bu::vector_size(raw), raw.data(), GL_DYNAMIC_STORAGE_BIT);
 	glNamedBufferStorage(index_buffer.id(), bu::vector_size(mesh->indices), mesh->indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
@@ -122,7 +116,6 @@ void basic_preview_renderer::draw(const bu::scene &scene, const bu::camera &came
 		// Skip invisible
 		if (!node_ptr->is_visible()) continue;
 
-		bool is_selected = scene.selection.contains(node_ptr->shared_from_this());
 		glm::mat4 transform = it.get_transform();
 
 		// Model nodes

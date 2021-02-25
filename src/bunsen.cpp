@@ -11,6 +11,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include <tracy/Tracy.hpp>
+#include <tracy/TracyC.h>
 #include <tracy/TracyOpenGL.hpp>
 
 #include "gl/gl.hpp"
@@ -75,15 +76,19 @@ void main_loop(bu::bunsen &main_state)
 		glViewport(0, 0, window_size.x, window_size.y);
 
 		// The main editor
+		TracyCZoneN(zone_editor, "Editor draw", true);
 		main_editor.draw(main_state);
+		TracyCZoneEnd(zone_editor);
 
 		// --- GL debug end
 		if (main_state.gl_debug)
 			glDisable(GL_DEBUG_OUTPUT);
 
 		// Render ImGui
+		TracyCZoneN(zone_imgui, "ImGui Render", true);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		TracyCZoneEnd(zone_imgui);
 
 		glfwSwapBuffers(main_state.window);
 		FrameMark;

@@ -51,6 +51,8 @@ add_executable(bunsen
 	"src/renderers/rt/rt.cpp"
 	"src/renderers/rt/job.cpp"
 	"src/renderers/rt/sampled_image.cpp"
+	"src/renderers/rt/aabb.cpp"
+	"src/renderers/rt/bvh_builder.cpp"
 
 	"src/renderers/albedo/albedo.cpp"
 

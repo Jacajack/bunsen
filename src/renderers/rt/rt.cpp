@@ -9,15 +9,38 @@ using namespace std::chrono_literals;
 using bu::rt_renderer;
 using bu::rt_context;
 
-rt_context::rt_context() :
-	draw_sampled_image(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image")))
+rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
+	draw_sampled_image(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
+	draw_aabb(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
+	bvh_builder(std::make_unique<bu::rt::bvh_builder>())
 {
+	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
+	preview_context = std::move(preview_ctx);
 }
 
 rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
-	m_context(std::move(context))
+	m_context(std::move(context)),
+	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context))
 {
 	set_viewport_size({1024, 1024});
+
+	glBindVertexArray(aabb_vao.id());
+
+	glVertexArrayAttribFormat( // Position (0)
+		aabb_vao.id(), 
+		0,
+		3,
+		GL_FLOAT,
+		GL_FALSE,
+		0
+	);
+
+	// Enable attributes
+	glEnableVertexArrayAttrib(aabb_vao.id(), 0);
+
+	// All data is read from buffer bound to binding 0
+	glVertexArrayAttribBinding(aabb_vao.id(), 0, 0);
+
 	LOG_DEBUG << "Created a new RT renderer instance!";
 }
 
@@ -117,6 +140,40 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
+	}
+	else
+	{
+		m_preview_renderer->draw(scene, camera, viewport_size);
+
+		auto mat_view = camera.get_view_matrix();
+		auto mat_proj = camera.get_projection_matrix();
+
+
+
+		std::vector<glm::vec3> aabb_data;
+		auto aabbs = m_context->bvh_builder->get_mesh_aabbs();
+		for (auto &box : aabbs)
+		{
+			aabb_data.push_back(box.min);
+			aabb_data.push_back(box.max);
+		}
+
+
+		glm::vec3 line_color{1.f};
+
+		auto &aabb_program = m_context->draw_aabb;
+		glBindVertexArray(aabb_vao.id());
+		glUseProgram(aabb_program->id());
+		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+		glUniform3fv(aabb_program->get_uniform_location("color"), 1, &line_color[0]);
+		// glDisable(GL_DEPTH_TEST);
+		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), aabb_data.data(), GL_STATIC_DRAW);
+		glBindVertexBuffer(0, aabb_buffer.id(), 0, 3 * sizeof(float));
+		glDrawArrays(GL_LINES, 0, aabb_data.size());
+		// glEnable(GL_DEPTH_TEST);
+
+		// glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 	}
 
 	FrameMarkEnd(tracy_frame);

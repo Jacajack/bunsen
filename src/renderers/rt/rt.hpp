@@ -7,7 +7,9 @@
 #include "../../scene.hpp"
 #include "../../camera.hpp"
 #include "../../renderer.hpp"
+#include "../../renderers/basic_preview/basic_preview.hpp"
 #include "sampled_image.hpp"
+#include "bvh_builder.hpp"
 
 namespace bu {
 
@@ -15,9 +17,17 @@ struct rt_renderer_job;
 
 struct rt_context
 {
-	rt_context();
+	rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx = {});
 
+	// Embedded preview renderer
+	std::shared_ptr<bu::basic_preview_context> preview_context;
+
+	// Shader for drawing the raytraced image and AABBs
 	std::unique_ptr<bu::shader_program> draw_sampled_image;
+	std::unique_ptr<bu::shader_program> draw_aabb;
+
+	// BVH
+	std::unique_ptr<bu::rt::bvh_builder> bvh_builder;
 };
 
 /**
@@ -37,6 +47,11 @@ private:
 	void set_viewport_size(const glm::ivec2 &viewport_size);
 
 	std::shared_ptr<rt_context> m_context;
+	std::unique_ptr<bu::basic_preview_renderer> m_preview_renderer;
+
+	// AABB preview buffer
+	bu::gl_buffer aabb_buffer;
+	bu::gl_vertex_array aabb_vao;
 
 	// The output texture, its size and a PBO
 	std::unique_ptr<bu::gl_texture> m_result_tex;
