@@ -16,16 +16,9 @@ rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 {
 	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
 	preview_context = std::move(preview_ctx);
-}
 
-rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
-	m_context(std::move(context)),
-	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context))
-{
-	set_viewport_size({1024, 1024});
-
+	// Setup AABB VAO
 	glBindVertexArray(aabb_vao.id());
-
 	glVertexArrayAttribFormat( // Position (0)
 		aabb_vao.id(), 
 		0,
@@ -35,12 +28,18 @@ rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
 		0
 	);
 
-	// Enable attributes
+	// Enable position attribute
 	glEnableVertexArrayAttrib(aabb_vao.id(), 0);
 
 	// All data is read from buffer bound to binding 0
 	glVertexArrayAttribBinding(aabb_vao.id(), 0, 0);
+}
 
+rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
+	m_context(std::move(context)),
+	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context))
+{
+	set_viewport_size({1024, 1024});
 	LOG_DEBUG << "Created a new RT renderer instance!";
 }
 
@@ -116,6 +115,40 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		m_active = true;
 	}
 
+	// Draw preview
+	if (m_preview_active)
+	{
+		ZoneScopedN("RT preview");
+
+		m_preview_renderer->draw(scene, camera, viewport_size);
+
+		auto mat_view = camera.get_view_matrix();
+		auto mat_proj = camera.get_projection_matrix();
+		glm::vec3 line_color{1, 1, 0};
+
+		std::vector<glm::vec3> aabb_data;
+		auto aabbs = m_context->bvh_builder->get_mesh_aabbs();
+		for (auto &box : aabbs)
+		{
+			aabb_data.push_back(box.min);
+			aabb_data.push_back(box.max);
+		}
+
+		auto &aabb_program = m_context->draw_aabb;
+		glBindVertexArray(m_context->aabb_vao.id());
+		glUseProgram(aabb_program->id());
+		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+		glUniform3fv(aabb_program->get_uniform_location("color"), 1, &line_color[0]);
+
+		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), nullptr, GL_STATIC_DRAW);
+		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), aabb_data.data(), GL_STATIC_DRAW);
+
+		glBindVertexBuffer(0, aabb_buffer.id(), 0, 3 * sizeof(float));
+		glDrawArrays(GL_LINES, 0, aabb_data.size());
+	}
+
+	// Draw the sampled image if the job is active
 	if (m_active)
 	{
 		// Discard old PBO contents and buffer new data
@@ -133,6 +166,8 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 
 		ZoneScopedN("Draw");
 		glDisable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_BLEND);
 		glUseProgram(m_context->draw_sampled_image->id());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
@@ -140,40 +175,8 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
-	}
-	else
-	{
-		m_preview_renderer->draw(scene, camera, viewport_size);
+		glDisable(GL_BLEND);
 
-		auto mat_view = camera.get_view_matrix();
-		auto mat_proj = camera.get_projection_matrix();
-
-
-
-		std::vector<glm::vec3> aabb_data;
-		auto aabbs = m_context->bvh_builder->get_mesh_aabbs();
-		for (auto &box : aabbs)
-		{
-			aabb_data.push_back(box.min);
-			aabb_data.push_back(box.max);
-		}
-
-
-		glm::vec3 line_color{1.f};
-
-		auto &aabb_program = m_context->draw_aabb;
-		glBindVertexArray(aabb_vao.id());
-		glUseProgram(aabb_program->id());
-		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
-		glUniform3fv(aabb_program->get_uniform_location("color"), 1, &line_color[0]);
-		// glDisable(GL_DEPTH_TEST);
-		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), aabb_data.data(), GL_STATIC_DRAW);
-		glBindVertexBuffer(0, aabb_buffer.id(), 0, 3 * sizeof(float));
-		glDrawArrays(GL_LINES, 0, aabb_data.size());
-		// glEnable(GL_DEPTH_TEST);
-
-		// glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 	}
 
 	FrameMarkEnd(tracy_frame);

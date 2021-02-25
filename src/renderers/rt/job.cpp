@@ -122,25 +122,30 @@ static bool child_job(std::shared_ptr<rt_renderer_job> jobp, std::shared_ptr<std
 		std::unique_ptr<bu::rt::splat_bucket> bucket;
 		while (active && !(bucket = job.acquire_bucket()))
 		{
+			ZoneScopedN("Bucket wait");
 			LOG_WARNING << "RT thread could not acquire bucket - stalling!";
 			std::this_thread::sleep_for(0.1s);
 		}
 
 		if (!active) break;
 
-		auto pos = glm::vec2{fdist(rng), fdist(rng)} * glm::vec2{job.get_image().size};
-		auto color = glm::vec3{fdist(rng), fdist(rng), fdist(rng)};
-
-		for (auto i = 0u; i < bucket->size; i++)
 		{
-			auto &splat = bucket->data[i];
-			splat.pos = pos + glm::vec2{i % 64, i / 64};
-			splat.color = color;
-			splat.samples = 1;
+			ZoneScopedN("Bucket generation");
+			auto pos = glm::vec2{fdist(rng), fdist(rng)} * glm::vec2{job.get_image().size};
+			auto color = glm::vec3{fdist(rng), fdist(rng), fdist(rng)};
+
+			for (auto i = 0u; i < bucket->size; i++)
+			{
+				auto &splat = bucket->data[i];
+				splat.pos = pos + glm::vec2{i % 64, i / 64};
+				splat.color = color;
+				splat.samples = 1;
+			}
+
+			job.submit_bucket(std::move(bucket));
 		}
 
-		std::this_thread::sleep_for(0.1s);
-		job.submit_bucket(std::move(bucket));
+		std::this_thread::sleep_for(0.01s);
 	}
 
 	LOG_INFO << "RT CPU thread terminating!";

@@ -26,6 +26,9 @@ struct rt_context
 	std::unique_ptr<bu::shader_program> draw_sampled_image;
 	std::unique_ptr<bu::shader_program> draw_aabb;
 
+	// VAO for drawing AABBs
+	bu::gl_vertex_array aabb_vao;
+
 	// BVH
 	std::unique_ptr<bu::rt::bvh_builder> bvh_builder;
 };
@@ -50,8 +53,8 @@ private:
 	std::unique_ptr<bu::basic_preview_renderer> m_preview_renderer;
 
 	// AABB preview buffer
+	bool m_preview_active = true;
 	bu::gl_buffer aabb_buffer;
-	bu::gl_vertex_array aabb_vao;
 
 	// The output texture, its size and a PBO
 	std::unique_ptr<bu::gl_texture> m_result_tex;

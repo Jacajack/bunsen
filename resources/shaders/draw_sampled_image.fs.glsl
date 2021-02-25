@@ -14,6 +14,14 @@ void main()
 {
 	vec2 uv = vs_out.v_pos * 0.5 + 0.5;
 	vec4 sampled = texelFetch(tex, ivec2(uv * size), 0);
+
+	// If no samples, show background
+	if (sampled.a == 0)
+	{
+		f_color = vec4(0);
+		return;
+	}
+
 	vec3 color = sampled.rgb / sampled.a;
 	
 	// Reinhard
@@ -21,6 +29,5 @@ void main()
 
 	// Gamma
 	color = pow(color, vec3(1 / 2.2));
-
 	f_color = vec4(color.rgb, 1);
 }
