@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <set>
+#include <vector>
 #include <unordered_map>
 #include <imgui.h>
 #include <glm/glm.hpp>
@@ -38,7 +38,7 @@ private:
 	int m_instance;
 	std::string m_title;
 
-	static std::unordered_map<std::string, std::set<int>> m_instances;
+	static std::unordered_map<std::string, std::vector<bool>> m_instances;
 	static bool m_mouse_locked;
 };
 

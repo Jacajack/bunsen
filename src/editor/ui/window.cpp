@@ -4,19 +4,38 @@
 #include "../../utils.hpp"
 using bu::ui::window;
 
-std::unordered_map<std::string, std::set<int>> window::m_instances;
+std::unordered_map<std::string, std::vector<bool>> window::m_instances;
 bool window::m_mouse_locked = false;
 
 window::window(const std::string &title, ImGuiWindowFlags flags) :
 	m_flags(flags),
 	m_title(title)
 {
-	int max = -1;
 	auto &ids = m_instances[title];
-	for (auto &id : ids)
-		max = std::max(max, id);
-	m_instance = max + 1;
-	ids.insert(m_instance);
+
+	// First ID is 0
+	int my_id = -1;
+
+	// Find first unused
+	for (auto i = 0u; i < ids.size(); i++)
+	{
+		if (!ids[i])
+		{
+			ids[i] = true;
+			my_id = i;
+			break;
+		}
+	}
+
+	// Add new ID slot
+	if (my_id < 0)
+	{
+		my_id = ids.size();
+		ids.push_back(true);
+	}
+
+	m_instance = my_id;
+
 
 	if (m_instance == 0)
 		m_full_title = m_title;
@@ -103,6 +122,6 @@ void window::release_mouse()
 
 window::~window()
 {
-	m_instances[m_title].erase(m_instance);
+	m_instances[m_title].at(m_instance) = false;
 	release_mouse();
 }
