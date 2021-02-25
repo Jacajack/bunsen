@@ -84,7 +84,6 @@ glm::mat4 scene_node::get_transform_relative_to(const scene_node *what) const
 		t = n->get_transform() * t;
 		auto p = n->get_parent().lock();
 
-		// Transform nodes need to be taken into account
 		if (n->get_transform_origin() == node_transform_origin::WORLD)
 		{
 			if (auto ptn = std::dynamic_pointer_cast<bu::transform_node>(p))
@@ -94,8 +93,13 @@ glm::mat4 scene_node::get_transform_relative_to(const scene_node *what) const
 					t = ptn->get_raw_transform() * t;
 				}
 			}
-			break;
+
+			// Transform nodes need to be taken into account
+			// then we cannot stop
+			if (!(dynamic_cast<const bu::transform_node*>(n)))
+				break;
 		}
+
 		n = p.get();
 	}
 	
