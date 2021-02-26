@@ -44,6 +44,7 @@ struct sampled_image
 	}
 
 	void splat(splat_bucket &bucket);
+	void clear();
 };
 
 }

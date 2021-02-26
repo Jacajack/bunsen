@@ -35,3 +35,9 @@ void sampled_image::splat(splat_bucket &bucket)
 		at(pos) += glm::vec4{splat.color, splat.samples};
 	}
 }
+
+void sampled_image::clear()
+{
+	for (auto &pixel : data)
+		pixel = glm::vec4{0.f};
+}

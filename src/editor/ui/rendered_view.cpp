@@ -230,7 +230,7 @@ void rendered_view_window::draw()
 		if (hovered && can_lock_mouse())
 		{
 			bu::update_camera_orbiter_from_imgui(m_orbiter, ImGui::GetIO(), glm::vec2{1440, 960}, m_mouse_offset);
-			m_layout_ed.update(*m_editor.scene, m_camera, bu::to_vec2(content_size), m_mouse_offset, m_overlay);
+			m_layout_ed.update(m_editor.scene, m_camera, bu::to_vec2(content_size), m_mouse_offset, m_overlay);
 		}
 
 		m_orbiter.update_camera(m_camera);

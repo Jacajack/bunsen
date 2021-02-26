@@ -5,111 +5,101 @@
 #include "../../log.hpp"
 
 using namespace std::chrono_literals;
+using bu::splat_bucket_pool;
 using bu::rt_renderer_job;
 
-static bool child_job(std::shared_ptr<rt_renderer_job> jobp, std::shared_ptr<std::atomic<bool>> activep);
+static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep);
+static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep);
 
-rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context, const bu::camera &camera, const glm::ivec2 &viewport_size) :
-	m_context(std::move(context)),
-	m_ray_caster(camera),
-	m_image(viewport_size)
+void splat_bucket_pool::submit(std::unique_ptr<rt::splat_bucket> bucket)
+{
+	std::lock_guard lock{mut};
+	buckets.emplace_back(std::move(bucket));
+	cv.notify_one();
+}
+
+std::unique_ptr<bu::rt::splat_bucket> splat_bucket_pool::acquire()
+{
+	std::lock_guard lock{mut};
+	if (buckets.empty())
+		return {};
+	else
+	{
+		auto p = std::move(buckets.back());
+		buckets.pop_back();
+		return p;
+	}
+}
+
+rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context) :
+	m_context(std::move(context))
 {
 	LOG_INFO << "New RT job!";
 }
 
 /**
-	We can't allow this to be called by any of the children, because that would
-	result in a deadlock
+	This blocks until all threads die
 */
 rt_renderer_job::~rt_renderer_job()
 {
+	if (m_active) *m_active = false;
 	LOG_INFO << "RT job terminated!";
-}
-
-void rt_renderer_job::submit_bucket(std::unique_ptr<rt::splat_bucket> bucket)
-{
-	std::lock_guard lock{m_dirty_buckets_mutex};
-	m_dirty_buckets.emplace_back(std::move(bucket));
-}
-
-std::unique_ptr<bu::rt::splat_bucket> rt_renderer_job::acquire_bucket()
-{
-	std::lock_guard lock{m_clean_buckets_mutex};
-	if (m_clean_buckets.empty())
-		return {};
-	else
-	{
-		auto p = std::move(m_clean_buckets.back());
-		m_clean_buckets.pop_back();
-		return p;
-	}
 }
 
 const bu::rt::sampled_image &rt_renderer_job::get_image() const
 {
-	return m_image;
-}
-
-void rt_renderer_job::update()
-{
-	ZoneScoped;
-
-	// Splat all dirty buckets
-	while (m_dirty_buckets.size())
-	{
-		std::unique_ptr<rt::splat_bucket> bucket;
-		{
-			std::lock_guard lock{m_dirty_buckets_mutex};
-			if (!m_dirty_buckets.size()) break;
-			bucket = std::move(m_dirty_buckets.back());
-			m_dirty_buckets.pop_back();
-		}
-
-		m_image.splat(*bucket);
-
-		{
-			std::lock_guard lock{m_clean_buckets_mutex};
-			m_clean_buckets.push_back(std::move(bucket));
-		}
-	}
+	return *m_image;
 }
 
 /**
 	Sets up a new activity flag for the new children
-	and spawns them
+	and spawns them. Accepts paremeters for the new render
 */
-void rt_renderer_job::start()
+void rt_renderer_job::start(const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
-	stop();
+	if (m_active && *m_active) stop();
+
+	// Remove completed futures
+	m_futures.erase(std::remove_if(m_futures.begin(), m_futures.end(), [](auto &f){
+		return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+	}), m_futures.end());
+
 	m_active = std::make_shared<std::atomic<bool>>(true);
+	m_ray_caster = std::make_shared<bu::camera_ray_caster>(camera);
+	m_image = std::make_shared<bu::rt::sampled_image>(viewport_size);
+	m_clean_pool = std::make_shared<splat_bucket_pool>();
+	m_dirty_pool = std::make_shared<splat_bucket_pool>();
 	new_buckets(64, 64 * 64);
+
 	for (int i = 0; i < 4; i++)
-		m_futures.emplace_back(std::async(std::launch::async, child_job, shared_from_this(), m_active));
+		m_futures.emplace_back(std::async(std::launch::async, child_job, this, m_active));
+
+	m_futures.emplace_back(std::async(std::launch::async, splatter_job, this, m_active));
 }
 
+
 /**
-	Resets activity flag and discards all the futures.
-	Clearing the futures vector blocks until all of them are ready.
+	Stops the rendering and lets the threads die on their own
 */
 void rt_renderer_job::stop()
 {
 	if (m_active) *m_active = false;
-	m_futures.clear();
 }
 
 void rt_renderer_job::new_buckets(int count, int size)
 {
 	LOG_INFO << "Creating " << count << " new splat buckets (size = " << size << ")";
-	std::lock_guard lock{m_clean_buckets_mutex};
 	
 	while (count--)
-		m_clean_buckets.emplace_back(std::make_unique<rt::splat_bucket>(size));
+		m_clean_pool->submit(std::make_unique<rt::splat_bucket>(size));
 }
 
-static bool child_job(std::shared_ptr<rt_renderer_job> jobp, std::shared_ptr<std::atomic<bool>> activep)
+static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep)
 {
 	auto &job = *jobp;
 	auto &active = *activep;
+	std::shared_ptr<bu::splat_bucket_pool> clean_pool = job.m_clean_pool;
+	std::shared_ptr<bu::splat_bucket_pool> dirty_pool = job.m_dirty_pool;
 
 	LOG_INFO << "RT CPU thread starting!";
 
@@ -120,7 +110,9 @@ static bool child_job(std::shared_ptr<rt_renderer_job> jobp, std::shared_ptr<std
 	while (active)
 	{	
 		std::unique_ptr<bu::rt::splat_bucket> bucket;
-		while (active && !(bucket = job.acquire_bucket()))
+
+		// This should never stall
+		while (active && !(bucket = clean_pool->acquire()))
 		{
 			ZoneScopedN("Bucket wait");
 			LOG_WARNING << "RT thread could not acquire bucket - stalling!";
@@ -142,12 +134,56 @@ static bool child_job(std::shared_ptr<rt_renderer_job> jobp, std::shared_ptr<std
 				splat.samples = 1;
 			}
 
-			job.submit_bucket(std::move(bucket));
+			dirty_pool->submit(std::move(bucket));
 		}
 
 		std::this_thread::sleep_for(0.01s);
 	}
 
 	LOG_INFO << "RT CPU thread terminating!";
+	return true;
+}
+
+static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep)
+{
+	auto &job = *jobp;
+	auto &active = *activep;
+	std::shared_ptr<bu::rt::sampled_image> image = job.m_image;
+	std::shared_ptr<bu::splat_bucket_pool> clean_pool = job.m_clean_pool;
+	std::shared_ptr<bu::splat_bucket_pool> dirty_pool = job.m_dirty_pool;
+
+	while (active)
+	{
+		std::unique_ptr<bu::rt::splat_bucket> bucket;
+
+		// If bucket can be acquired do it
+		if (!(bucket = dirty_pool->acquire()))
+		{
+			// Otherwise wait until notified
+			std::unique_lock<std::mutex> lk{dirty_pool->mut};
+			dirty_pool->cv.wait_for(lk, 0.1s);
+
+			if (!active) return true;
+
+			// Wakeup can be spurious - check size
+			if (dirty_pool->buckets.size())
+			{
+				bucket = std::move(dirty_pool->buckets.back());
+				dirty_pool->buckets.pop_back();
+			}
+			else
+				continue;
+		}
+
+		// Splat the bucket on the image
+		{
+			std::lock_guard lock{job.m_image_mutex};
+			image->splat(*bucket);
+		}
+
+		// Return the bucket
+		clean_pool->submit(std::move(bucket));
+	}
+
 	return true;
 }

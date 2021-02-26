@@ -174,6 +174,8 @@ struct scene
 	std::shared_ptr<scene_node> root_node;
 	std::shared_ptr<bu::world> world;
 	bu::scene_selection selection;
+
+	bool transform_pending = false;
 };
 
 }

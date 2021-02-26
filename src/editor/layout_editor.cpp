@@ -18,7 +18,7 @@ static float ray_plane_intersection(const glm::vec3 &ro, const glm::vec3 &rd, co
 }
 
 void layout_editor::update(
-	const bu::scene &scene,
+	std::shared_ptr<bu::scene> scene,
 	const bu::camera &cam,
 	const glm::vec2 &viewport_size,
 	const glm::vec2 &mouse_offset,
@@ -262,15 +262,17 @@ void layout_editor::update(
 }
 
 void layout_editor::start(
-	const bu::scene &scene,
+	std::shared_ptr<bu::scene> scene,
 	const glm::vec2 &mouse_offset,
 	action_state new_action)
 {
 	if (is_transform_pending())
 		abort();
 	state = new_action;
+	scene_ptr = scene;
+	scene_ptr->transform_pending = true;
 
-	auto &selection = scene.selection;
+	auto &selection = scene->selection;
 	auto origin = glm::vec3{0.f};
 	int node_count = 0;
 	transform_matrix = glm::mat4{1.f};
@@ -313,6 +315,8 @@ void layout_editor::apply()
 		n->apply();
 	transform_nodes.clear();
 	state = action_state::IDLE;
+	scene_ptr->transform_pending = false;
+	scene_ptr.reset();
 }
 
 void layout_editor::abort()
@@ -321,6 +325,8 @@ void layout_editor::abort()
 		n->dissolve();
 	transform_nodes.clear();
 	state = action_state::IDLE;
+	scene_ptr->transform_pending = false;
+	scene_ptr.reset();
 }
 
 bool layout_editor::is_transform_pending()

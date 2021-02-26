@@ -4,6 +4,7 @@
 #include <vector>
 #include <mutex>
 #include <future>
+#include <thread>
 #include "../../camera.hpp"
 #include "sampled_image.hpp"
 
@@ -11,49 +12,48 @@ namespace bu {
 
 struct rt_context;
 
+struct splat_bucket_pool
+{
+	std::mutex mut;
+	std::condition_variable cv;
+	std::vector<std::unique_ptr<rt::splat_bucket>> buckets;
+
+	void submit(std::unique_ptr<rt::splat_bucket> bucket);
+	std::unique_ptr<rt::splat_bucket> acquire();
+};
+
 /**
-	Path tracing rendering job. The parameters cannot be changed once the job
-	has been created.
+	Path tracing rendering job.
 */
 class rt_renderer_job : public std::enable_shared_from_this<rt_renderer_job>
 {
 public:
-	rt_renderer_job(std::shared_ptr<bu::rt_context> context, const bu::camera &camera, const glm::ivec2 &viewport_size);
+	rt_renderer_job(std::shared_ptr<bu::rt_context> context);
 	~rt_renderer_job();
 	
-	// Bucket exchange
-	void submit_bucket(std::unique_ptr<rt::splat_bucket> bucket);
-	std::unique_ptr<rt::splat_bucket> acquire_bucket();
-
 	// Access to the image
 	const rt::sampled_image &get_image() const;
 
-	// Updates image
-	void update();
-
 	// Run control
-	void start();
+	void start(const bu::camera &camera, const glm::ivec2 &viewport_size);
 	void stop();
+
+	// View settings
+	std::shared_ptr<bu::camera_ray_caster> m_ray_caster;
+
+	// The sampled image
+	std::shared_ptr<rt::sampled_image> m_image;
+	std::mutex m_image_mutex;
+
+	// Pointers to the pool
+	std::shared_ptr<splat_bucket_pool> m_clean_pool;
+	std::shared_ptr<splat_bucket_pool> m_dirty_pool;
 
 private:
 	void new_buckets(int count, int size);
 
 	// The main context
 	std::shared_ptr<bu::rt_context> m_context;
-
-	// Camera ray caster
-	bu::camera_ray_caster m_ray_caster;
-
-	// The sampled image
-	rt::sampled_image m_image;
-
-	// Buckets
-	// \todo Use real atomic vectors here...
-	using bucket_pool = std::vector<std::unique_ptr<rt::splat_bucket>>;
-	std::mutex m_clean_buckets_mutex;
-	bucket_pool m_clean_buckets;
-	std::mutex m_dirty_buckets_mutex;
-	bucket_pool m_dirty_buckets;
 
 	// Childrens' futures and active flag
 	std::shared_ptr<std::atomic<bool>> m_active;

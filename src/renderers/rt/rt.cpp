@@ -37,7 +37,8 @@ rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 
 rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
 	m_context(std::move(context)),
-	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context))
+	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context)),
+	m_job(std::make_unique<bu::rt_renderer_job>(m_context))
 {
 	set_viewport_size({1024, 1024});
 	LOG_DEBUG << "Created a new RT renderer instance!";
@@ -73,7 +74,10 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 void rt_renderer::update()
 {
 	if (m_active)
-		m_job->update();
+	{
+		if (m_context->bvh_modified)
+			m_job->start(m_camera, m_viewport);
+	}
 }
 
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
@@ -110,8 +114,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	if (!m_active && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job = std::make_shared<bu::rt_renderer_job>(m_context, m_camera, m_viewport);
-		m_job->start();
+		m_job->start(m_camera, m_viewport);
 		m_active = true;
 	}
 
@@ -154,7 +157,8 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		// Discard old PBO contents and buffer new data
 		{
 		ZoneScopedN("PBO upload")
-		const auto &image_data = m_job->get_image().data;
+		std::lock_guard lock{m_job->m_image_mutex};
+		const auto &image_data = m_job->m_image->data;
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);

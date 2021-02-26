@@ -31,6 +31,7 @@ struct rt_context
 
 	// BVH
 	std::unique_ptr<bu::rt::bvh_builder> bvh_builder;
+	bool bvh_modified;
 };
 
 /**
@@ -69,7 +70,7 @@ private:
 	bool m_active = false;
 
 	// Current job
-	std::shared_ptr<rt_renderer_job> m_job;
+	std::unique_ptr<rt_renderer_job> m_job;
 };
 
 }
