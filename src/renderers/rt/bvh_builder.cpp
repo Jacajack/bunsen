@@ -1,6 +1,8 @@
 #include "bvh_builder.hpp"
 #include <algorithm>
+#include <future>
 #include <tracy/Tracy.hpp>
+#include "aabb.hpp"
 #include "../../log.hpp"
 
 using bu::rt::bvh_builder_mesh;
@@ -120,6 +122,15 @@ bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
 	return changed;
 }
 
+void bvh_builder_node::dissolve_meshes()
+{
+	ZoneScopedN("Dissolve meshes in BVH node");
+
+	for (auto &mesh : meshes)
+		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
+	meshes.clear();
+}
+
 bool bvh_builder::update_from_scene(const bu::scene &scene)
 {
 	ZoneScopedN("BVH update from scene");
@@ -163,11 +174,315 @@ bool bvh_builder::update_from_scene(const bu::scene &scene)
 	return m_scene_changed = change;
 }
 
+struct thing
+{
+	glm::vec3 pos;
+	bu::rt::aabb box;
+	unsigned int id;
+};
+
+static bool find_best_split_sah(
+	std::vector<thing> &input, 
+	std::vector<unsigned int> &left, 
+	std::vector<unsigned int> &right,
+	float cost_intersect = 1,
+	float cost_traversal = 6)
+{
+	ZoneScopedN("Partition BVH");
+
+	auto sort_in_axis = [&](std::vector<thing> &input, float glm::vec3::* axis)
+	{
+		// LOG_DEBUG << "sorting...";
+		ZoneScopedN("Sorting AABB");
+		std::sort(input.begin(), input.end(), [axis](auto &a, auto &b)
+		{
+			return a.pos.*axis < b.pos.*axis;
+		});
+	};
+
+	auto find_best_split = [&](const std::vector<thing> &input, float &cost, int &index)
+	{
+		// LOG_DEBUG << "finding best split...";
+		ZoneScopedN("Find split");
+
+		bu::rt::aabb_collection l, r;
+		index = -1;
+
+		if (input.empty()) return;
+
+		for (auto i = 0u; i < input.size(); i++)
+			r.add(input[i].box);
+
+		// "Leave as is cost" - number of primitives times intersection cost
+		float sp = r.get_aabb().get_area();
+		cost = cost_intersect * r.size();
+
+		for (auto i = 0u; i < input.size() - 1; i++)
+		{
+			l.add(input[i].box);
+			r.remove(input[i].box);
+
+			float sl = l.get_aabb().get_area();
+			float sr = r.get_aabb().get_area();
+			float c = cost_traversal + cost_intersect / sp * (sl * l.size() + sr * r.size());
+
+			// LOG_DEBUG << "split " << i << " sl=" << sl << " sr=" << sr << " c=" << c << " best=" << cost;
+
+			if (c < cost)
+			{
+				cost = c;
+				index = i;
+			}
+		}
+
+	};
+
+	auto buf_x = input;
+	auto buf_y = input;
+	auto buf_z = input;
+
+	float cx, cy, cz;
+	int ix, iy, iz;
+	float glm::vec3::* best_axis;
+	float best_cost;
+	int best_index;
+	std::vector<thing> *best_buf;
+	sort_in_axis(buf_x, &glm::vec3::x);
+	find_best_split(buf_x, cx, ix);
+	sort_in_axis(buf_y, &glm::vec3::y);
+	find_best_split(buf_y, cy, iy);
+	sort_in_axis(buf_z, &glm::vec3::z);
+	find_best_split(buf_z, cz, iz);
+
+	if (cx < cy && cx < cz)
+	{
+		best_axis = &glm::vec3::x;
+		best_cost = cx;
+		best_index = ix;
+		best_buf = &buf_x;
+	}
+	else if (cy < cx && cy < cz)
+	{
+		best_axis = &glm::vec3::y;
+		best_cost = cy;
+		best_index = iy;
+		best_buf = &buf_y;
+	}
+	else
+	{
+		best_axis = &glm::vec3::z;
+		best_cost = cz;
+		best_index = iz;
+		best_buf = &buf_z;
+	}
+
+	// LOG_DEBUG << "best index is " << best_index;
+	if (best_index < 0) return false;
+
+	for (auto i = 0u; i < best_buf->size(); i++)
+	{
+		if (i <= best_index)
+			left.push_back((*best_buf)[i].id);
+		else
+			right.push_back((*best_buf)[i].id);
+	}
+
+	return true;
+}
+
+bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
+{
+	if (!node) return false;
+	// LOG_DEBUG << "Processing BVH node...";
+
+	// Check if meshes should be dissolved
+	if (!node->meshes.empty())
+	{
+		bu::rt::aabb_collection col;
+		float total_surf = 0;
+
+		for (auto &mesh : node->meshes)
+		{
+				col.add(mesh->aabb);
+				total_surf = mesh->aabb.get_area();
+		}
+		
+		if (col.get_aabb().get_area() <= total_surf || node->meshes.size() == 1) 
+			node->dissolve_meshes();
+	}
+
+	if (!node->triangles.empty() && !node->meshes.empty()) 
+	{
+		LOG_ERROR << "BVH node with both meshes and triangles!";
+		throw std::runtime_error("BVH node with both meshes and triangles encountered!");
+	}
+	else if (!node->triangles.empty()) // Has triangles
+	{
+		// LOG_DEBUG << "a triangle node...";
+
+		std::vector<thing> contents(node->triangles.size());
+		for (auto i = 0u; i < node->triangles.size(); i++)
+		{
+			auto box = bu::rt::triangle_aabb(node->triangles[i]);
+			contents[i] = thing{box.get_center(), box, i};
+			
+			if (i == 0)
+				node->aabb = box;
+			else
+				node->aabb.add_aabb(box);
+		}
+
+		std::vector<unsigned int> l, r;
+		bool should_split = find_best_split_sah(contents, l, r);
+
+
+		if (should_split)
+		{
+			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " triangles";
+
+			node->left = std::make_unique<bu::rt::bvh_builder_node>();
+			node->right = std::make_unique<bu::rt::bvh_builder_node>();
+
+			for (auto id : l)
+				node->left->triangles.emplace_back(std::move(node->triangles[id]));
+			
+			for (auto id : r)
+				node->right->triangles.emplace_back(std::move(node->triangles[id]));
+
+			node->triangles.clear();
+		}
+	}
+	else // Has meshes
+	{
+		// LOG_DEBUG << "a mesh node...";
+
+		std::vector<thing> contents(node->meshes.size());
+		for (auto i = 0u; i < node->meshes.size(); i++)
+		{
+			auto box = node->meshes[i]->aabb;
+			contents[i] = thing{box.get_center(), box, i};
+			
+			if (i == 0)
+				node->aabb = node->meshes[i]->aabb;
+			else
+				node->aabb.add_aabb(node->meshes[i]->aabb);
+		}
+
+		std::vector<unsigned int> l, r;
+		bool should_split = find_best_split_sah(contents, l, r);
+
+	
+		if (should_split)
+		{
+			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " meshes";
+			node->left = std::make_unique<bu::rt::bvh_builder_node>();
+			node->right = std::make_unique<bu::rt::bvh_builder_node>();
+
+			for (auto id : l)
+				node->left->meshes.emplace_back(std::move(node->meshes[id]));
+			
+			for (auto id : r)
+				node->right->meshes.emplace_back(std::move(node->meshes[id]));
+
+			node->meshes.clear();
+		}
+
+		// If no split, dissolve meshes and try this node again
+		if (!should_split)
+		{
+			node->dissolve_meshes();
+			return process_bvh_node(node, depth);
+		}
+	}
+
+	
+	if (depth < 4)
+	{
+		auto async_policy = std::launch::deferred;
+		async_policy = std::launch::async;
+
+		std::future<bool> lfut, rfut;
+		if (node->left) lfut = std::async(async_policy, process_bvh_node, node->left.get(), depth + 1);
+		if (node->right) rfut = std::async(async_policy, process_bvh_node, node->right.get(), depth + 1);
+		lfut.wait();
+		rfut.wait();
+	}
+	else
+	{
+		if (node->left) process_bvh_node(node->left.get(), depth + 1);
+		if (node->right) process_bvh_node(node->right.get(), depth + 1);
+	}
+
+	// if (node->left) process_bvh_node(node->left.get());
+	// if (node->right) process_bvh_node(node->right.get());
+
+	return true;
+}
+
+void bu::rt::bvh_builder::build_tree()
+{
+	// New root node
+	m_root_node = std::make_unique<bvh_builder_node>();
+
+	// Put all meshes in it
+	for (const auto &[id, mesh] : m_meshes)
+		m_root_node->meshes.push_back(mesh);
+
+	// auto fut = std::async(process_bvh_node, m_root_node.get());
+	// fut.wait();
+	process_bvh_node(m_root_node.get());
+	LOG_DEBUG << "gowno";
+
+	// std::mutex stack_mutex;
+	// std::stack<bu::rt::bvh_builder_node*> node_stack;
+	// node_stack.push(m_root_node.get());
+	
+	// while (!node_stack.empty())
+	// {
+	// 	auto node = node_stack.top();
+	// 	node_stack.pop();
+
+
+	// 	if (!node) continue;
+
+		
+
+	// 	node_stack.push(node->left.get());
+	// 	node_stack.push(node->right.get());
+	// }
+}
+
 std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_mesh_aabbs() const
 {
 	std::vector<aabb> aabbs;
 	aabbs.reserve(m_meshes.size());
 	for (const auto &[id, mesh] : m_meshes)
 		aabbs.push_back(mesh->aabb);
+	return aabbs;
+}
+
+std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_tree_aabbs() const
+{
+	std::vector<aabb> aabbs;
+
+	std::stack<bu::rt::bvh_builder_node*> node_stack;
+	node_stack.push(m_root_node.get());
+	while (!node_stack.empty())
+	{
+		auto node = node_stack.top();
+		node_stack.pop();
+
+		if (!node) continue;
+
+		if (node->meshes.size() && node->triangles.size())
+			LOG_ERROR << "oh fuck";
+
+		aabbs.push_back(node->aabb);
+		node_stack.push(node->left.get());
+		node_stack.push(node->right.get());
+	}
+
+	// LOG_DEBUG << "have " << aabbs.size() << " boxes";
+
 	return aabbs;
 }

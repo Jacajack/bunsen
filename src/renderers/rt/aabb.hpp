@@ -16,6 +16,7 @@ struct aabb
 	inline bool test_ray(const rt::ray &r, float &t) const;
 	inline bool check_overlap(const aabb &aabb) const;
 	inline glm::vec3 get_dimensions() const;
+	inline glm::vec3 get_center() const;
 	inline float get_area() const;
 };
 
@@ -29,6 +30,22 @@ void aabb::add_aabb(const aabb &box)
 {
 	min = glm::min(min, box.min);
 	max = glm::max(max, box.max);
+}
+
+glm::vec3 aabb::get_dimensions() const
+{
+	return max - min;
+}
+
+glm::vec3 aabb::get_center() const
+{
+	return glm::vec3{max + min} * 0.5f;
+}
+
+float aabb::get_area() const
+{
+	auto d = get_dimensions();
+	return (d.x * d.y + d.x * d.z + d.y * d.z) * 2.f;
 }
 
 struct aabb_collection
@@ -70,6 +87,11 @@ struct aabb_collection
 	aabb get_aabb() const
 	{
 		return {get_min(), get_max()};
+	}
+
+	unsigned int size() const
+	{
+		return x.size();
 	}
 };
 

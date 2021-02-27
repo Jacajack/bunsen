@@ -36,7 +36,7 @@ struct bvh_builder_node
 	
 	rt::aabb aabb;
 	std::unique_ptr<bvh_builder_node> left, right;
-	std::vector<std::weak_ptr<bvh_builder_mesh>> meshes;
+	std::vector<std::shared_ptr<bvh_builder_mesh>> meshes;
 	std::vector<rt::triangle> triangles;
 };
 
@@ -49,6 +49,7 @@ public:
 
 	// Debug
 	std::vector<rt::aabb> get_mesh_aabbs() const;
+	std::vector<rt::aabb> get_tree_aabbs() const;
 
 private:
 	std::map<std::uint64_t, std::shared_ptr<bvh_builder_mesh>> m_meshes;

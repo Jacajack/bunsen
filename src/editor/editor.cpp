@@ -313,7 +313,11 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 
 	// TEMP update BVH
 	if (!scene->transform_pending)
+	{
 		rt_ctx->bvh_modified = rt_ctx->bvh_builder->update_from_scene(*scene);
+		if (rt_ctx->bvh_modified)
+			rt_ctx->bvh_builder->build_tree();
+	}
 	else 
 		rt_ctx->bvh_modified = false;
 }

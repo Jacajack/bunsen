@@ -130,7 +130,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glm::vec3 line_color{1, 1, 0};
 
 		std::vector<glm::vec3> aabb_data;
-		auto aabbs = m_context->bvh_builder->get_mesh_aabbs();
+		auto aabbs = m_context->bvh_builder->get_tree_aabbs();
 		for (auto &box : aabbs)
 		{
 			aabb_data.push_back(box.min);
