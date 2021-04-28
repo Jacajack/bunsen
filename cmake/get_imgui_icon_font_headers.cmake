@@ -2,6 +2,7 @@ include(FetchContent)
 
 FetchContent_Populate(imgui_icon_font_headers
 	GIT_REPOSITORY "https://github.com/juliettef/IconFontCppHeaders.git"
+	GIT_TAG      "origin/main"
 	SOURCE_DIR   "${CMAKE_CURRENT_BINARY_DIR}/imgui_icon_font_headers/imgui_icon_font_headers"
 	BINARY_DIR   "${CMAKE_CURRENT_BINARY_DIR}/imgui_icon_font_headers/bin"
 	SUBBUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/imgui_icon_font_headers/subbuild"
