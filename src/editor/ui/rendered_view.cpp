@@ -224,7 +224,8 @@ void rendered_view_window::draw()
 
 		if (hovered && trap_mouse)
 			lock_mouse();
-		else
+		
+		if (!trap_mouse)
 			release_mouse();
 
 		if (hovered && can_lock_mouse())
