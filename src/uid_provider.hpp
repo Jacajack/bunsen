@@ -10,7 +10,7 @@ public:
 	using id_type = std::uint64_t;
 
 	uid_provider() : 
-		m_uid(m_counter ++ )
+		m_uid(m_counter++)
 	{
 	}
 
