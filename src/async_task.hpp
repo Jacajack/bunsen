@@ -12,22 +12,31 @@ class async_task_cleaner;
 class async_stop_flag
 {
 public:
+	async_stop_flag() = default;
+	async_stop_flag(async_stop_flag &&src) = default;
+	async_stop_flag &operator=(async_stop_flag &&) = default;
+
 	bool should_stop() const
 	{
-		return *m_flag_ptr;
+		return !m_active;
+	}
+
+	bool active() const
+	{
+		return m_active;
 	}
 
 	void request_stop()
 	{
-		*m_flag_ptr = false;
+		m_active = false;
 	}
 
 protected:
-	std::unique_ptr<std::atomic<bool>> m_flag_ptr = std::make_unique<std::atomic<bool>>(true);
+	std::atomic<bool> m_active = true;
 };
 
 template <typename T>
-class async_task : public std::future<T>, public async_stop_flag
+class async_task : public std::future<T>
 {
 	template <typename Tpolicy, typename F, typename... Args>
 	friend auto make_async_task(Tpolicy policy, F &&f, Args&&... args);
@@ -38,10 +47,10 @@ class async_task : public std::future<T>, public async_stop_flag
 public:
 	async_task() = default;
 	async_task(const async_task &src) = delete;
-	async_task(async_task &&src) = default;
+	async_task(async_task &&src) noexcept = default;
 
 	async_task &operator=(const async_task &) = delete;
-	async_task &operator=(async_task &&rhs) = default;
+	async_task &operator=(async_task &&rhs) noexcept = default;
 
 	~async_task()
 	{
@@ -68,6 +77,12 @@ public:
 		m_flag_ptr.reset();
 	}
 
+	void request_stop()
+	{
+		if (m_flag_ptr)
+			m_flag_ptr->request_stop();
+	}
+
 	bool is_ready() const
 	{
 		if (this->valid())
@@ -89,6 +104,7 @@ private:
 	}
 
 	async_task_cleaner *m_cleaner = nullptr;
+	std::unique_ptr<bu::async_stop_flag> m_flag_ptr = std::make_unique<bu::async_stop_flag>();
 };
 
 template <typename Tpolicy, typename F, typename... Args>
@@ -96,7 +112,7 @@ auto make_async_task(Tpolicy policy, F &&f, Args&&... args)
 {
 	static_assert(std::is_invocable_v<F, const async_stop_flag*, Args...>, "Invalid arguments");
 	async_task<std::invoke_result_t<std::decay_t<F>, const async_stop_flag*, std::decay_t<Args>...>> t;
-	t = std::async(policy, f, &t, args...);
+	t = std::async(policy, f, t.m_flag_ptr.get(), args...);
 	return t;
 }
 
