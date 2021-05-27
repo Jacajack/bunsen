@@ -14,7 +14,7 @@ static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(
 	rt_context *ctx)
 {
 	auto cache_ptr = ctx->bvh_cache;
-	return std::make_unique<bu::rt::bvh_draft>(cache_ptr->build_draft());
+	return std::make_unique<bu::rt::bvh_draft>(cache_ptr->build_draft(*flag));
 }
 
 static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(

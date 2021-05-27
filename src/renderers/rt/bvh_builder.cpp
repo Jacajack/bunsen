@@ -4,6 +4,7 @@
 #include <tracy/Tracy.hpp>
 #include "aabb.hpp"
 #include "../../log.hpp"
+#include "../../async_task.hpp"
 
 using bu::rt::bvh_cache_mesh;
 using bu::rt::bvh_cache;
@@ -191,11 +192,6 @@ bool bvh_cache::update_from_scene(const bu::scene &scene)
 	return change;
 }
 
-bvh_draft bvh_cache::build_draft() const
-{
-	return bvh_draft(*this);
-}
-
 /**
 	\brief A 'box' used in the partitioning process
 */
@@ -207,6 +203,7 @@ struct bvh_box
 };
 
 static bool partition_boxes_sah(
+	const bu::async_stop_flag &stop_flag,
 	std::vector<bvh_box> &input, 
 	std::vector<unsigned int> &left, 
 	std::vector<unsigned int> &right,
@@ -242,7 +239,7 @@ static bool partition_boxes_sah(
 		float sp = r.get_aabb().get_area();
 		cost = cost_intersect * r.size();
 
-		for (auto i = 0u; i < input.size() - 1; i++)
+		for (auto i = 0u; i < input.size() - 1 && !stop_flag.should_stop(); i++)
 		{
 			l.add(input[i].box);
 			r.remove(input[i].box);
@@ -272,12 +269,19 @@ static bool partition_boxes_sah(
 	float best_cost;
 	int best_index;
 	std::vector<bvh_box> *best_buf;
+
 	sort_in_axis(buf_x, &glm::vec3::x);
+	if (stop_flag.should_stop()) return false;
 	find_best_split(buf_x, cx, ix);
+	if (stop_flag.should_stop()) return false;
 	sort_in_axis(buf_y, &glm::vec3::y);
+	if (stop_flag.should_stop()) return false;
 	find_best_split(buf_y, cy, iy);
+	if (stop_flag.should_stop()) return false;
 	sort_in_axis(buf_z, &glm::vec3::z);
+	if (stop_flag.should_stop()) return false;
 	find_best_split(buf_z, cz, iz);
+	if (stop_flag.should_stop()) return false;
 
 	if (cx < cy && cx < cz)
 	{
@@ -304,7 +308,7 @@ static bool partition_boxes_sah(
 	// LOG_DEBUG << "best index is " << best_index;
 	if (best_index < 0) return false;
 
-	for (int i = 0; i < static_cast<int>(best_buf->size()); i++)
+	for (int i = 0; i < static_cast<int>(best_buf->size()) && !stop_flag.should_stop(); i++)
 	{
 		if (i <= best_index)
 			left.push_back((*best_buf)[i].id);
@@ -312,7 +316,7 @@ static bool partition_boxes_sah(
 			right.push_back((*best_buf)[i].id);
 	}
 
-	return true;
+	return !stop_flag.should_stop();
 }
 
 /**
@@ -323,7 +327,7 @@ static bool partition_boxes_sah(
 
 	Nodes containing triangles are recursively partitioned too.
 */
-bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
+bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node, int depth = 0)
 {
 	if (!node) return false;
 	// LOG_DEBUG << "Processing BVH node...";
@@ -367,7 +371,7 @@ bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = partition_boxes_sah(contents, l, r);
+		bool should_split = partition_boxes_sah(*stop_flag, contents, l, r);
 
 		if (should_split)
 		{
@@ -402,7 +406,7 @@ bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = partition_boxes_sah(contents, l, r);
+		bool should_split = partition_boxes_sah(*stop_flag, contents, l, r);
 
 		if (should_split)
 		{
@@ -423,32 +427,35 @@ bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 		if (!should_split)
 		{
 			node->dissolve_meshes();
-			return process_bvh_node(node, depth);
+			return !stop_flag->should_stop() && process_bvh_node(stop_flag, node, depth);
 		}
 	}
 	else // Empty node
 	{
-		return true;
+		return false;
 	}
+
+	// Bail out if requested
+	if (stop_flag->should_stop())
+		return false;
 
 	/*
 		Partition recursively and asynchronously on the first 4 levels.
 	*/
 	if (depth < 4)
 	{
-		auto async_policy = std::launch::deferred;
-		async_policy = std::launch::async;
+		auto async_policy = std::launch::async;
 
 		std::future<bool> lfut, rfut;
-		if (node->left) lfut = std::async(async_policy, process_bvh_node, node->left.get(), depth + 1);
-		if (node->right) rfut = std::async(async_policy, process_bvh_node, node->right.get(), depth + 1);
-		lfut.wait();
-		rfut.wait();
+		if (node->left) lfut = std::async(async_policy, process_bvh_node, stop_flag, node->left.get(), depth + 1);
+		if (node->right) rfut = std::async(async_policy, process_bvh_node, stop_flag, node->right.get(), depth + 1);
+		if (node->left) lfut.wait();
+		if (node->right) rfut.wait();
 	}
 	else
 	{
-		if (node->left) process_bvh_node(node->left.get(), depth + 1);
-		if (node->right) process_bvh_node(node->right.get(), depth + 1);
+		if (node->left) process_bvh_node(stop_flag, node->left.get(), depth + 1);
+		if (node->right) process_bvh_node(stop_flag, node->right.get(), depth + 1);
 	}
 
 	return true;
@@ -463,13 +470,15 @@ std::vector<bu::rt::aabb> bu::rt::bvh_cache::get_mesh_aabbs() const
 	return aabbs;
 }
 
-bu::rt::bvh_draft::bvh_draft(const bu::rt::bvh_cache &cache) : 
-	m_root_node(std::make_unique<bvh_draft_node>())
+bvh_draft bvh_cache::build_draft(const bu::async_stop_flag &stop_flag) const
 {
+	bvh_draft draft{};
+
 	// Put all meshes in the root node and process it
-	for (const auto &[id, mesh] : cache.get_meshes())
-		m_root_node->meshes.push_back(mesh);
-	process_bvh_node(m_root_node.get());
+	for (const auto &[id, mesh] : m_meshes)
+		draft.m_root_node->meshes.push_back(mesh);
+	process_bvh_node(&stop_flag, draft.m_root_node.get());
+	return draft;
 }
 
 std::vector<bu::rt::aabb> bu::rt::bvh_draft::get_tree_aabbs() const

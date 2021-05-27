@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <vector>
+#include "../../async_task.hpp"
 #include "../../scene.hpp"
 #include "bvh.hpp"
 
@@ -35,7 +36,7 @@ class bvh_cache
 {
 public:
 	bool update_from_scene(const bu::scene &scene);
-	bvh_draft build_draft() const;
+	bvh_draft build_draft(const async_stop_flag &stop_flag) const;
 
 	const auto &get_meshes() const
 	{
@@ -72,8 +73,8 @@ public:
 	std::vector<rt::aabb> get_tree_aabbs() const;
 
 private:
-	bvh_draft(const bvh_cache &cache);
-	std::unique_ptr<bvh_draft_node> m_root_node;
+	bvh_draft() = default;
+	std::unique_ptr<bvh_draft_node> m_root_node = std::make_unique<bu::rt::bvh_draft_node>();
 };
 
 
