@@ -25,7 +25,7 @@ struct model
 	std::vector<mesh_material_pair> meshes;
 	std::vector<std::shared_ptr<bu::material_data>> materials;
 
-	int get_mesh_count() const
+	unsigned int get_mesh_count() const
 	{
 		return meshes.size();
 	}
