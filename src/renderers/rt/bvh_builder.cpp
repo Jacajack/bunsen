@@ -381,7 +381,7 @@ bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 			node->triangles.clear();
 		}
 	}
-	else // Has meshes - try to partition them
+	else if (!node->meshes.empty()) // Has meshes - try to partition them
 	{
 		// LOG_DEBUG << "a mesh node...";
 
@@ -421,6 +421,10 @@ bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 			node->dissolve_meshes();
 			return process_bvh_node(node, depth);
 		}
+	}
+	else // Empty node
+	{
+		return true;
 	}
 
 	/*
