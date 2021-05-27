@@ -171,7 +171,6 @@ bool bvh_cache::update_from_scene(const bu::scene &scene)
 				ptr = std::make_shared<bvh_cache_mesh>();
 				LOG_DEBUG << "Adding a new mesh to BVH";
 			}
-			LOG_DEBUG << "model_node = " << model_node;
 			change |= ptr->update_from_model_node(*model_node);
 			ptr->visited = true;
 		}
