@@ -98,6 +98,9 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 		if (!node_ptr->is_visible()) continue;
 
 		bool is_selected = scene.selection.contains(node_ptr->shared_from_this());
+		for (const auto &sn : scene.selection.get_nodes())
+			is_selected |= sn->is_ancestor_of(node_ptr->shared_from_this());
+	
 		glm::mat4 transform = it.get_transform();
 
 		// Model nodes
