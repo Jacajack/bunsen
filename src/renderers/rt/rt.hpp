@@ -3,7 +3,7 @@
 #include <atomic>
 #include <vector>
 #include <chrono>
-#include <future>
+#include "../../async_task.hpp"
 #include "../../gl/shader.hpp"
 #include "../../scene.hpp"
 #include "../../camera.hpp"
@@ -35,8 +35,8 @@ struct rt_context
 	std::shared_ptr<bu::rt::bvh_draft> bvh_draft;
 	std::unique_ptr<bu::rt::bvh_tree> bvh;
 
-	std::optional<std::future<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
-	std::optional<std::future<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;
+	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
+	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;
 
 	void update_bvh(const bu::scene &scene, bool rebuild);
 };

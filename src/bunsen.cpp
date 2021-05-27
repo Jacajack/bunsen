@@ -96,6 +96,24 @@ void main_loop(bu::bunsen &main_state)
 	}
 }
 
+static void task_cleaner_thread(std::atomic<bool> *active)
+{
+	using namespace std::chrono_literals;
+
+	while (*active)
+	{
+		while (!bu::global_task_cleaner.empty())
+			bu::global_task_cleaner.collect();
+		std::this_thread::sleep_for(100ms);
+	}
+
+	// Make sure all are cleaned
+	while (!bu::global_task_cleaner.empty())
+		bu::global_task_cleaner.collect();
+
+	LOG_DEBUG << "Task cleaner thread terminating...";
+}
+
 int main(int argc, char *argv[])
 {
 	// Main state
@@ -118,6 +136,10 @@ int main(int argc, char *argv[])
 	#if defined(DEBUG)
 	main_state.debug = true;
 	#endif
+
+	// Start task cleaner
+	std::atomic<bool> task_cleaner_active = true;
+	auto task_cleaner = std::async(std::launch::async, task_cleaner_thread, &task_cleaner_active);
 
 	// Read config
 	const char *default_config_path = "bunsen.ini";
@@ -202,7 +224,12 @@ int main(int argc, char *argv[])
 		LOG_ERROR << "Main loop threw an unrecognized exception..." << std::endl;
 	}
 
-	LOG_INFO << "Terminating...";
+	LOG_INFO << "Shutting down!";
+
+	// Shut down task cleaner
+	task_cleaner_active = false;
+	task_cleaner.wait();
+	LOG_INFO << "All tasks complete...";
 
 	// ImGui cleanup
 	ImGui_ImplOpenGL3_Shutdown();

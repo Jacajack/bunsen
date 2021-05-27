@@ -9,13 +9,17 @@ using namespace std::chrono_literals;
 using bu::rt_renderer;
 using bu::rt_context;
 
-static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(rt_context *ctx)
+static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(
+	const bu::async_stop_flag *flag,
+	rt_context *ctx)
 {
 	auto cache_ptr = ctx->bvh_cache;
 	return std::make_unique<bu::rt::bvh_draft>(cache_ptr->build_draft());
 }
 
-static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(rt_context *ctx)
+static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(
+	const bu::async_stop_flag *flag,
+	rt_context *ctx)
 {
 	auto draft_ptr = ctx->bvh_draft;
 	return nullptr;
@@ -58,7 +62,9 @@ void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
 		if (cache_modified)
 		{
 			LOG_INFO << "BVH cache modified - initiating draft build!";
-			bvh_draft_build_task = std::async(policy, build_bvh_draft, this);
+			if (bvh_draft_build_task.has_value())
+				bu::discard_task(bu::global_task_cleaner, std::move(*bvh_draft_build_task));
+			bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
 		}
 	}
 
@@ -66,7 +72,10 @@ void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
 	{
 		LOG_INFO << "BVH draft complete - initiating final BVH build";
 		bvh_draft = std::move(bvh_draft_build_task->get());
-		bvh_build_task = std::async(policy, build_bvh_tree, this);
+
+		if (bvh_build_task.has_value())
+			bu::discard_task(bu::global_task_cleaner, std::move(*bvh_build_task));
+		bvh_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_tree, this);
 		bvh_draft_build_task.reset();
 	}
 
