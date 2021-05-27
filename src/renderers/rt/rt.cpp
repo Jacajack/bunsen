@@ -73,11 +73,11 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 
 void rt_renderer::update()
 {
-	if (m_active)
-	{
-		if (m_context->bvh_modified)
-			m_job->start(m_camera, m_viewport);
-	}
+	// if (m_active)
+	// {
+	// 	if (m_context->bvh_modified)
+	// 		m_job->start(m_camera, m_viewport);
+	// }
 }
 
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)

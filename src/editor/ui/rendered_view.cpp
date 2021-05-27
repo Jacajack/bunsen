@@ -212,28 +212,43 @@ void rendered_view_window::draw()
 
 	if (m_editor.scene && content_size.x > 0 && content_size.y > 0)
 	{
-		auto pos = bu::to_vec2(ImGui::GetWindowPos());
-		auto min = pos + bu::to_vec2(ImGui::GetWindowContentRegionMin());
-		auto max = pos + bu::to_vec2(ImGui::GetWindowContentRegionMax());
-		auto click_pos = bu::to_vec2(ImGui::GetIO().MouseClickedPos[2]);
-		bool click_inside = glm::all(glm::lessThanEqual(min, click_pos)) && glm::all(glm::lessThan(click_pos, max));
 		bool hovered = ImGui::IsWindowHovered();
-		bool transform_pending = m_layout_ed.is_transform_pending();
-		bool drag_from_inside = ImGui::IsMouseDragging(2) && click_inside;
-		bool trap_mouse = transform_pending || drag_from_inside;
+		bool transform_pending = m_editor.scene->layout_ed.is_transform_pending();
 
+		// The camera drag can start when:
+		// - there are no pending transforms
+		// - the window is hovered when clicked
+		bool update_orbiter = m_camera_drag_pending;
+		if (hovered && ImGui::IsMouseClicked(2) && !transform_pending)
+			m_camera_drag_pending = true;
+		else if (m_camera_drag_pending && !ImGui::IsMouseDown(2))
+		{
+			m_camera_drag_pending = false;
+			update_orbiter = true;
+		}
+
+		// Can only trap mouse when hovered
+		bool trap_mouse = transform_pending || m_camera_drag_pending;
 		if (hovered && trap_mouse)
 			lock_mouse();
 		
 		if (!trap_mouse)
 			release_mouse();
 
-		if (hovered && can_lock_mouse())
-		{
+		// The orbiter is updated when camera drag is pending
+		// and right after it has finished
+		if (update_orbiter)
 			bu::update_camera_orbiter_from_imgui(m_orbiter, ImGui::GetIO(), glm::vec2{1440, 960}, m_mouse_offset);
-			m_layout_ed.update(m_editor.scene, m_camera, bu::to_vec2(content_size), m_mouse_offset, m_overlay);
-		}
 
+		// Update the layout editor when
+		// - mouse is not turning the camera
+		// - a transform is pending and the window has the mouse
+		// - a transform is not pending and the window is hovered and does not own the mouse
+		if (!m_camera_drag_pending 
+			&& ((transform_pending && has_mouse())
+			|| (!transform_pending && !has_mouse() && hovered)))
+			m_editor.scene->layout_ed.update(m_editor.scene, m_camera, bu::to_vec2(content_size), m_mouse_offset, m_overlay);
+		
 		m_orbiter.update_camera(m_camera);
 		m_camera.aspect = content_size.x / content_size.y;
 

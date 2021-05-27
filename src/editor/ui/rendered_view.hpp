@@ -50,10 +50,11 @@ public:
 
 protected:
 	bu::imgui_overlay m_overlay;
-	bu::layout_editor m_layout_ed;
 	bu::camera_orbiter m_orbiter;
 	bu::camera m_camera;
 	bu::bunsen_editor &m_editor;
+
+	bool m_camera_drag_pending = false;
 };
 
 }
