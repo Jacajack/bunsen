@@ -8,6 +8,9 @@ namespace bu::rt {
 
 /**
 	\brief Corresponds to one scene model node
+
+	\todo MUTEXES!!!!! - This struct can be modified by cache update and read by
+	the BVH draft builder at the same time.
 */
 struct bvh_cache_mesh
 {
@@ -57,7 +60,7 @@ struct bvh_draft_node
 	
 	rt::aabb aabb;
 	std::unique_ptr<bvh_draft_node> left, right;
-	std::vector<std::shared_ptr<bvh_cache_mesh>> meshes;
+	std::vector<std::shared_ptr<const bvh_cache_mesh>> meshes;
 	std::vector<rt::triangle> triangles;
 };
 

@@ -224,12 +224,12 @@ int main(int argc, char *argv[])
 		LOG_ERROR << "Main loop threw an unrecognized exception..." << std::endl;
 	}
 
-	LOG_INFO << "Shutting down!";
+	LOG_INFO << "Waiting for background tasks to complete...";
 
 	// Shut down task cleaner
 	task_cleaner_active = false;
 	task_cleaner.wait();
-	LOG_INFO << "All tasks complete...";
+	LOG_INFO << "Shutting down!";
 
 	// ImGui cleanup
 	ImGui_ImplOpenGL3_Shutdown();
