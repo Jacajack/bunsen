@@ -9,10 +9,23 @@ using namespace std::chrono_literals;
 using bu::rt_renderer;
 using bu::rt_context;
 
+static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(rt_context *ctx)
+{
+	auto cache_ptr = ctx->bvh_cache;
+	return std::make_unique<bu::rt::bvh_draft>(cache_ptr->build_draft());
+}
+
+static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(rt_context *ctx)
+{
+	auto draft_ptr = ctx->bvh_draft;
+	return nullptr;
+}
+
+
 rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 	draw_sampled_image(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
 	draw_aabb(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
-	bvh_builder(std::make_unique<bu::rt::bvh_builder>())
+	bvh_cache(std::make_unique<bu::rt::bvh_cache>())
 {
 	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
 	preview_context = std::move(preview_ctx);
@@ -33,6 +46,36 @@ rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 
 	// All data is read from buffer bound to binding 0
 	glVertexArrayAttribBinding(aabb_vao.id(), 0, 0);
+}
+
+void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
+{
+	const auto policy = std::launch::async;
+
+	if (rebuild)
+	{
+		bool cache_modified = bvh_cache->update_from_scene(scene);
+		if (cache_modified)
+		{
+			LOG_INFO << "BVH cache modified - initiating draft build!";
+			bvh_draft_build_task = std::async(policy, build_bvh_draft, this);
+		}
+	}
+
+	if (bvh_draft_build_task.has_value() && bu::is_future_ready(*bvh_draft_build_task))
+	{
+		LOG_INFO << "BVH draft complete - initiating final BVH build";
+		bvh_draft = std::move(bvh_draft_build_task->get());
+		bvh_build_task = std::async(policy, build_bvh_tree, this);
+		bvh_draft_build_task.reset();
+	}
+
+	if (bvh_build_task.has_value() && bu::is_future_ready(*bvh_build_task))
+	{
+		LOG_INFO << "Final BVH build finished";
+		bvh = std::move(bvh_build_task->get());
+		bvh_build_task.reset();
+	}		
 }
 
 rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
@@ -73,11 +116,6 @@ void rt_renderer::set_viewport_size(const glm::ivec2 &viewport_size)
 
 void rt_renderer::update()
 {
-	// if (m_active)
-	// {
-	// 	if (m_context->bvh_modified)
-	// 		m_job->start(m_camera, m_viewport);
-	// }
 }
 
 void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
@@ -86,7 +124,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	FrameMarkStart(tracy_frame);
 	ZoneScopedN("rt_renderer::draw()");
 
-	bool changed = false;
+	bool changed = scene.layout_ed.is_transform_pending();
 
 	// Detect viewport change
 	if (viewport_size != m_viewport)
@@ -122,15 +160,18 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	if (m_preview_active)
 	{
 		ZoneScopedN("RT preview");
-
 		m_preview_renderer->draw(scene, camera, viewport_size);
+	}
 
+	// BVH preview
+	if (m_preview_active && m_context->bvh_draft)
+	{
 		auto mat_view = camera.get_view_matrix();
 		auto mat_proj = camera.get_projection_matrix();
 		glm::vec3 line_color{1, 1, 0};
 
 		std::vector<glm::vec3> aabb_data;
-		auto aabbs = m_context->bvh_builder->get_tree_aabbs();
+		auto aabbs = m_context->bvh_draft->get_tree_aabbs();
 		for (auto &box : aabbs)
 		{
 			aabb_data.push_back(box.min);
@@ -177,10 +218,9 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
 		glUniform1i(m_context->draw_sampled_image->get_uniform_location("tex"), 0);
 		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		// glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
-
 	}
 
 	FrameMarkEnd(tracy_frame);

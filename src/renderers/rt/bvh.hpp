@@ -1,6 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
-#include "core.hpp"
+#include "ray.hpp"
 #include "aabb.hpp"
 
 namespace bu::rt {
@@ -19,7 +19,7 @@ struct bvh_node
 struct bvh_tree
 {
 	bvh_tree(unsigned int nodes, unsigned int tris);
-	~bvh_tree();
+	~bvh_tree() = default;
 
 	triangle *triangles;
 	bvh_node *nodes;
@@ -28,6 +28,5 @@ struct bvh_tree
 
 	bool test_ray(const rt::ray &r, rt::ray_hit &hit) const;
 };
-
 
 }

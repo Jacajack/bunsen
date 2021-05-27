@@ -304,6 +304,7 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 	}
 
 	// Draw all open windows
+	
 	{
 	ZoneScopedNC("UI windows", 0xff8888ff)
 	windows.erase(std::remove_if(windows.begin(), windows.end(), [](auto &w){return !w->is_open();}), windows.end());
@@ -312,12 +313,9 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 	}
 
 	// TEMP update BVH
-	// if (!scene->transform_pending)
-	// {
-	// 	rt_ctx->bvh_modified = rt_ctx->bvh_builder->update_from_scene(*scene);
-	// 	if (rt_ctx->bvh_modified)
-	// 		rt_ctx->bvh_builder->build_tree();
-	// }
-	// else 
-	// 	rt_ctx->bvh_modified = false;
+	static bool tmp = 1;
+	bool tp = scene->layout_ed.is_transform_pending();
+	rt_ctx->update_bvh(*scene, tmp != tp && !tp);
+	tmp = tp;
+
 }

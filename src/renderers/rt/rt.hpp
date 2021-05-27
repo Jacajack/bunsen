@@ -3,6 +3,7 @@
 #include <atomic>
 #include <vector>
 #include <chrono>
+#include <future>
 #include "../../gl/shader.hpp"
 #include "../../scene.hpp"
 #include "../../camera.hpp"
@@ -30,8 +31,14 @@ struct rt_context
 	bu::gl_vertex_array aabb_vao;
 
 	// BVH
-	std::unique_ptr<bu::rt::bvh_builder> bvh_builder;
-	bool bvh_modified;
+	std::shared_ptr<bu::rt::bvh_cache> bvh_cache;
+	std::shared_ptr<bu::rt::bvh_draft> bvh_draft;
+	std::unique_ptr<bu::rt::bvh_tree> bvh;
+
+	std::optional<std::future<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
+	std::optional<std::future<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;
+
+	void update_bvh(const bu::scene &scene, bool rebuild);
 };
 
 /**

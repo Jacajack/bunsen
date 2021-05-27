@@ -35,7 +35,7 @@ struct layout_editor
 	void start(std::shared_ptr<bu::scene> scene, const glm::vec2 &mouse_offset, action_state new_action);
 	void apply();
 	void abort();
-	bool is_transform_pending();
+	bool is_transform_pending() const;
 
 	action_state state = action_state::IDLE;
 	std::shared_ptr<bu::scene> scene_ptr;

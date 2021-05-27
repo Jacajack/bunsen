@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include "minmax_tracker.hpp"
-#include "core.hpp"
+#include "ray.hpp"
 
 namespace bu::rt {
 

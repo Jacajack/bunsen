@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <future>
 #include <glm/glm.hpp>
 #include <imgui.h>
 
@@ -23,6 +24,12 @@ inline glm::vec2 to_vec2(const ImVec2 &v)
 inline glm::vec4 to_vec4(const ImVec4 &v)
 {
 	return {v.x, v.y, v.z, v.w};
+}
+
+template <typename T>
+inline bool is_future_ready(const std::future<T> &f)
+{
+	return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 }
 
 }

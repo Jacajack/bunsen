@@ -327,7 +327,7 @@ void layout_editor::abort()
 	scene_ptr.reset();
 }
 
-bool layout_editor::is_transform_pending()
+bool layout_editor::is_transform_pending() const
 {
 	return state != action_state::IDLE;
 }

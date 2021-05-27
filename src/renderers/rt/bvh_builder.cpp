@@ -5,9 +5,10 @@
 #include "aabb.hpp"
 #include "../../log.hpp"
 
-using bu::rt::bvh_builder_mesh;
-using bu::rt::bvh_builder_node;
-using bu::rt::bvh_builder;
+using bu::rt::bvh_cache_mesh;
+using bu::rt::bvh_cache;
+using bu::rt::bvh_draft_node;
+using bu::rt::bvh_draft;
 
 /**
 	\todo materials
@@ -45,7 +46,7 @@ std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm:
 /**
 	\returns true if the mesh has been updated
 */
-bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
+bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 {
 	ZoneScopedN("Update BVH mesh from node");
 
@@ -66,12 +67,20 @@ bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
 	if (meshes.size() != model.get_mesh_count())
 	{
 		meshes_changed = true;
-		LOG_DEBUG << "BVH mesh change - different mesh number";
+		LOG_DEBUG << "BVH mesh change - different mesh count";
 	}
 	else
 	{
+		// Compare mesh IDs and not pointers for safety
+		auto cmp_mesh_ptr = [](std::shared_ptr<bu::mesh> a, std::shared_ptr<bu::mesh> b)
+		{
+			if (!a) return true;
+			else if (!b) return false;
+			else return a->uid() < b->uid();
+		};
+
 		// Detect any missing meshes
-		std::set<std::shared_ptr<bu::mesh>> our_meshes;
+		std::set<std::shared_ptr<bu::mesh>, decltype(cmp_mesh_ptr)> our_meshes(cmp_mesh_ptr);
 		for (auto i = 0u; i < meshes.size(); i++)
 		{
 			auto ptr = meshes[i].lock();
@@ -86,7 +95,7 @@ bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
 		}
 
 		// Check if the scene node contains the same meshes
-		for (int i = 0; i < model.get_mesh_count(); i++)
+		for (auto i = 0u; i < model.get_mesh_count(); i++)
 		{
 			auto mesh_ptr = model.get_mesh(i);
 			auto it = our_meshes.find(mesh_ptr);
@@ -108,7 +117,7 @@ bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
 		transform = node.get_final_transform();
 		meshes.clear();
 		triangles.clear();
-		for (int i = 0; i < model.get_mesh_count(); i++)
+		for (auto i = 0u; i < model.get_mesh_count(); i++)
 		{
 			auto mesh_ptr = model.get_mesh(i);
 			meshes.push_back(mesh_ptr);
@@ -122,7 +131,7 @@ bool bvh_builder_mesh::update_from_model_node(const bu::model_node &node)
 	return changed;
 }
 
-void bvh_builder_node::dissolve_meshes()
+void bvh_draft_node::dissolve_meshes()
 {
 	ZoneScopedN("Dissolve meshes in BVH node");
 
@@ -131,13 +140,17 @@ void bvh_builder_node::dissolve_meshes()
 	meshes.clear();
 }
 
-bool bvh_builder::update_from_scene(const bu::scene &scene)
+/**
+	\brief Updates all cached models and their positions based on the scene, but does
+	not rebuild the BVH
+*/
+bool bvh_cache::update_from_scene(const bu::scene &scene)
 {
 	ZoneScopedN("BVH update from scene");
 
 	bool change = false;
 
-	// Clear 'visited' flag
+	// Clear 'visited' flag for all meshes
 	for (auto &p : m_meshes)
 		p.second->visited = false;
 
@@ -151,7 +164,7 @@ bool bvh_builder::update_from_scene(const bu::scene &scene)
 			auto &ptr = m_meshes[node.uid()];
 			if (!ptr)
 			{
-				ptr = std::make_shared<bvh_builder_mesh>();
+				ptr = std::make_shared<bvh_cache_mesh>();
 				LOG_DEBUG << "Adding a new mesh to BVH";
 			}
 			change |= ptr->update_from_model_node(*model_node);
@@ -171,18 +184,26 @@ bool bvh_builder::update_from_scene(const bu::scene &scene)
 			++it;
 	}
 
-	return m_scene_changed = change;
+	return change;
 }
 
-struct thing
+bvh_draft bvh_cache::build_draft() const
+{
+	return bvh_draft(*this);
+}
+
+/**
+	\brief A 'box' used in the partitioning process
+*/
+struct bvh_box
 {
 	glm::vec3 pos;
 	bu::rt::aabb box;
 	unsigned int id;
 };
 
-static bool find_best_split_sah(
-	std::vector<thing> &input, 
+static bool partition_boxes_sah(
+	std::vector<bvh_box> &input, 
 	std::vector<unsigned int> &left, 
 	std::vector<unsigned int> &right,
 	float cost_intersect = 1,
@@ -190,7 +211,7 @@ static bool find_best_split_sah(
 {
 	ZoneScopedN("Partition BVH");
 
-	auto sort_in_axis = [&](std::vector<thing> &input, float glm::vec3::* axis)
+	auto sort_in_axis = [&](std::vector<bvh_box> &input, float glm::vec3::* axis)
 	{
 		// LOG_DEBUG << "sorting...";
 		ZoneScopedN("Sorting AABB");
@@ -200,7 +221,7 @@ static bool find_best_split_sah(
 		});
 	};
 
-	auto find_best_split = [&](const std::vector<thing> &input, float &cost, int &index)
+	auto find_best_split = [&](const std::vector<bvh_box> &input, float &cost, int &index)
 	{
 		// LOG_DEBUG << "finding best split...";
 		ZoneScopedN("Find split");
@@ -246,7 +267,7 @@ static bool find_best_split_sah(
 	float glm::vec3::* best_axis;
 	float best_cost;
 	int best_index;
-	std::vector<thing> *best_buf;
+	std::vector<bvh_box> *best_buf;
 	sort_in_axis(buf_x, &glm::vec3::x);
 	find_best_split(buf_x, cx, ix);
 	sort_in_axis(buf_y, &glm::vec3::y);
@@ -279,7 +300,7 @@ static bool find_best_split_sah(
 	// LOG_DEBUG << "best index is " << best_index;
 	if (best_index < 0) return false;
 
-	for (auto i = 0u; i < best_buf->size(); i++)
+	for (int i = 0; i < static_cast<int>(best_buf->size()); i++)
 	{
 		if (i <= best_index)
 			left.push_back((*best_buf)[i].id);
@@ -290,12 +311,23 @@ static bool find_best_split_sah(
 	return true;
 }
 
-bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
+/**
+	Recursively processes BVH nodes.
+
+	Nodes containing multiple meshes are partitioned and can be split up. If splitting
+	is infeasible the, the meshes are dissolved into triangles.
+
+	Nodes containing triangles are recursively partitioned too.
+*/
+bool process_bvh_node(bu::rt::bvh_draft_node *node, int depth = 0)
 {
 	if (!node) return false;
 	// LOG_DEBUG << "Processing BVH node...";
 
-	// Check if meshes should be dissolved
+	/*
+		Dissolve nodes where AABBs of all meshes have surface area greater than
+		the entire model's AABB. Dissolve nodes containing single meshes too.
+	*/
 	if (!node->meshes.empty())
 	{
 		bu::rt::aabb_collection col;
@@ -303,8 +335,8 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 
 		for (auto &mesh : node->meshes)
 		{
-				col.add(mesh->aabb);
-				total_surf = mesh->aabb.get_area();
+			col.add(mesh->aabb);
+			total_surf = mesh->aabb.get_area();
 		}
 		
 		if (col.get_aabb().get_area() <= total_surf || node->meshes.size() == 1) 
@@ -316,15 +348,13 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 		LOG_ERROR << "BVH node with both meshes and triangles!";
 		throw std::runtime_error("BVH node with both meshes and triangles encountered!");
 	}
-	else if (!node->triangles.empty()) // Has triangles
+	else if (!node->triangles.empty()) // Has triangles - partition triangles
 	{
-		// LOG_DEBUG << "a triangle node...";
-
-		std::vector<thing> contents(node->triangles.size());
+		std::vector<bvh_box> contents(node->triangles.size());
 		for (auto i = 0u; i < node->triangles.size(); i++)
 		{
 			auto box = bu::rt::triangle_aabb(node->triangles[i]);
-			contents[i] = thing{box.get_center(), box, i};
+			contents[i] = bvh_box{box.get_center(), box, i};
 			
 			if (i == 0)
 				node->aabb = box;
@@ -333,15 +363,14 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = find_best_split_sah(contents, l, r);
-
+		bool should_split = partition_boxes_sah(contents, l, r);
 
 		if (should_split)
 		{
 			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " triangles";
 
-			node->left = std::make_unique<bu::rt::bvh_builder_node>();
-			node->right = std::make_unique<bu::rt::bvh_builder_node>();
+			node->left = std::make_unique<bu::rt::bvh_draft_node>();
+			node->right = std::make_unique<bu::rt::bvh_draft_node>();
 
 			for (auto id : l)
 				node->left->triangles.emplace_back(std::move(node->triangles[id]));
@@ -352,15 +381,15 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 			node->triangles.clear();
 		}
 	}
-	else // Has meshes
+	else // Has meshes - try to partition them
 	{
 		// LOG_DEBUG << "a mesh node...";
 
-		std::vector<thing> contents(node->meshes.size());
+		std::vector<bvh_box> contents(node->meshes.size());
 		for (auto i = 0u; i < node->meshes.size(); i++)
 		{
 			auto box = node->meshes[i]->aabb;
-			contents[i] = thing{box.get_center(), box, i};
+			contents[i] = bvh_box{box.get_center(), box, i};
 			
 			if (i == 0)
 				node->aabb = node->meshes[i]->aabb;
@@ -369,14 +398,13 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = find_best_split_sah(contents, l, r);
+		bool should_split = partition_boxes_sah(contents, l, r);
 
-	
 		if (should_split)
 		{
 			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " meshes";
-			node->left = std::make_unique<bu::rt::bvh_builder_node>();
-			node->right = std::make_unique<bu::rt::bvh_builder_node>();
+			node->left = std::make_unique<bu::rt::bvh_draft_node>();
+			node->right = std::make_unique<bu::rt::bvh_draft_node>();
 
 			for (auto id : l)
 				node->left->meshes.emplace_back(std::move(node->meshes[id]));
@@ -395,7 +423,9 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 		}
 	}
 
-	
+	/*
+		Partition recursively and asynchronously on the first 4 levels.
+	*/
 	if (depth < 4)
 	{
 		auto async_policy = std::launch::deferred;
@@ -413,46 +443,10 @@ bool process_bvh_node(bu::rt::bvh_builder_node *node, int depth = 0)
 		if (node->right) process_bvh_node(node->right.get(), depth + 1);
 	}
 
-	// if (node->left) process_bvh_node(node->left.get());
-	// if (node->right) process_bvh_node(node->right.get());
-
 	return true;
 }
 
-void bu::rt::bvh_builder::build_tree()
-{
-	// New root node
-	m_root_node = std::make_unique<bvh_builder_node>();
-
-	// Put all meshes in it
-	for (const auto &[id, mesh] : m_meshes)
-		m_root_node->meshes.push_back(mesh);
-
-	// auto fut = std::async(process_bvh_node, m_root_node.get());
-	// fut.wait();
-	process_bvh_node(m_root_node.get());
-	LOG_DEBUG << "gowno";
-
-	// std::mutex stack_mutex;
-	// std::stack<bu::rt::bvh_builder_node*> node_stack;
-	// node_stack.push(m_root_node.get());
-	
-	// while (!node_stack.empty())
-	// {
-	// 	auto node = node_stack.top();
-	// 	node_stack.pop();
-
-
-	// 	if (!node) continue;
-
-		
-
-	// 	node_stack.push(node->left.get());
-	// 	node_stack.push(node->right.get());
-	// }
-}
-
-std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_mesh_aabbs() const
+std::vector<bu::rt::aabb> bu::rt::bvh_cache::get_mesh_aabbs() const
 {
 	std::vector<aabb> aabbs;
 	aabbs.reserve(m_meshes.size());
@@ -461,11 +455,20 @@ std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_mesh_aabbs() const
 	return aabbs;
 }
 
-std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_tree_aabbs() const
+bu::rt::bvh_draft::bvh_draft(const bu::rt::bvh_cache &cache) : 
+	m_root_node(std::make_unique<bvh_draft_node>())
+{
+	// Put all meshes in the root node and process it
+	for (const auto &[id, mesh] : cache.get_meshes())
+		m_root_node->meshes.push_back(mesh);
+	process_bvh_node(m_root_node.get());
+}
+
+std::vector<bu::rt::aabb> bu::rt::bvh_draft::get_tree_aabbs() const
 {
 	std::vector<aabb> aabbs;
 
-	std::stack<bu::rt::bvh_builder_node*> node_stack;
+	std::stack<bu::rt::bvh_draft_node*> node_stack;
 	node_stack.push(m_root_node.get());
 	while (!node_stack.empty())
 	{
@@ -475,14 +478,12 @@ std::vector<bu::rt::aabb> bu::rt::bvh_builder::get_tree_aabbs() const
 		if (!node) continue;
 
 		if (node->meshes.size() && node->triangles.size())
-			LOG_ERROR << "oh fuck";
+			LOG_ERROR << "get_tree_aabbs() found node with meshes and triangles";
 
 		aabbs.push_back(node->aabb);
 		node_stack.push(node->left.get());
 		node_stack.push(node->right.get());
 	}
-
-	// LOG_DEBUG << "have " << aabbs.size() << " boxes";
 
 	return aabbs;
 }
