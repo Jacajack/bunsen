@@ -218,7 +218,8 @@ void rendered_view_window::draw()
 		// The camera drag can start when:
 		// - there are no pending transforms
 		// - the window is hovered when clicked
-		bool update_orbiter = m_camera_drag_pending;
+		// - the mouse wheel is turned while the cursor is over the window
+		bool update_orbiter = m_camera_drag_pending || (hovered && ImGui::GetIO().MouseWheel != 0);
 		if (hovered && ImGui::IsMouseClicked(2) && !transform_pending)
 			m_camera_drag_pending = true;
 		else if (m_camera_drag_pending && !ImGui::IsMouseDown(2))
