@@ -12,10 +12,6 @@ class async_task_cleaner;
 class async_stop_flag
 {
 public:
-	async_stop_flag() = default;
-	async_stop_flag(async_stop_flag &&src) = default;
-	async_stop_flag &operator=(async_stop_flag &&) = default;
-
 	bool should_stop() const
 	{
 		return !m_active;
@@ -83,17 +79,23 @@ public:
 			m_flag_ptr->request_stop();
 	}
 
+	/**
+		\returns true if the internal std::future is valid and ready
+	*/
 	bool is_ready() const
 	{
-		if (this->valid())
+		if (std::future<T>::valid())
 			return this->wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 		else
 			return false;
 	}
 
+	/**
+		\return true if the internal std::future is valid and ready or if the async_task is invalid
+	*/
 	bool is_ready_or_invalid() const
 	{
-		return !this->valid() || !m_flag_ptr || is_ready();
+		return !std::future<T>::valid() || !m_flag_ptr || is_ready();
 	}
 
 private:
