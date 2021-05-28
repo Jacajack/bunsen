@@ -16,7 +16,7 @@ namespace bu::ui {
 class rendered_view
 {
 public:
-	rendered_view(int samples = 0);
+	rendered_view(int samples = -1);
 	void draw(const bu::scene &scene, const bu::camera &camera);
 
 protected:
@@ -31,7 +31,7 @@ protected:
 	
 	bu::gl_fbo m_fbo;
 	bu::gl_fbo m_fbo_ms;
-	glm::ivec2 m_fbo_tex_size;
+	glm::ivec2 m_fbo_tex_size = {0, 0};
 	int m_samples;
 
 	void new_texture_storage(int w, int h, int samples = 0);
