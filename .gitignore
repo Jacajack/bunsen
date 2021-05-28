@@ -1,4 +1,5 @@
 build
+build**
 ign
 docs
 **/*.kate-swp
