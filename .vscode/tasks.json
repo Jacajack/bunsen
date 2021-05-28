@@ -22,7 +22,11 @@
 			},
 			"dependsOn": ["cmake-build"],
 			"command": "./bunsen",
-			"options": {"cwd": "build"}
+			"options": {"cwd": "build",
+				"env": {
+					"UBSAN_OPTIONS": "print_stacktrace=1"
+				}
+			}
 		}
 	]
 }

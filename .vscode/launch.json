@@ -12,7 +12,9 @@
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}/build",
-			"environment": [],
+			"environment": [
+				{"name": "UBSAN_OPTIONS", "value":"print_stacktrace=1"}
+			],
 			"console": "externalTerminal",
 			"MIMode": "gdb",
 			"setupCommands": [

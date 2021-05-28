@@ -98,7 +98,9 @@
 		"variant": "cpp",
 		"*.cl": "cpp",
 		"*.def": "cpp",
-		"*.ipp": "cpp"
+		"*.ipp": "cpp",
+		"any": "cpp",
+		"core": "cpp"
 	},
 	"C_Cpp.default.includePath": [
 		"${default}",
