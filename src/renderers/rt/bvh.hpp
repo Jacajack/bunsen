@@ -1,6 +1,4 @@
 #pragma once
-#include <glm/glm.hpp>
-#include "ray.hpp"
 #include "aabb.hpp"
 
 namespace bu::rt {

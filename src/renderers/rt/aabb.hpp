@@ -72,12 +72,9 @@ float aabb::get_area() const
 	return (d.x * d.y + d.x * d.z + d.y * d.z) * 2.f;
 }
 
-struct aabb_collection
+class aabb_collection
 {
-	minmax_tracker x;
-	minmax_tracker y;
-	minmax_tracker z;
-
+public:
 	void add(const aabb &box)
 	{
 		x.add(box.min.x);
@@ -117,6 +114,11 @@ struct aabb_collection
 	{
 		return x.size();
 	}
+
+private:
+	minmax_tracker x;
+	minmax_tracker y;
+	minmax_tracker z;
 };
 
 aabb triangle_aabb(const bu::rt::triangle &t);

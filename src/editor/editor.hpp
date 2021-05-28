@@ -3,15 +3,15 @@
 #include <list>
 #include <memory>
 #include "../bunsen.hpp"
-#include "../renderers/preview/preview.hpp"
-#include "../renderers/basic_preview/basic_preview.hpp"
-#include "../renderers/albedo/albedo.hpp"
-#include "../renderers/rt/rt.hpp"
 #include "ui/window.hpp"
 
 namespace bu {
 
 struct scene;
+class rt_context;
+class albedo_context;
+class basic_preview_context;
+class preview_context;
 
 struct bunsen_editor
 {

@@ -9,8 +9,6 @@
 #include "../../camera.hpp"
 #include "../../renderer.hpp"
 #include "../../renderers/basic_preview/basic_preview.hpp"
-#include "sampled_image.hpp"
-#include "bvh.hpp"
 
 namespace bu::rt {
 class bvh_cache;

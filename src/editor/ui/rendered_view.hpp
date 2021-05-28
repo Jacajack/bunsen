@@ -4,6 +4,7 @@
 #include "../../renderer.hpp"
 #include "../../scene.hpp"
 #include "../../gl/gl.hpp"
+#include "../../gl/shader.hpp"
 #include "../layout_editor.hpp"
 #include "../editor.hpp"
 

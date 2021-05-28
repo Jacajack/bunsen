@@ -19,6 +19,7 @@
 #include "editor/ui/ui.hpp"
 #include "config.hpp"
 #include "log.hpp"
+#include "async_task.hpp"
 
 using bu::bunsen;
 

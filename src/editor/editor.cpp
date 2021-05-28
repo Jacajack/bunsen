@@ -12,12 +12,18 @@
 #include "../scene_export.hpp"
 #include "../log.hpp"
 #include "ui/ui.hpp"
+#include "ui/window.hpp"
 #include "ui/scene_control.hpp"
 #include "ui/light_menu.hpp"
 #include "ui/material_menu.hpp"
 #include "ui/model_menu.hpp"
 #include "ui/world_menu.hpp"
 #include "ui/rendered_view.hpp"
+
+#include "../renderers/preview/preview.hpp"
+#include "../renderers/basic_preview/basic_preview.hpp"
+#include "../renderers/albedo/albedo.hpp"
+#include "../renderers/rt/rt.hpp"
 
 using bu::bunsen_editor;
 
