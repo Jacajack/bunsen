@@ -14,8 +14,8 @@ FetchContent_Populate(tracy
 add_library(tracy STATIC "${tracy_SOURCE_DIR}/TracyClient.cpp")
 target_link_libraries(tracy PUBLIC "dl")
 target_include_directories(tracy PUBLIC "${tracy_SOURCE_DIR}/..")
-target_compile_definitions(tracy PUBLIC "TRACY_ENABLE")
 
 if (TRACY_ENABLE)
+	target_compile_definitions(tracy PUBLIC "TRACY_ENABLE")
 	message("Tracy is enabled!")
 endif()
