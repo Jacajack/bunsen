@@ -3,6 +3,10 @@
 #include <thread>
 #include <tracy/Tracy.hpp>
 #include "../../log.hpp"
+#include "ray.hpp"
+#include "bvh.hpp"
+#include "rt.hpp"
+#include <glm/gtx/string_cast.hpp>
 
 using namespace std::chrono_literals;
 using bu::splat_bucket_pool;
@@ -49,6 +53,11 @@ rt_renderer_job::~rt_renderer_job()
 const bu::rt::sampled_image &rt_renderer_job::get_image() const
 {
 	return *m_image;
+}
+
+const bu::rt_context &rt_renderer_job::get_context() const
+{
+	return *m_context;
 }
 
 /**
@@ -98,10 +107,14 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 {
 	auto &job = *jobp;
 	auto &active = *activep;
+	auto &ctx = job.get_context();
+	auto ray_caster = *job.m_ray_caster;
+	auto bvh = ctx.bvh;
 	std::shared_ptr<bu::splat_bucket_pool> clean_pool = job.m_clean_pool;
 	std::shared_ptr<bu::splat_bucket_pool> dirty_pool = job.m_dirty_pool;
 
 	LOG_INFO << "RT CPU thread starting!";
+	LOG_INFO << "Ray caster \n" << glm::to_string(ray_caster.matrix);
 
 	std::mt19937 rng(124725 + std::random_device{}());
 	std::uniform_int_distribution<int> idist(0, 500);
@@ -130,8 +143,31 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 			{
 				auto &splat = bucket->data[i];
 				splat.pos = pos + glm::vec2{i % 64, i / 64};
-				splat.color = color;
+				
 				splat.samples = 1;
+
+				auto ndc = (splat.pos / glm::vec2{job.get_image().size}) * 2.f - 1.f;
+				auto dir = ray_caster.get_direction(ndc);
+				bu::rt::ray r;
+
+				r.direction = glm::normalize(dir);
+				r.origin = ray_caster.origin;
+
+				// LOG_DEBUG << "ray from " << r.origin.x << " " << r.origin.y << " " << r.origin.z;
+				// LOG_DEBUG << "ray dir " << r.direction.x << " " << r.direction.y << " " << r.direction.z;
+
+				bu::rt::ray_hit hit;
+				bool ok = bvh->test_ray(r, hit);
+				if (ok)
+				{
+					const auto &tri = *hit.triangle;
+					glm::vec3 N = glm::normalize((1 - hit.u - hit.v) * tri.normals[0] + hit.u * tri.normals[1] + hit.v * tri.normals[2]);
+					splat.color = N;
+				}
+				else
+				{
+					splat.color = glm::vec3{};
+				}
 			}
 
 			dirty_pool->submit(std::move(bucket));

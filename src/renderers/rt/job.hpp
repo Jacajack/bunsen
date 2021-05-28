@@ -34,6 +34,9 @@ public:
 	// Access to the image
 	const rt::sampled_image &get_image() const;
 
+	// Context access
+	const bu::rt_context &get_context() const;
+
 	// Run control
 	void start(const bu::camera &camera, const glm::ivec2 &viewport_size);
 	void stop();

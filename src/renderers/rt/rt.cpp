@@ -163,6 +163,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// If 0.5 has passed from the last change, start a new job
+	// \todo and BVH exists
 	if (!m_active && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
@@ -232,7 +233,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
 		glUniform1i(m_context->draw_sampled_image->get_uniform_location("tex"), 0);
 		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
-		// glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
 	}

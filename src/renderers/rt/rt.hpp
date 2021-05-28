@@ -38,7 +38,7 @@ struct rt_context
 	// BVH
 	std::shared_ptr<bu::rt::bvh_cache> bvh_cache;
 	std::shared_ptr<bu::rt::bvh_draft> bvh_draft;
-	std::unique_ptr<bu::rt::bvh_tree> bvh;
+	std::shared_ptr<bu::rt::bvh_tree> bvh;
 
 	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
 	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;
