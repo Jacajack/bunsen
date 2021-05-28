@@ -56,13 +56,14 @@ camera_ray_caster::camera_ray_caster(const camera &cam) :
 
 	up *= half_height;
 	right *= half_width;
+	forward *= cam.near;
 
 	matrix = glm::mat3{right, up, forward};
 }
 
 glm::vec3 camera_ray_caster::get_direction(const glm::vec2 &ndc) const
 {
-	return matrix * glm::vec3{ndc, 1};
+	return glm::normalize(matrix * glm::vec3{ndc, 1});
 }
 
 void camera_orbiter::spin(const glm::vec2 &d)
