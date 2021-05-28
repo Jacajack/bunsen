@@ -45,9 +45,6 @@ bool bvh_tree::test_ray(const rt::ray &r, rt::ray_hit &hit) const
 		// Positive triangle count indicates a leaf node
 		if (node.count <= 0)
 		{
-			// If index is non-zero, children nodes overlap
-			bool children_overlap = node.index;
-
 			auto id_l = 2 * node_id;
 			auto id_r = 2 * node_id + 1;
 			auto &nl = nodes[id_l];
@@ -59,27 +56,16 @@ bool bvh_tree::test_ray(const rt::ray &r, rt::ray_hit &hit) const
 
 			if (hit_l && hit_r) // Both children were hit
 			{
-				// If children do not overlap, check only the closer one
-				if (!children_overlap)
+				// Check the closer child first
+				if (tl < tr)
 				{
-					if (tl < tr)
-						st.push(id_l);
-					else
-						st.push(id_r);
+					if (tr < best.t) st.push(id_r);
+					if (tl < best.t) st.push(id_l);
 				}
 				else
 				{
-					// If children overlap check the closer one first
-					if (tl < tr)
-					{
-						st.push(id_r);
-						st.push(id_l);
-					}
-					else
-					{
-						st.push(id_l);
-						st.push(id_r);
-					}
+					if (tl < best.t) st.push(id_l);
+					if (tr < best.t) st.push(id_r);
 				}
 			}
 			else if (hit_l)
