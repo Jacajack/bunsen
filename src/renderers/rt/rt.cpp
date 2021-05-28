@@ -154,6 +154,13 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		changed = true;
 	}
 
+	// Detect BVH update
+	if (m_last_bvh != m_context->bvh.get())
+	{
+		m_last_bvh = m_context->bvh.get();
+		changed = true;
+	}
+
 	// If changed anything, reset the timer and stop the job
 	if (changed)
 	{
@@ -163,11 +170,10 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// If 0.5 has passed from the last change, start a new job
-	// \todo and BVH exists
-	if (!m_active && std::chrono::steady_clock::now() - m_last_change > 0.5s)
+	if (!m_active && m_context->bvh && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job->start(m_camera, m_viewport);
+		m_job->start(m_context->bvh, m_camera, m_viewport);
 		m_active = true;
 	}
 

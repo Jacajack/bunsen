@@ -79,6 +79,7 @@ private:
 	glm::ivec2 m_viewport;
 	bu::camera m_camera;
 	std::chrono::time_point<std::chrono::steady_clock> m_last_change;
+	const bu::rt::bvh_tree *m_last_bvh;
 	bool m_active = false;
 
 	// Current job

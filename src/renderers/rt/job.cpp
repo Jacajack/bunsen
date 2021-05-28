@@ -60,24 +60,52 @@ const bu::rt_context &rt_renderer_job::get_context() const
 	return *m_context;
 }
 
+bu::camera_ray_caster rt_renderer_job::get_ray_caster() const
+{
+	return *m_ray_caster;
+}
+
+std::shared_ptr<splat_bucket_pool> rt_renderer_job::get_clean_pool() const
+{
+	return m_clean_pool;
+}
+
+std::shared_ptr<splat_bucket_pool> rt_renderer_job::get_dirty_pool() const
+{
+	return m_dirty_pool;
+}
+
+std::shared_ptr<const bu::rt::bvh_tree> rt_renderer_job::get_bvh() const
+{
+	return m_bvh;
+}
+
 /**
 	Sets up a new activity flag for the new children
 	and spawns them. Accepts paremeters for the new render
 */
-void rt_renderer_job::start(const bu::camera &camera, const glm::ivec2 &viewport_size)
+void rt_renderer_job::start(std::shared_ptr<const bu::rt::bvh_tree> bvh, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
 	if (m_active && *m_active) stop();
+
+	if (!bvh)
+	{
+		LOG_ERROR << "Cannot start RT thread without a BVH!";
+		throw std::runtime_error{"rt_renderer_job started without a valid BVH"};
+	}
 
 	// Remove completed futures
 	m_futures.erase(std::remove_if(m_futures.begin(), m_futures.end(), [](auto &f){
 		return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 	}), m_futures.end());
 
+	LOG_INFO << "Starting new RT jobs";
 	m_active = std::make_shared<std::atomic<bool>>(true);
-	m_ray_caster = std::make_shared<bu::camera_ray_caster>(camera);
+	m_ray_caster = bu::camera_ray_caster{camera};
 	m_image = std::make_shared<bu::rt::sampled_image>(viewport_size);
 	m_clean_pool = std::make_shared<splat_bucket_pool>();
 	m_dirty_pool = std::make_shared<splat_bucket_pool>();
+	m_bvh = bvh;
 	new_buckets(64, 64 * 64);
 
 	for (int i = 0; i < 4; i++)
@@ -92,7 +120,13 @@ void rt_renderer_job::start(const bu::camera &camera, const glm::ivec2 &viewport
 */
 void rt_renderer_job::stop()
 {
-	if (m_active) *m_active = false;
+	if (m_active)
+	{
+		if (*m_active)
+			LOG_INFO << "Requesting RT jobs to stop";
+		 *m_active = false;
+	}
+	m_bvh.reset();
 }
 
 void rt_renderer_job::new_buckets(int count, int size)
@@ -107,14 +141,10 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 {
 	auto &job = *jobp;
 	auto &active = *activep;
-	auto &ctx = job.get_context();
-	auto ray_caster = *job.m_ray_caster;
-	auto bvh = ctx.bvh;
-	std::shared_ptr<bu::splat_bucket_pool> clean_pool = job.m_clean_pool;
-	std::shared_ptr<bu::splat_bucket_pool> dirty_pool = job.m_dirty_pool;
-
-	LOG_INFO << "RT CPU thread starting!";
-	LOG_INFO << "Ray caster \n" << glm::to_string(ray_caster.matrix);
+	auto ray_caster = job.get_ray_caster();
+	auto bvh = job.get_bvh();
+	auto clean_pool = job.get_clean_pool();
+	auto dirty_pool = job.get_dirty_pool();
 
 	std::mt19937 rng(124725 + std::random_device{}());
 	std::uniform_int_distribution<int> idist(0, 500);
@@ -137,9 +167,8 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 		{
 			ZoneScopedN("Bucket generation");
 			auto pos = glm::vec2{fdist(rng), fdist(rng)} * glm::vec2{job.get_image().size};
-			auto color = glm::vec3{fdist(rng), fdist(rng), fdist(rng)};
 
-			for (auto i = 0u; i < bucket->size; i++)
+			for (auto i = 0u; i < bucket->size && active; i++)
 			{
 				auto &splat = bucket->data[i];
 				splat.pos = pos + glm::vec2{i % 64, i / 64};
@@ -167,6 +196,7 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 				else
 				{
 					splat.color = glm::vec3{};
+					splat.samples = 0;
 				}
 			}
 
@@ -176,7 +206,6 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 		std::this_thread::sleep_for(0.01s);
 	}
 
-	LOG_INFO << "RT CPU thread terminating!";
 	return true;
 }
 
@@ -185,8 +214,8 @@ static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool
 	auto &job = *jobp;
 	auto &active = *activep;
 	std::shared_ptr<bu::rt::sampled_image> image = job.m_image;
-	std::shared_ptr<bu::splat_bucket_pool> clean_pool = job.m_clean_pool;
-	std::shared_ptr<bu::splat_bucket_pool> dirty_pool = job.m_dirty_pool;
+	auto clean_pool = job.get_clean_pool();
+	auto dirty_pool = job.get_dirty_pool();
 
 	while (active)
 	{
