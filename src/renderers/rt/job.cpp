@@ -1,6 +1,7 @@
 #include "job.hpp"
 #include <random>
 #include <thread>
+#include <algorithm>
 #include <tracy/Tracy.hpp>
 #include "../../log.hpp"
 #include "ray.hpp"
