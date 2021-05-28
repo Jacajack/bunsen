@@ -3,6 +3,8 @@
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
 #include "job.hpp"
+#include "bvh_builder.hpp"
+#include "bvh.hpp"
 #include "../../log.hpp"
 
 using namespace std::chrono_literals;
@@ -21,8 +23,10 @@ static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(
 	const bu::async_stop_flag *flag,
 	rt_context *ctx)
 {
-	auto draft_ptr = ctx->bvh_draft;
-	return nullptr;
+	auto draft = ctx->bvh_draft;
+	auto bvh = std::make_unique<bu::rt::bvh_tree>(draft->get_height(), draft->get_triangle_count());
+	bvh->populate(*draft);
+	return bvh;
 }
 
 
@@ -70,20 +74,21 @@ void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
 
 	if (bvh_draft_build_task.has_value() && bu::is_future_ready(*bvh_draft_build_task))
 	{
-		LOG_INFO << "BVH draft complete - initiating final BVH build";
 		bvh_draft = std::move(bvh_draft_build_task->get());
 
 		if (bvh_build_task.has_value())
 			bu::discard_task(bu::global_task_cleaner, std::move(*bvh_build_task));
 		bvh_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_tree, this);
 		bvh_draft_build_task.reset();
+		LOG_INFO << "BVH draft complete: " << bvh_draft->get_triangle_count() << " triangles and " << bvh_draft->get_height() << " levels";
+		LOG_INFO << "Initiating final BVH build";
 	}
 
 	if (bvh_build_task.has_value() && bu::is_future_ready(*bvh_build_task))
 	{
-		LOG_INFO << "Final BVH build finished";
 		bvh = std::move(bvh_build_task->get());
 		bvh_build_task.reset();
+		LOG_INFO << "Final BVH build finished: " << bvh->triangle_count << " triangles and " << bvh->node_count << " nodes";
 	}		
 }
 

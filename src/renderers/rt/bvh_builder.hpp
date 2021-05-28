@@ -3,7 +3,7 @@
 #include <vector>
 #include "../../async_task.hpp"
 #include "../../scene.hpp"
-#include "bvh.hpp"
+#include "aabb.hpp"
 
 namespace bu::rt {
 
@@ -18,7 +18,7 @@ struct bvh_cache_mesh
 	bool update_from_model_node(const bu::model_node &node);
 	
 	glm::mat4 transform;
-	std::vector<std::weak_ptr<bu::mesh>> meshes;
+	std::vector<std::weak_ptr<bu::mesh>> meshes; // Weak pointers to the original meshes
 
 	rt::aabb aabb;
 	std::vector<rt::triangle> triangles;
@@ -58,6 +58,7 @@ private:
 struct bvh_draft_node
 {
 	void dissolve_meshes();
+	int height() const;
 	
 	rt::aabb aabb;
 	std::unique_ptr<bvh_draft_node> left, right;
@@ -71,14 +72,13 @@ class bvh_draft
 
 public:
 	std::vector<rt::aabb> get_tree_aabbs() const;
+	const bvh_draft_node &get_root_node() const;
+	int get_height() const;
+	int get_triangle_count() const;
 
 private:
 	bvh_draft() = default;
 	std::unique_ptr<bvh_draft_node> m_root_node = std::make_unique<bu::rt::bvh_draft_node>();
 };
-
-
-
-
 
 }

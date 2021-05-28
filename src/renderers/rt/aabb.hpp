@@ -14,7 +14,7 @@ struct aabb
 	inline void add_aabb(const aabb &box);
 
 	inline bool test_ray(const rt::ray &r, float &t) const;
-	inline bool check_overlap(const aabb &aabb) const;
+	inline bool check_overlap(const aabb &other) const;
 	inline glm::vec3 get_dimensions() const;
 	inline glm::vec3 get_center() const;
 	inline float get_area() const;
@@ -30,6 +30,30 @@ void aabb::add_aabb(const aabb &box)
 {
 	min = glm::min(min, box.min);
 	max = glm::max(max, box.max);
+}
+
+inline bool aabb::test_ray(const rt::ray &r, float &t) const
+{
+	glm::vec3 a{(min - r.origin) / r.direction};
+	glm::vec3 b{(max - r.origin) / r.direction};
+
+	float tmin = std::max(std::max(std::min(a.x, b.x), std::min(a.y, b.y)), std::min(a.z, b.z));
+	float tmax = std::min(std::min(std::max(a.x, b.x), std::max(a.y, b.y)), std::max(a.z, b.z));
+
+	if (tmax < 0 || tmin > tmax)
+		return false;
+	else
+	{
+		t = tmin;
+		return true;
+	}
+}
+
+inline bool aabb::check_overlap(const aabb &other) const
+{
+	return min.x < other.max.x && max.x > other.min.x
+		&& min.y < other.max.y && max.y > other.min.y
+		&& min.z < other.max.z && max.z > other.min.z;
 }
 
 glm::vec3 aabb::get_dimensions() const

@@ -10,10 +10,15 @@
 #include "../../renderer.hpp"
 #include "../../renderers/basic_preview/basic_preview.hpp"
 #include "sampled_image.hpp"
-#include "bvh_builder.hpp"
+#include "bvh.hpp"
+
+namespace bu::rt {
+class bvh_cache;
+class bvh_draft;
+struct bvh_tree;
+}
 
 namespace bu {
-
 struct rt_renderer_job;
 
 struct rt_context

@@ -3,6 +3,7 @@
 #include <future>
 #include <tracy/Tracy.hpp>
 #include "aabb.hpp"
+#include "bvh.hpp"
 #include "../../log.hpp"
 #include "../../async_task.hpp"
 
@@ -34,7 +35,7 @@ std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm:
 		auto vi = i % 3;
 		auto index = mesh.indices[i];
 
-		tris[ti].positions[vi] = glm::vec3{transform * glm::vec4{mesh.positions[index], 1}};
+		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.positions[index], 1}};
 		tris[ti].normals[vi] = glm::normalize(tn * mesh.normals[index]);
 		
 		if (i < mesh.uvs.size())
@@ -210,6 +211,9 @@ static bool partition_boxes_sah(
 	float cost_intersect = 1,
 	float cost_traversal = 6)
 {
+	if (input.size() < 2)
+		throw std::runtime_error{"partition_boxes_sah() called on less than 2 objects"};
+
 	ZoneScopedN("Partition BVH");
 
 	auto sort_in_axis = [&](std::vector<bvh_box> &input, float glm::vec3::* axis)
@@ -265,10 +269,8 @@ static bool partition_boxes_sah(
 
 	float cx, cy, cz;
 	int ix, iy, iz;
-	float glm::vec3::* best_axis;
-	float best_cost;
-	int best_index;
-	std::vector<bvh_box> *best_buf;
+	int best_index{};
+	std::vector<bvh_box> *best_buf{};
 
 	sort_in_axis(buf_x, &glm::vec3::x);
 	if (stop_flag.should_stop()) return false;
@@ -285,22 +287,16 @@ static bool partition_boxes_sah(
 
 	if (cx < cy && cx < cz)
 	{
-		best_axis = &glm::vec3::x;
-		best_cost = cx;
 		best_index = ix;
 		best_buf = &buf_x;
 	}
 	else if (cy < cx && cy < cz)
 	{
-		best_axis = &glm::vec3::y;
-		best_cost = cy;
 		best_index = iy;
 		best_buf = &buf_y;
 	}
 	else
 	{
-		best_axis = &glm::vec3::z;
-		best_cost = cz;
 		best_index = iz;
 		best_buf = &buf_z;
 	}
@@ -361,19 +357,20 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 		std::vector<bvh_box> contents(node->triangles.size());
 		for (auto i = 0u; i < node->triangles.size(); i++)
 		{
-			auto box = bu::rt::triangle_aabb(node->triangles[i]);
-			contents[i] = bvh_box{box.get_center(), box, i};
+			auto aabb = bu::rt::triangle_aabb(node->triangles[i]);
+			contents[i] = bvh_box{aabb.get_center(), aabb, i};
 			
 			if (i == 0)
-				node->aabb = box;
+				node->aabb = aabb;
 			else
-				node->aabb.add_aabb(box);
+				node->aabb.add_aabb(aabb);
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = partition_boxes_sah(*stop_flag, contents, l, r);
+		bool should_split = node->triangles.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
+		bool split_valid = !l.empty() && !r.empty();
 
-		if (should_split)
+		if (should_split && split_valid)
 		{
 			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " triangles";
 
@@ -396,8 +393,8 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 		std::vector<bvh_box> contents(node->meshes.size());
 		for (auto i = 0u; i < node->meshes.size(); i++)
 		{
-			auto box = node->meshes[i]->aabb;
-			contents[i] = bvh_box{box.get_center(), box, i};
+			auto aabb = node->meshes[i]->aabb;
+			contents[i] = bvh_box{aabb.get_center(), aabb, i};
 			
 			if (i == 0)
 				node->aabb = node->meshes[i]->aabb;
@@ -406,9 +403,10 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 		}
 
 		std::vector<unsigned int> l, r;
-		bool should_split = partition_boxes_sah(*stop_flag, contents, l, r);
+		bool should_split = node->meshes.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
+		bool split_valid = !l.empty() && !r.empty();
 
-		if (should_split)
+		if (should_split && split_valid)
 		{
 			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " meshes";
 			node->left = std::make_unique<bu::rt::bvh_draft_node>();
@@ -422,9 +420,7 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 
 			node->meshes.clear();
 		}
-
-		// If no split, dissolve meshes and try this node again
-		if (!should_split)
+		else // If no split, dissolve meshes and try this node again
 		{
 			node->dissolve_meshes();
 			return !stop_flag->should_stop() && process_bvh_node(stop_flag, node, depth);
@@ -474,9 +470,11 @@ bvh_draft bvh_cache::build_draft(const bu::async_stop_flag &stop_flag) const
 {
 	bvh_draft draft{};
 
-	// Put all meshes in the root node and process it
+	// Put all non-empty meshes in the root node and process it
 	for (const auto &[id, mesh] : m_meshes)
-		draft.m_root_node->meshes.push_back(mesh);
+		if (!mesh->triangles.empty())
+			draft.m_root_node->meshes.push_back(mesh);
+
 	process_bvh_node(&stop_flag, draft.m_root_node.get());
 	return draft;
 }
@@ -503,4 +501,40 @@ std::vector<bu::rt::aabb> bu::rt::bvh_draft::get_tree_aabbs() const
 	}
 
 	return aabbs;
+}
+
+const bvh_draft_node &bvh_draft::get_root_node() const
+{
+	return *m_root_node;
+}
+
+int bvh_draft_node::height() const
+{
+	int hl = 0, hr = 0;
+	if (left) hl = left->height();
+	if (right) hr = right->height();
+	return 1 + std::max(hl, hr);
+}
+
+int bvh_draft::get_height() const
+{
+	return get_root_node().height();
+}
+
+int bvh_draft::get_triangle_count() const
+{
+	int n = 0;
+	std::stack<bvh_draft_node*> st;
+	st.push(m_root_node.get());
+
+	while (!st.empty())
+	{
+		auto node_ptr = st.top();
+		st.pop();
+		n += node_ptr->triangles.size();
+		if (node_ptr->left) st.push(node_ptr->left.get());
+		if (node_ptr->right) st.push(node_ptr->right.get());
+	}
+
+	return n;
 }

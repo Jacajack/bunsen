@@ -6,8 +6,8 @@ bu::rt::aabb bu::rt::triangle_aabb(const bu::rt::triangle &t)
 	ZoneScopedN("triangle_aabb");
 	
 	bu::rt::aabb box;
-	box.min = glm::min(glm::min(t.positions[0], t.positions[1]), t.positions[2]);
-	box.max = glm::max(glm::max(t.positions[0], t.positions[1]), t.positions[2]);
+	box.max = glm::max(glm::max(t.vertices[0], t.vertices[1]), t.vertices[2]);
+	box.min = glm::min(glm::min(t.vertices[0], t.vertices[1]), t.vertices[2]);
 	return box;
 }
 
