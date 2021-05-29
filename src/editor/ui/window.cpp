@@ -79,6 +79,9 @@ void window::display()
 			glfwSetCursorPos(win, new_pos.x, new_pos.y);
 			ImGui::GetIO().MousePos = ImVec2(new_pos.x, new_pos.y);
 		}
+		
+		if (!m_owns_mouse)
+			m_mouse_offset = glm::vec2{0, 0};
 	
 		draw();
 
