@@ -36,8 +36,11 @@ inline glm::vec3 ray_hit_pos(const ray &r, const ray_hit &h)
 
 inline glm::vec3 ray_hit_normal(const ray &r, const ray_hit &h)
 {
-	//! \todo NORMAL
-	return glm::vec3{};
+	return glm::normalize(
+		(1.f - h.u - h.v) * h.triangle->normals[0]
+		+ h.u * h.triangle->normals[1]
+		+ h.v * h.triangle->normals[2]
+		);
 }
 
 /**
