@@ -14,6 +14,7 @@ namespace bu::rt {
 class bvh_cache;
 class bvh_draft;
 struct bvh_tree;
+struct material;
 }
 
 namespace bu {
@@ -37,6 +38,9 @@ struct rt_context
 	std::shared_ptr<bu::rt::bvh_cache> bvh_cache;
 	std::shared_ptr<bu::rt::bvh_draft> bvh_draft;
 	std::shared_ptr<bu::rt::bvh_tree> bvh;
+
+	// Materials
+	std::shared_ptr<std::vector<bu::rt::material>> material_cache;
 
 	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
 	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;

@@ -4,6 +4,7 @@
 #include <tracy/Tracy.hpp>
 #include "aabb.hpp"
 #include "bvh.hpp"
+#include "material.hpp"
 #include "../../log.hpp"
 #include "../../async_task.hpp"
 
@@ -15,7 +16,7 @@ using bu::rt::bvh_draft;
 /**
 	\todo materials
 */
-std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm::mat4 &transform)
+std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm::mat4 &transform, int material_id)
 {
 	ZoneScopedN("mesh_to_triangles");
 
@@ -35,6 +36,7 @@ std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm:
 		auto vi = i % 3;
 		auto index = mesh.indices[i];
 
+		tris[ti].material_id = material_id;
 		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.positions[index], 1}};
 		tris[ti].normals[vi] = glm::normalize(tn * mesh.normals[index]);
 		
@@ -48,7 +50,7 @@ std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm:
 /**
 	\returns true if the mesh has been updated
 */
-bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
+bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node, const std::map<std::uint64_t, bvh_cache_material> &mat_cache)
 {
 	ZoneScopedN("Update BVH mesh from node");
 
@@ -58,7 +60,7 @@ bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 	{
 		transform_changed = true;
 		transform = node.get_final_transform();
-		LOG_DEBUG << "BVH mesh change - transform change";
+		// LOG_DEBUG << "BVH mesh change - transform change";
 	}
 
 	// Update meshes
@@ -69,7 +71,7 @@ bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 	if (meshes.size() != model.get_mesh_count())
 	{
 		meshes_changed = true;
-		LOG_DEBUG << "BVH mesh change - different mesh count";
+		// LOG_DEBUG << "BVH mesh change - different mesh count";
 	}
 	else
 	{
@@ -89,7 +91,7 @@ bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 			if (!ptr)
 			{
 				meshes_changed = true;
-				LOG_DEBUG << "BVH mesh change - mesh destructed";
+				// LOG_DEBUG << "BVH mesh change - mesh destructed";
 				break;
 			}
 
@@ -104,7 +106,7 @@ bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 			if (it == our_meshes.end())
 			{
 				meshes_changed = true;
-				LOG_DEBUG << "BVH mesh change - different meshes";
+				// LOG_DEBUG << "BVH mesh change - different meshes";
 				break;
 			}
 		}
@@ -123,15 +125,11 @@ bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node)
 		{
 			auto mesh_ptr = model.get_mesh(i);
 			meshes.push_back(mesh_ptr);
-			auto mesh_tris = mesh_to_triangles(*mesh_ptr, transform);
+			auto mesh_tris = mesh_to_triangles(*mesh_ptr, transform, mat_cache.at(model.get_mesh_material(i)->uid()).index);
 			std::copy(mesh_tris.begin(), mesh_tris.end(), std::back_insert_iterator(triangles));
 		}
 
-		// Handle weird models with no triangles
-		if (!triangles.empty())
-			aabb = bu::rt::triangles_aabb(&triangles[0], triangles.size());
-		else
-			aabb = bu::rt::aabb{};
+		aabb = bu::rt::triangles_aabb(triangles.data(), triangles.size());
 	}
 
 	return changed;
@@ -154,14 +152,59 @@ bool bvh_cache::update_from_scene(const bu::scene &scene)
 {
 	ZoneScopedN("BVH update from scene");
 
+	auto &scene_root = *scene.root_node;
+	int visited_materials = 0;
 	bool change = false;
+	bool materials_change = false;
 
-	// Clear 'visited' flag for all meshes
+
+	for (auto &p : m_materials)
+		p.second.visited = false;
+
+	// Update materials from scene
+	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
+	{
+		auto &node = *it;
+		if (auto model_node = dynamic_cast<bu::model_node*>(&node))
+		{
+			for (auto mat_ptr : model_node->model->materials)
+			{
+				auto it = m_materials.find(mat_ptr->uid());
+				if (it == m_materials.end())
+				{
+					auto &cached_mat = m_materials[mat_ptr->uid()];
+					cached_mat.visited = true;
+					cached_mat.material_data = mat_ptr;
+					cached_mat.index = m_materials.size() - 1;
+				}
+				else
+				{
+					auto &cached_mat = it->second;
+					cached_mat.visited = true;
+					if (cached_mat.material_data.lock() != mat_ptr) materials_change = true;
+					cached_mat.material_data = mat_ptr;
+
+				}
+			}
+		}
+	}
+
+	//! \todo Remove unused materials when there are too many of them
+
+
+	// Remove all unvisited materials
+	// for (auto it = m_materials.begin(); it != m_materials.end();)
+	// 	if (!it->second.visited)
+	// 		it = m_materials.erase(it);
+	// 	else
+	// 		++it;
+
+
+	// Clear 'visited' flag for all meshes and materials
 	for (auto &p : m_meshes)
 		p.second->visited = false;
 
 	// Update from scene
-	auto &scene_root = *scene.root_node;
 	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
 	{
 		auto &node = *it;
@@ -173,7 +216,7 @@ bool bvh_cache::update_from_scene(const bu::scene &scene)
 				ptr = std::make_shared<bvh_cache_mesh>();
 				LOG_DEBUG << "Adding a new mesh to BVH";
 			}
-			change |= ptr->update_from_model_node(*model_node);
+			change |= ptr->update_from_model_node(*model_node, m_materials);
 			ptr->visited = true;
 		}
 	}
@@ -190,7 +233,7 @@ bool bvh_cache::update_from_scene(const bu::scene &scene)
 			++it;
 	}
 
-	return change;
+	return change || materials_change;
 }
 
 /**
@@ -455,6 +498,17 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 	}
 
 	return true;
+}
+
+std::vector<bu::rt::material> bu::rt::bvh_cache::get_materials() const
+{
+	std::vector<bu::rt::material> materials(m_materials.size());
+	for (const auto &[uid, mat] : m_materials)
+	{
+		LOG_DEBUG << "mat cache[" << mat.index << "] = " << mat.material_data.lock()->uid();
+		materials.at(mat.index) = bu::rt::material{*mat.material_data.lock()};
+	}
+	return materials;
 }
 
 std::vector<bu::rt::aabb> bu::rt::bvh_cache::get_mesh_aabbs() const

@@ -1,11 +1,13 @@
 #include "kernel.hpp"
 #include "ray.hpp"
 #include "bvh.hpp"
+#include "material.hpp"
 
 #include <glm/gtx/component_wise.hpp>
 
 glm::vec3 bu::rt::trace_ray(
 	const bu::rt::bvh_tree &bvh,
+	const std::vector<bu::rt::material> &materials,
 	std::mt19937 &rng,
 	bu::rt::ray r,
 	int max_bounces)
@@ -13,7 +15,6 @@ glm::vec3 bu::rt::trace_ray(
 	std::uniform_real_distribution<float> dist(0, 1);
 	glm::vec3 L{0.0};
 	glm::vec3 thrput{1.0};
-
 
 	for (int bounces = 0; bounces < max_bounces; bounces++)
 	{
@@ -23,14 +24,39 @@ glm::vec3 bu::rt::trace_ray(
 		// World hit
 		if (!did_hit)
 		{
-			L += thrput * glm::vec3{0.8};
+			L += thrput * glm::pow(glm::max(0.f, glm::dot(r.direction, glm::normalize(glm::vec3{1, 1, 1}))), 12.f) * 5.f;
 			break;
 		}
 
-		// Evaluate BSDF
+		// Compute position, normal and find a tangent and bitangent
+		glm::vec3 P = bu::rt::ray_hit_pos(r, hit);
 		glm::vec3 N = bu::rt::ray_hit_normal(r, hit);
-		L += thrput * glm::vec3{0.8, 0, 0} * glm::dot(-r.direction, N);
-		thrput = glm::vec3{0};
+		glm::vec3 T = glm::normalize(glm::cross(r.direction, N));
+		glm::vec3 B = glm::normalize(glm::cross(T, N));
+		glm::mat3 TBN{T, B, N};
+		glm::mat3 inv_TBN{glm::transpose(TBN)};
+
+		// Transform ray direction to tangent space
+		glm::vec3 tbn_dir = inv_TBN * r.direction;
+
+		// Sample the BSDF
+		const auto &material = materials[hit.triangle->material_id];
+		auto bounce = material.sample(tbn_dir, 1.f, dist(rng), dist(rng));
+
+		// Stop if we hit a light
+		if (bounce.type == ray_bounce_type::EMISSION)
+		{
+			L += thrput * bounce.bsdf;
+			break;
+		}
+
+		// The new ray
+		const float ray_surface_offset = 1e-3;
+		r.direction = glm::normalize(TBN * bounce.new_direction);
+		r.origin = P + glm::sign(bounce.new_direction.z) * ray_surface_offset * N;
+
+		// Accumulate light
+		thrput *= bounce.bsdf / bounce.pdf;
 
 		// Russian roulette
 		float p_survive = glm::compMax(thrput);

@@ -5,6 +5,7 @@
 #include "job.hpp"
 #include "bvh_builder.hpp"
 #include "bvh.hpp"
+#include "material.hpp"
 #include "../../log.hpp"
 
 using namespace std::chrono_literals;
@@ -66,6 +67,7 @@ void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
 		if (cache_modified)
 		{
 			LOG_INFO << "BVH cache modified - initiating draft build!";
+			material_cache = std::make_shared<std::vector<bu::rt::material>>(bvh_cache->get_materials());
 			if (bvh_draft_build_task.has_value())
 				bu::discard_task(bu::global_task_cleaner, std::move(*bvh_draft_build_task));
 			bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
@@ -173,7 +175,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	if (!m_active && m_context->bvh && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job->start(m_context->bvh, m_camera, m_viewport);
+		m_job->start(m_context->bvh, m_context->material_cache, m_camera, m_viewport);
 		m_active = true;
 	}
 
@@ -219,8 +221,8 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		// Discard old PBO contents and buffer new data
 		{
 		ZoneScopedN("PBO upload")
-		std::lock_guard lock{m_job->m_image_mutex};
-		const auto &image_data = m_job->m_image->data;
+		// std::lock_guard lock{m_job->m_image_mutex};
+		const auto &image_data = m_job->m_image->data; // FIXME!
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);

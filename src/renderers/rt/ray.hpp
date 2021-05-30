@@ -3,6 +3,8 @@
 
 namespace bu::rt {
 
+struct material;
+
 struct ray
 {
 	glm::vec3 origin;
@@ -14,19 +16,30 @@ struct triangle
 	glm::vec3 vertices[3];
 	glm::vec3 normals[3];
 	glm::vec2 uvs[3];
-
-	// rt::material *material;
-};
-
-struct triangle_hit
-{
-	float t, u, v;
+	int material_id;
 };
 
 struct ray_hit
 {
 	float t, u, v;
 	const rt::triangle *triangle;
+};
+
+enum class ray_bounce_type
+{
+	DIFFUSE,
+	SPECULAR,
+	EMISSION,
+	SCATTER,
+};
+
+struct ray_bounce
+{
+	ray_bounce_type type;
+	glm::vec3 new_direction;
+	glm::vec3 bsdf;
+	float new_ior;
+	float pdf;
 };
 
 inline glm::vec3 ray_hit_pos(const ray &r, const ray_hit &h)

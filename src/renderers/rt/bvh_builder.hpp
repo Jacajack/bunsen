@@ -7,6 +7,13 @@
 
 namespace bu::rt {
 
+struct bvh_cache_material
+{
+	std::weak_ptr<bu::material_data> material_data;
+	int index;
+	bool visited = false;
+};
+
 /**
 	\brief Corresponds to one scene model node
 
@@ -15,7 +22,8 @@ namespace bu::rt {
 */
 struct bvh_cache_mesh
 {
-	bool update_from_model_node(const bu::model_node &node);
+	//! \todo Make this member of bvh_cache
+	bool update_from_model_node(const bu::model_node &node, const std::map<std::uint64_t, bvh_cache_material> &mat_cache);
 	
 	glm::mat4 transform;
 	std::vector<std::weak_ptr<bu::mesh>> meshes; // Weak pointers to the original meshes
@@ -43,10 +51,12 @@ public:
 		return m_meshes;
 	}
 
+	std::vector<bu::rt::material> get_materials() const;
 	std::vector<rt::aabb> get_mesh_aabbs() const;
 
 private:
 	std::map<std::uint64_t, std::shared_ptr<bvh_cache_mesh>> m_meshes;
+	std::map<std::uint64_t, bvh_cache_material> m_materials;
 };
 
 /**

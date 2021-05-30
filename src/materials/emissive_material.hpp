@@ -4,7 +4,7 @@
 
 namespace bu {
 
-struct emmisive_material : public surface_material
+struct emissive_material : public surface_material
 {
 	glm::vec3 color;
 };

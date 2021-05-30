@@ -1,14 +1,14 @@
 #pragma once
 #include <string>
 #include <memory>
-#include <glm/glm.hpp>
+#include "uid_provider.hpp"
 
 namespace bu {
 
 /**
 	\brief Abstract surface material
 */
-struct surface_material
+struct surface_material : public uid_provider<surface_material>
 {
 	virtual ~surface_material() = default;
 };
@@ -16,7 +16,7 @@ struct surface_material
 /**
 	\brief Abstract volume material
 */
-struct volume_material
+struct volume_material : public uid_provider<volume_material>
 {
 	virtual ~volume_material() = default;
 };
@@ -24,7 +24,7 @@ struct volume_material
 /**
 	\brief Material data holds and owns shaders for both surface and volume shading
 */
-struct material_data
+struct material_data : public uid_provider<material_data>
 {
 	std::string name;
 	std::unique_ptr<surface_material> surface;
