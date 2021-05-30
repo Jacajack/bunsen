@@ -7,14 +7,15 @@
 #include "ray.hpp"
 #include "bvh.hpp"
 #include "rt.hpp"
+#include "kernel.hpp"
 #include <glm/gtx/string_cast.hpp>
 
 using namespace std::chrono_literals;
 using bu::splat_bucket_pool;
 using bu::rt_renderer_job;
 
-static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep);
-static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep);
+static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id);
+static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id);
 
 void splat_bucket_pool::submit(std::unique_ptr<rt::splat_bucket> bucket)
 {
@@ -109,10 +110,12 @@ void rt_renderer_job::start(std::shared_ptr<const bu::rt::bvh_tree> bvh, const b
 	m_bvh = bvh;
 	new_buckets(64, 64 * 64);
 
-	for (int i = 0; i < 4; i++)
-		m_futures.emplace_back(std::async(std::launch::async, child_job, this, m_active));
+	int job_count = 4;
 
-	m_futures.emplace_back(std::async(std::launch::async, splatter_job, this, m_active));
+	for (int i = 0; i < job_count; i++)
+		m_futures.emplace_back(std::async(std::launch::async, child_job, this, m_active, i));
+
+	m_futures.emplace_back(std::async(std::launch::async, splatter_job, this, m_active, job_count));
 }
 
 
@@ -138,20 +141,19 @@ void rt_renderer_job::new_buckets(int count, int size)
 		m_clean_pool->submit(std::make_unique<rt::splat_bucket>(size));
 }
 
-static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep)
+static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id)
 {
 	auto &job = *jobp;
 	auto &active = *activep;
+	auto &image = job.get_image();
 	auto ray_caster = job.get_ray_caster();
 	auto bvh = job.get_bvh();
 	auto clean_pool = job.get_clean_pool();
 	auto dirty_pool = job.get_dirty_pool();
+	std::mt19937 rng(std::random_device{}() + job_id);
+	std::uniform_real_distribution<float> dist(0, 1);
 
-	std::mt19937 rng(124725 + std::random_device{}());
-	std::uniform_int_distribution<int> idist(0, 500);
-	std::uniform_real_distribution<float> fdist(0, 1);
-
-	while (active)
+	for (int bucket_id = 0; active; bucket_id++)
 	{	
 		std::unique_ptr<bu::rt::splat_bucket> bucket;
 
@@ -164,53 +166,40 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 		}
 
 		if (!active) break;
-
+		
 		{
 			ZoneScopedN("Bucket generation");
-			auto pos = glm::vec2{fdist(rng), fdist(rng)} * glm::vec2{job.get_image().size};
+
+			//! \todo Variable tile dimensions!
+			int tile_size = 64;
+			int job_count = 4;
+			auto start_pos = glm::ivec2{0, (job_id * tile_size) % image.size.y};
 
 			for (auto i = 0u; i < bucket->size && active; i++)
 			{
 				auto &splat = bucket->data[i];
-				splat.pos = pos + glm::vec2{i % 64, i / 64};
-				
-				splat.samples = 1;
-
+				glm::ivec2 p = start_pos + glm::ivec2{i % tile_size, i / tile_size} + glm::ivec2{bucket_id * tile_size, 0};
+				p.y += (p.x / image.size.x) * job_count * tile_size;
+				p.x %= image.size.x;
+				p.y %= image.size.y;
+				splat.pos = glm::vec2{p} + glm::vec2{0.1, 0.1} + 0.8f * glm::vec2{dist(rng), dist(rng)};
 				auto ndc = (splat.pos / glm::vec2{job.get_image().size}) * 2.f - 1.f;
-				auto dir = ray_caster.get_direction(ndc);
+				
 				bu::rt::ray r;
-
-				r.direction = glm::normalize(dir);
+				r.direction = ray_caster.get_direction(ndc);
 				r.origin = ray_caster.origin;
-
-				// LOG_DEBUG << "ray from " << r.origin.x << " " << r.origin.y << " " << r.origin.z;
-				// LOG_DEBUG << "ray dir " << r.direction.x << " " << r.direction.y << " " << r.direction.z;
-
-				bu::rt::ray_hit hit;
-				bool ok = bvh->test_ray(r, hit);
-				if (ok)
-				{
-					const auto &tri = *hit.triangle;
-					glm::vec3 N = glm::normalize((1 - hit.u - hit.v) * tri.normals[0] + hit.u * tri.normals[1] + hit.v * tri.normals[2]);
-					splat.color = N;
-				}
-				else
-				{
-					splat.color = glm::vec3{};
-					splat.samples = 0;
-				}
+				splat.color = bu::rt::trace_ray(*bvh, rng, r, 24);
+				splat.samples = 1;
 			}
 
 			dirty_pool->submit(std::move(bucket));
 		}
-
-		std::this_thread::sleep_for(0.01s);
 	}
 
 	return true;
 }
 
-static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep)
+static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id)
 {
 	auto &job = *jobp;
 	auto &active = *activep;

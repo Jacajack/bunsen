@@ -54,6 +54,7 @@ add_executable(bunsen
 	"src/renderers/rt/bvh_builder.cpp"
 	"src/renderers/rt/bvh_populate.cpp"
 	"src/renderers/rt/bvh.cpp"
+	"src/renderers/rt/kernel.cpp"
 
 	"src/renderers/albedo/albedo.cpp"
 
