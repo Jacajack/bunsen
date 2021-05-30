@@ -28,11 +28,23 @@ void sampled_image::splat(splat_bucket &bucket)
 	
 	for (auto i = 0u; i < bucket.size; i++)
 	{
-		auto &splat = bucket.data[i];
+		const auto &splat = bucket.data[i];
 
-		glm::ivec2 pos{splat.pos};
-		if (pos.x < 0 || pos.y < 0 || pos.x >= size.x || pos.y >= size.y) continue;
-		at(pos) += glm::vec4{splat.color, splat.samples};
+		glm::ivec2 A{glm::floor(splat.pos)};
+		glm::ivec2 B{A + 1};
+		glm::vec2 t{glm::mod(splat.pos, 1.f)};
+
+		if (A.x >= 0 && A.y >= 0 && A.x < size.x && A.y < size.y)
+			at(A) += glm::vec4{splat.color, splat.samples * (1.f - t.x) * (1.f - t.y)};
+
+		if (B.x >= 0 && A.y >= 0 && B.x < size.x && A.y < size.y)
+			at(glm::ivec2{B.x, A.y}) += glm::vec4{splat.color, splat.samples * t.x * (1.f - t.y)};
+
+		if (B.x >= 0 && B.y >= 0 && B.x < size.x && B.y < size.y)
+			at(B) += glm::vec4{splat.color, splat.samples * t.x * t.y};
+
+		if (A.x >= 0 && B.y >= 0 && A.x < size.x && B.y < size.y)
+			at(glm::ivec2{A.x, B.y}) += glm::vec4{splat.color, splat.samples * (1.f - t.x) * t.y};
 	}
 }
 

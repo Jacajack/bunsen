@@ -182,7 +182,7 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 				p.y += (p.x / image.size.x) * job_count * tile_size;
 				p.x %= image.size.x;
 				p.y %= image.size.y;
-				splat.pos = glm::vec2{p} + glm::vec2{0.1, 0.1} + 0.8f * glm::vec2{dist(rng), dist(rng)};
+				splat.pos = glm::vec2{p} + glm::vec2{dist(rng), dist(rng)};
 				auto ndc = (splat.pos / glm::vec2{job.get_image().size}) * 2.f - 1.f;
 				
 				bu::rt::ray r;
