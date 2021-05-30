@@ -5,6 +5,7 @@
 #include "../log.hpp"
 #include "../utils.hpp"
 #include "../scene.hpp"
+#include "../camera.hpp"
 
 using bu::layout_editor;
 
@@ -167,38 +168,30 @@ void layout_editor::update(
 		case action_state::ROTATE_Y:
 		case action_state::ROTATE_Z:
 		{
-			// We shoot two rays into a plane and based on their dot product we compute
-			// the angle
-			auto po = transform_origin;
-			auto cd = glm::normalize(cam.direction);
-			auto pn = -cd;
-			if (state == action_state::ROTATE_X) pn = {1, 0, 0};
-			if (state == action_state::ROTATE_Y) pn = {0, 1, 0};
-			if (state == action_state::ROTATE_Z) pn = {0, 0, 1};
+			// Project transform origin point
+			auto to_projected = cam.get_projection_matrix() * cam.get_view_matrix() * glm::vec4{transform_origin, 1};
+			to_projected /= to_projected.w;
 
-			// Compute two intersection points and translate by the difference
-			auto ro = cam.position;
-			auto rd_origin = mouse_raydir(mouse_origin);
-			auto rd_current = mouse_raydir(mouse_pos);
-			auto t_origin = ray_plane_intersection(ro, rd_origin, po, pn);
-			auto t_current = ray_plane_intersection(ro, rd_current, po, pn);
-			auto origin_intersect = ro + rd_origin * t_origin;
-			auto current_intersect = ro + rd_current * t_current;
+			// Normalized mouse coordinates
+			auto mo = normalize_mouse_pos(mouse_origin);
+			auto mp = normalize_mouse_pos(mouse_pos);
 
-			// Vectors from origin point to the intersections
-			// Note to self: length(cross()) won't work because we need negative values
-			auto v1 = glm::normalize(origin_intersect - po);
-			auto v2 = glm::normalize(current_intersect - po);
-			auto sina = glm::dot(glm::cross(v1, v2), pn);
-			auto cosa = glm::dot(v1, v2);
-			auto angle = std::atan2(sina, cosa);
-			auto axis = pn;
+			// Rotation axis
+			auto axis = glm::normalize(cam.direction);
+			if (state == action_state::ROTATE_X) axis = {1, 0, 0};
+			if (state == action_state::ROTATE_Y) axis = {0, 1, 0};
+			if (state == action_state::ROTATE_Z) axis = {0, 0, 1};
+
+			// Compute angle between mouse positions and transform origin point
+			auto v1 = mo - glm::vec2{to_projected};
+			auto v2 = mp - glm::vec2{to_projected};
+			float a1 = std::atan2(v1.y, v1.x);
+			float a2 = std::atan2(v2.y, v2.x);
+			auto angle = glm::dot(axis, cam.direction) < 0 ? (a2 - a1) : (a1 - a2);
 
 			transform_matrix = glm::translate(glm::mat4{1.f}, transform_origin) * glm::rotate(angle, axis) * glm::translate(glm::mat4{1.f}, -transform_origin);
 			
 			// Line connecting projected origin and mouse cursor
-			auto to_projected = cam.get_projection_matrix() * cam.get_view_matrix() * glm::vec4{transform_origin, 1};
-			to_projected /= to_projected.w;
 			overlay.add_line(to_projected, normalize_mouse_pos(mouse_pos));
 
 			// Axes

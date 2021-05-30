@@ -1,13 +1,13 @@
 #pragma once
 #include <set>
 #include <memory>
-#include "../camera.hpp"
 #include "imgui_overlay.hpp"
 
 namespace bu {
 
 class transform_node;
 class scene;
+class camera;
 
 /**
 	\brief Layout editor is responsible for editing scene layout based on user input
