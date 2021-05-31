@@ -77,14 +77,9 @@ std::shared_ptr<splat_bucket_pool> rt_renderer_job::get_dirty_pool() const
 	return m_dirty_pool;
 }
 
-std::shared_ptr<const bu::rt::bvh_tree> rt_renderer_job::get_bvh() const
+std::shared_ptr<const bu::rt::scene> rt_renderer_job::get_scene() const
 {
-	return m_bvh;
-}
-
-std::shared_ptr<const std::vector<bu::rt::material>> rt_renderer_job::get_materials() const
-{
-	return m_materials;
+	return m_scene;
 }
 
 /**
@@ -92,17 +87,16 @@ std::shared_ptr<const std::vector<bu::rt::material>> rt_renderer_job::get_materi
 	and spawns them. Accepts paremeters for the new render
 */
 void rt_renderer_job::start(
-	std::shared_ptr<const bu::rt::bvh_tree> bvh,
-	std::shared_ptr<const std::vector<bu::rt::material>> materials,
+	std::shared_ptr<const bu::rt::scene> scene,
 	bu::camera &camera,
 	const glm::ivec2 &viewport_size)
 {
 	if (m_active && *m_active) stop();
 
-	if (!bvh)
+	if (!scene)
 	{
-		LOG_ERROR << "Cannot start RT thread without a BVH!";
-		throw std::runtime_error{"rt_renderer_job started without a valid BVH"};
+		LOG_ERROR << "Cannot start RT thread without a scene!";
+		throw std::runtime_error{"rt_renderer_job started without a valid scene"};
 	}
 
 	// Remove completed futures
@@ -116,8 +110,7 @@ void rt_renderer_job::start(
 	m_image = std::make_shared<bu::rt::sampled_image>(viewport_size);
 	m_clean_pool = std::make_shared<splat_bucket_pool>();
 	m_dirty_pool = std::make_shared<splat_bucket_pool>();
-	m_bvh = bvh;
-	m_materials = materials;
+	m_scene = scene;
 	new_buckets(64, 64 * 64);
 
 	int job_count = 4;
@@ -140,7 +133,7 @@ void rt_renderer_job::stop()
 			LOG_INFO << "Requesting RT jobs to stop";
 		 *m_active = false;
 	}
-	m_bvh.reset();
+	m_scene.reset();
 }
 
 void rt_renderer_job::new_buckets(int count, int size)
@@ -157,8 +150,9 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 	auto &active = *activep;
 	auto &image = job.get_image();
 	auto ray_caster = job.get_ray_caster();
-	auto bvh = job.get_bvh();
-	auto materials = job.get_materials();
+	auto scene = job.get_scene();
+	auto &bvh = *scene->bvh;
+	auto &materials = *scene->materials;
 	auto clean_pool = job.get_clean_pool();
 	auto dirty_pool = job.get_dirty_pool();
 	std::mt19937 rng(std::random_device{}() + job_id);
@@ -199,7 +193,7 @@ static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> 
 				bu::rt::ray r;
 				r.direction = ray_caster.get_direction(ndc);
 				r.origin = ray_caster.origin;
-				splat.color = bu::rt::trace_ray(*bvh, *materials, rng, r, 24);
+				splat.color = bu::rt::trace_ray(bvh, materials, rng, r, 24);
 				splat.samples = 1;
 			}
 

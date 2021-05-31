@@ -5,236 +5,12 @@
 #include "aabb.hpp"
 #include "bvh.hpp"
 #include "material.hpp"
+#include "scene_cache.hpp"
 #include "../../log.hpp"
 #include "../../async_task.hpp"
 
-using bu::rt::bvh_cache_mesh;
-using bu::rt::bvh_cache;
 using bu::rt::bvh_draft_node;
 using bu::rt::bvh_draft;
-
-/**
-	\todo materials
-*/
-std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm::mat4 &transform, int material_id)
-{
-	ZoneScopedN("mesh_to_triangles");
-
-	// Transform matrix for normals
-	glm::mat3 tn{transform};
-	tn[0] /= glm::dot(tn[0], tn[0]);
-	tn[1] /= glm::dot(tn[1], tn[1]);
-	tn[2] /= glm::dot(tn[2], tn[2]);
-
-	if (mesh.indices.size() % 3)
-		LOG_ERROR << "There are some redundant indices in the mesh!";
-
-	std::vector<bu::rt::triangle> tris(mesh.indices.size() / 3);
-	for (auto i = 0u; i < mesh.indices.size(); i++)
-	{
-		auto ti = i / 3;
-		auto vi = i % 3;
-		auto index = mesh.indices[i];
-
-		tris[ti].material_id = material_id;
-		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.positions[index], 1}};
-		tris[ti].normals[vi] = glm::normalize(tn * mesh.normals[index]);
-		
-		if (i < mesh.uvs.size())
-			tris[ti].uvs[vi] = mesh.uvs[index];
-	}
-
-	return tris;
-}
-
-/**
-	\returns true if the mesh has been updated
-*/
-bool bvh_cache_mesh::update_from_model_node(const bu::model_node &node, const std::map<std::uint64_t, bvh_cache_material> &mat_cache)
-{
-	ZoneScopedN("Update BVH mesh from node");
-
-	// Update transform
-	bool transform_changed = false;
-	if (transform != node.get_final_transform())
-	{
-		transform_changed = true;
-		transform = node.get_final_transform();
-		// LOG_DEBUG << "BVH mesh change - transform change";
-	}
-
-	// Update meshes
-	bool meshes_changed = false;
-	auto &model = *node.model;
-
-	// Check if any meshes have been added or removed
-	if (meshes.size() != model.get_mesh_count())
-	{
-		meshes_changed = true;
-		// LOG_DEBUG << "BVH mesh change - different mesh count";
-	}
-	else
-	{
-		// Compare mesh IDs and not pointers for safety
-		auto cmp_mesh_ptr = [](std::shared_ptr<bu::mesh> a, std::shared_ptr<bu::mesh> b)
-		{
-			if (!a) return true;
-			else if (!b) return false;
-			else return a->uid() < b->uid();
-		};
-
-		// Detect any missing meshes
-		std::set<std::shared_ptr<bu::mesh>, decltype(cmp_mesh_ptr)> our_meshes(cmp_mesh_ptr);
-		for (auto i = 0u; i < meshes.size(); i++)
-		{
-			auto ptr = meshes[i].lock();
-			if (!ptr)
-			{
-				meshes_changed = true;
-				// LOG_DEBUG << "BVH mesh change - mesh destructed";
-				break;
-			}
-
-			our_meshes.emplace(std::move(ptr));
-		}
-
-		// Check if the scene node contains the same meshes
-		for (auto i = 0u; i < model.get_mesh_count(); i++)
-		{
-			auto mesh_ptr = model.get_mesh(i);
-			auto it = our_meshes.find(mesh_ptr);
-			if (it == our_meshes.end())
-			{
-				meshes_changed = true;
-				// LOG_DEBUG << "BVH mesh change - different meshes";
-				break;
-			}
-		}
-	}
-
-	changed = transform_changed || meshes_changed;
-
-	// Update from the model
-	if (changed)
-	{
-		ZoneScopedN("Actual update from model");
-		transform = node.get_final_transform();
-		meshes.clear();
-		triangles.clear();
-		for (auto i = 0u; i < model.get_mesh_count(); i++)
-		{
-			auto mesh_ptr = model.get_mesh(i);
-			meshes.push_back(mesh_ptr);
-			auto mesh_tris = mesh_to_triangles(*mesh_ptr, transform, mat_cache.at(model.get_mesh_material(i)->uid()).index);
-			std::copy(mesh_tris.begin(), mesh_tris.end(), std::back_insert_iterator(triangles));
-		}
-
-		aabb = bu::rt::triangles_aabb(triangles.data(), triangles.size());
-	}
-
-	return changed;
-}
-
-void bvh_draft_node::dissolve_meshes()
-{
-	ZoneScopedN("Dissolve meshes in BVH node");
-
-	for (auto &mesh : meshes)
-		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
-	meshes.clear();
-}
-
-/**
-	\brief Updates all cached models and their positions based on the scene, but does
-	not rebuild the BVH
-*/
-bool bvh_cache::update_from_scene(const bu::scene &scene)
-{
-	ZoneScopedN("BVH update from scene");
-
-	auto &scene_root = *scene.root_node;
-	int visited_materials = 0;
-	bool change = false;
-	bool materials_change = false;
-
-
-	for (auto &p : m_materials)
-		p.second.visited = false;
-
-	// Update materials from scene
-	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
-	{
-		auto &node = *it;
-		if (auto model_node = dynamic_cast<bu::model_node*>(&node))
-		{
-			for (auto mat_ptr : model_node->model->materials)
-			{
-				auto it = m_materials.find(mat_ptr->uid());
-				if (it == m_materials.end())
-				{
-					auto &cached_mat = m_materials[mat_ptr->uid()];
-					cached_mat.visited = true;
-					cached_mat.material_data = mat_ptr;
-					cached_mat.index = m_materials.size() - 1;
-				}
-				else
-				{
-					auto &cached_mat = it->second;
-					cached_mat.visited = true;
-					if (cached_mat.material_data.lock() != mat_ptr) materials_change = true;
-					cached_mat.material_data = mat_ptr;
-
-				}
-			}
-		}
-	}
-
-	//! \todo Remove unused materials when there are too many of them
-
-
-	// Remove all unvisited materials
-	// for (auto it = m_materials.begin(); it != m_materials.end();)
-	// 	if (!it->second.visited)
-	// 		it = m_materials.erase(it);
-	// 	else
-	// 		++it;
-
-
-	// Clear 'visited' flag for all meshes and materials
-	for (auto &p : m_meshes)
-		p.second->visited = false;
-
-	// Update from scene
-	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
-	{
-		auto &node = *it;
-		if (auto model_node = dynamic_cast<bu::model_node*>(&node))
-		{
-			auto &ptr = m_meshes[node.uid()];
-			if (!ptr)
-			{
-				ptr = std::make_shared<bvh_cache_mesh>();
-				LOG_DEBUG << "Adding a new mesh to BVH";
-			}
-			change |= ptr->update_from_model_node(*model_node, m_materials);
-			ptr->visited = true;
-		}
-	}
-
-	// Remove all meshes without 'visited' flag
-	for (auto it = m_meshes.begin(); it != m_meshes.end();)
-	{
-		if (!it->second->visited)
-		{
-			LOG_DEBUG << "Erasing mesh from BVH";
-			it = m_meshes.erase(it);
-		}
-		else
-			++it;
-	}
-
-	return change || materials_change;
-}
 
 /**
 	\brief A 'box' used in the partitioning process
@@ -365,6 +141,8 @@ static bool partition_boxes_sah(
 	is infeasible the, the meshes are dissolved into triangles.
 
 	Nodes containing triangles are recursively partitioned too.
+
+	\todo Split this into more functions
 */
 bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node, int depth = 0)
 {
@@ -500,37 +278,13 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 	return true;
 }
 
-std::vector<bu::rt::material> bu::rt::bvh_cache::get_materials() const
+void bvh_draft_node::dissolve_meshes()
 {
-	std::vector<bu::rt::material> materials(m_materials.size());
-	for (const auto &[uid, mat] : m_materials)
-	{
-		LOG_DEBUG << "mat cache[" << mat.index << "] = " << mat.material_data.lock()->uid();
-		materials.at(mat.index) = bu::rt::material{*mat.material_data.lock()};
-	}
-	return materials;
-}
+	ZoneScopedN("Dissolve meshes in BVH node");
 
-std::vector<bu::rt::aabb> bu::rt::bvh_cache::get_mesh_aabbs() const
-{
-	std::vector<aabb> aabbs;
-	aabbs.reserve(m_meshes.size());
-	for (const auto &[id, mesh] : m_meshes)
-		aabbs.push_back(mesh->aabb);
-	return aabbs;
-}
-
-bvh_draft bvh_cache::build_draft(const bu::async_stop_flag &stop_flag) const
-{
-	bvh_draft draft{};
-
-	// Put all non-empty meshes in the root node and process it
-	for (const auto &[id, mesh] : m_meshes)
-		if (!mesh->triangles.empty())
-			draft.m_root_node->meshes.push_back(mesh);
-
-	process_bvh_node(&stop_flag, draft.m_root_node.get());
-	return draft;
+	for (auto &mesh : meshes)
+		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
+	meshes.clear();
 }
 
 std::vector<bu::rt::aabb> bu::rt::bvh_draft::get_tree_aabbs() const
@@ -591,4 +345,14 @@ int bvh_draft::get_triangle_count() const
 	}
 
 	return n;
+}
+
+void bvh_draft::build(const scene_cache &cache, const bu::async_stop_flag &stop_flag)
+{
+	m_root_node = std::make_unique<bu::rt::bvh_draft_node>();
+	for (const auto &[id, mesh] : cache.get_meshes())
+		if (!mesh->triangles.empty())
+			m_root_node->meshes.push_back(mesh);
+
+	process_bvh_node(&stop_flag, m_root_node.get());
 }

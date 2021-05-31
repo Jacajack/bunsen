@@ -3,6 +3,7 @@
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
 #include "job.hpp"
+#include "scene_cache.hpp"
 #include "bvh_builder.hpp"
 #include "bvh.hpp"
 #include "material.hpp"
@@ -16,25 +17,34 @@ static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(
 	const bu::async_stop_flag *flag,
 	rt_context *ctx)
 {
-	auto cache_ptr = ctx->bvh_cache;
-	return std::make_unique<bu::rt::bvh_draft>(cache_ptr->build_draft(*flag));
+	auto cache_ptr = ctx->scene_cache;
+	auto draft_ptr = std::make_unique<bu::rt::bvh_draft>();
+	draft_ptr->build(*cache_ptr, *flag);
+	return draft_ptr;
 }
 
-static std::unique_ptr<bu::rt::bvh_tree> build_bvh_tree(
+static std::unique_ptr<bu::rt::scene> build_rt_scene(
 	const bu::async_stop_flag *flag,
-	rt_context *ctx)
+	rt_context *ctx,
+	std::shared_ptr<bu::rt::bvh_draft> draft_ptr)
 {
-	auto draft = ctx->bvh_draft;
-	auto bvh = std::make_unique<bu::rt::bvh_tree>(draft->get_height(), draft->get_triangle_count());
-	bvh->populate(*draft);
-	return bvh;
-}
+	auto cache_ptr = ctx->scene_cache;
+	auto materials = std::make_shared<std::vector<bu::rt::material>>(cache_ptr->get_materials());
+	
+	// Build BVH
+	auto bvh = std::make_shared<bu::rt::bvh_tree>(draft_ptr->get_height(), draft_ptr->get_triangle_count());
+	bvh->populate(*draft_ptr);
 
+	auto scene = std::make_unique<bu::rt::scene>();
+	scene->bvh = bvh;
+	scene->materials = materials;
+	return scene;
+}
 
 rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 	draw_sampled_image(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
 	draw_aabb(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
-	bvh_cache(std::make_unique<bu::rt::bvh_cache>())
+	scene_cache(std::make_unique<bu::rt::scene_cache>())
 {
 	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
 	preview_context = std::move(preview_ctx);
@@ -57,41 +67,46 @@ rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 	glVertexArrayAttribBinding(aabb_vao.id(), 0, 0);
 }
 
-void rt_context::update_bvh(const bu::scene &scene, bool rebuild)
+void rt_context::update_bvh(const bu::scene &scene, bool allow_build)
 {
 	const auto policy = std::launch::async;
 
-	if (rebuild)
+	// Trigger BVH draft build
+	if (allow_build)
 	{
-		bool cache_modified = bvh_cache->update_from_scene(scene);
+		bool cache_modified = scene_cache->update_from_scene(scene);
 		if (cache_modified)
 		{
 			LOG_INFO << "BVH cache modified - initiating draft build!";
-			material_cache = std::make_shared<std::vector<bu::rt::material>>(bvh_cache->get_materials());
-			if (bvh_draft_build_task.has_value())
-				bu::discard_task(bu::global_task_cleaner, std::move(*bvh_draft_build_task));
+
+			// Kill running tasks
+			bvh_draft_build_task.reset();
+			scene_build_task.reset();
+
 			bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
 		}
 	}
 
-	if (bvh_draft_build_task.has_value() && bu::is_future_ready(*bvh_draft_build_task))
+	// When BVH draft is complete, update BVH preview and start scene build
+	if (bvh_draft_build_task.has_value() && bvh_draft_build_task->is_ready())
 	{
-		bvh_draft = std::move(bvh_draft_build_task->get());
+		std::shared_ptr<bu::rt::bvh_draft> draft{std::move(bvh_draft_build_task->get())};
+		auto aabbs = draft->get_tree_aabbs();
+		glNamedBufferData(aabb_buffer.id(), 0, nullptr, GL_STATIC_DRAW);
+		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabbs), aabbs.data(), GL_STATIC_DRAW);
+		aabb_count = aabbs.size();
 
-		if (bvh_build_task.has_value())
-			bu::discard_task(bu::global_task_cleaner, std::move(*bvh_build_task));
-		bvh_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_tree, this);
+		scene_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_rt_scene, this, draft);
 		bvh_draft_build_task.reset();
-		LOG_INFO << "BVH draft complete: " << bvh_draft->get_triangle_count() << " triangles and " << bvh_draft->get_height() << " levels";
-		LOG_INFO << "Initiating final BVH build";
 	}
 
-	if (bvh_build_task.has_value() && bu::is_future_ready(*bvh_build_task))
+	// Update scene
+	if (scene_build_task.has_value() && scene_build_task->is_ready())
 	{
-		bvh = std::move(bvh_build_task->get());
-		bvh_build_task.reset();
-		LOG_INFO << "Final BVH build finished: " << bvh->triangle_count << " triangles and " << bvh->node_count << " nodes";
-	}		
+		this->scene = std::move(scene_build_task->get());
+		scene_build_task.reset();
+		LOG_INFO << "Final BVH build finished: " << this->scene->bvh->triangle_count << " triangles and " << this->scene->bvh->node_count << " nodes";
+	}	
 }
 
 rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
@@ -157,9 +172,9 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// Detect BVH update
-	if (m_last_bvh != m_context->bvh.get())
+	if (m_last_scene != m_context->scene.get())
 	{
-		m_last_bvh = m_context->bvh.get();
+		m_last_scene = m_context->scene.get();
 		changed = true;
 	}
 
@@ -172,10 +187,10 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// If 0.5 has passed from the last change, start a new job
-	if (!m_active && m_context->bvh && std::chrono::steady_clock::now() - m_last_change > 0.5s)
+	if (!m_active && m_context->scene && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job->start(m_context->bvh, m_context->material_cache, m_camera, m_viewport);
+		m_job->start(m_context->scene, m_camera, m_viewport);
 		m_active = true;
 	}
 
@@ -187,32 +202,21 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// BVH preview
-	if (m_preview_active && m_context->bvh_draft)
+	if (m_preview_active && m_context->aabb_count)
 	{
 		auto mat_view = camera.get_view_matrix();
 		auto mat_proj = camera.get_projection_matrix();
 		glm::vec3 line_color{1, 1, 0};
 
-		std::vector<glm::vec3> aabb_data;
-		auto aabbs = m_context->bvh_draft->get_tree_aabbs();
-		for (auto &box : aabbs)
-		{
-			aabb_data.push_back(box.min);
-			aabb_data.push_back(box.max);
-		}
-
 		auto &aabb_program = m_context->draw_aabb;
-		glBindVertexArray(m_context->aabb_vao.id());
 		glUseProgram(aabb_program->id());
 		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
 		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
 		glUniform3fv(aabb_program->get_uniform_location("color"), 1, &line_color[0]);
 
-		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), nullptr, GL_STATIC_DRAW);
-		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabb_data), aabb_data.data(), GL_STATIC_DRAW);
-
-		glBindVertexBuffer(0, aabb_buffer.id(), 0, 3 * sizeof(float));
-		glDrawArrays(GL_LINES, 0, aabb_data.size());
+		glBindVertexArray(m_context->aabb_vao.id());
+		glBindVertexBuffer(0, m_context->aabb_buffer.id(), 0, 3 * sizeof(float));
+		glDrawArrays(GL_LINES, 0, 2 * m_context->aabb_count);
 	}
 
 	// Draw the sampled image if the job is active

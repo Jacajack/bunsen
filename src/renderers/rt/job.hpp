@@ -13,6 +13,7 @@ namespace bu {
 namespace rt {
 struct bvh_tree;
 struct material;
+struct scene;
 }
 
 struct rt_context;
@@ -41,13 +42,11 @@ public:
 	bu::camera_ray_caster get_ray_caster() const;
 	std::shared_ptr<splat_bucket_pool> get_clean_pool() const;
 	std::shared_ptr<splat_bucket_pool> get_dirty_pool() const;
-	std::shared_ptr<const bu::rt::bvh_tree> get_bvh() const;
-	std::shared_ptr<const std::vector<bu::rt::material>> get_materials() const;
+	std::shared_ptr<const bu::rt::scene> get_scene() const;
 
 	// Run control
 	void start(
-		std::shared_ptr<const bu::rt::bvh_tree> bvh,
-		std::shared_ptr<const std::vector<bu::rt::material>> materials,
+		std::shared_ptr<const bu::rt::scene> scene,
 		bu::camera &camera,
 		const glm::ivec2 &viewport_size);
 	void stop();
@@ -71,8 +70,7 @@ private:
 	std::shared_ptr<splat_bucket_pool> m_dirty_pool;
 
 	// The BVH and materials
-	std::shared_ptr<const bu::rt::bvh_tree> m_bvh;
-	std::shared_ptr<const std::vector<bu::rt::material>> m_materials;
+	std::shared_ptr<const bu::rt::scene> m_scene;
 
 	// View settings
 	std::optional<bu::camera_ray_caster> m_ray_caster;

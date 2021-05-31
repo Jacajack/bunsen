@@ -11,15 +11,26 @@
 #include "../../renderers/basic_preview/basic_preview.hpp"
 
 namespace bu::rt {
-class bvh_cache;
+class scene_cache;
 class bvh_draft;
 struct bvh_tree;
 struct material;
+
+struct scene
+{
+	std::shared_ptr<bu::rt::bvh_tree> bvh;
+	std::shared_ptr<std::vector<bu::rt::material>> materials;
+	// std::shared_ptr<std::vector<bu::rt::light>> lights;
+};
+
 }
 
 namespace bu {
 struct rt_renderer_job;
 
+/**
+	\todo make this a class
+*/
 struct rt_context
 {
 	rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx = {});
@@ -31,19 +42,17 @@ struct rt_context
 	std::unique_ptr<bu::shader_program> draw_sampled_image;
 	std::unique_ptr<bu::shader_program> draw_aabb;
 
-	// VAO for drawing AABBs
+	// AABB data for drawing BVH preview
 	bu::gl_vertex_array aabb_vao;
+	bu::gl_buffer aabb_buffer;
+	int aabb_count = 0;
 
-	// BVH
-	std::shared_ptr<bu::rt::bvh_cache> bvh_cache;
-	std::shared_ptr<bu::rt::bvh_draft> bvh_draft;
-	std::shared_ptr<bu::rt::bvh_tree> bvh;
-
-	// Materials
-	std::shared_ptr<std::vector<bu::rt::material>> material_cache;
+	// Scene cache
+	std::shared_ptr<bu::rt::scene_cache> scene_cache;
+	std::shared_ptr<bu::rt::scene> scene;
 
 	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
-	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_tree>>> bvh_build_task;
+	std::optional<bu::async_task<std::unique_ptr<bu::rt::scene>>> scene_build_task;
 
 	void update_bvh(const bu::scene &scene, bool rebuild);
 };
@@ -67,9 +76,7 @@ private:
 	std::shared_ptr<rt_context> m_context;
 	std::unique_ptr<bu::basic_preview_renderer> m_preview_renderer;
 
-	// AABB preview buffer
 	bool m_preview_active = true;
-	bu::gl_buffer aabb_buffer;
 
 	// The output texture, its size and a PBO
 	std::unique_ptr<bu::gl_texture> m_result_tex;
@@ -81,7 +88,7 @@ private:
 	glm::ivec2 m_viewport;
 	bu::camera m_camera;
 	std::chrono::time_point<std::chrono::steady_clock> m_last_change;
-	const bu::rt::bvh_tree *m_last_bvh;
+	const bu::rt::scene *m_last_scene;
 	bool m_active = false;
 
 	// Current job
