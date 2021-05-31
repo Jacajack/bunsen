@@ -11,16 +11,16 @@ using bu::basic_preview_renderer;
 
 basic_preview_mesh::basic_preview_mesh(std::shared_ptr<bu::mesh> mesh)
 {
-	if (mesh->positions.size() != mesh->normals.size())
+	if (mesh->vertices.size() != mesh->normals.size())
 	{
 		LOG_ERROR << "basic_preview_renderer: Mesh vertex count doesn't match normal count!";
 		return;
 	}
 	
-	std::vector<glm::vec3> raw(mesh->positions.size() + mesh->normals.size());
-	for (auto i = 0u; i < mesh->positions.size(); i++)
+	std::vector<glm::vec3> raw(mesh->vertices.size() + mesh->normals.size());
+	for (auto i = 0u; i < mesh->vertices.size(); i++)
 	{
-		raw[2 * i + 0] = mesh->positions[i];
+		raw[2 * i + 0] = mesh->vertices[i];
 		raw[2 * i + 1] = mesh->normals[i];
 	}
 

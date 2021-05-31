@@ -16,7 +16,7 @@ void bu::ui::mesh_info(const std::shared_ptr<bu::mesh> &mesh)
 		ImGui::TableNextColumn();
 		ImGui::Text("Vertices");
 		ImGui::TableNextColumn();
-		ImGui::Text("%lu", mesh->positions.size());
+		ImGui::Text("%lu", mesh->vertices.size());
 
 		ImGui::TableNextColumn();
 		ImGui::Text("Normals");

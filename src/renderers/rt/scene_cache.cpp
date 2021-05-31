@@ -33,7 +33,7 @@ static std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, con
 		auto index = mesh.indices[i];
 
 		tris[ti].material_id = material_id;
-		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.positions[index], 1}};
+		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.vertices[index], 1}};
 		tris[ti].normals[vi] = glm::normalize(tn * mesh.normals[index]);
 		
 		if (i < mesh.uvs.size())

@@ -63,7 +63,7 @@ std::shared_ptr<bu::scene_node> bu::load_mesh_from_file(const std::string &path)
 
 		for (auto i = 0u; i < m->mNumVertices; i++)
 		{
-			mesh_data->positions.emplace_back(
+			mesh_data->vertices.emplace_back(
 				m->mVertices[i].x,
 				m->mVertices[i].y,
 				m->mVertices[i].z

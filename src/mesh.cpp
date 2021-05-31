@@ -6,16 +6,16 @@ using bu::mesh;
 
 void mesh_gl_buffers::buffer_mesh(const mesh &m)
 {
-	auto vertex_count = m.positions.size();
+	auto vertex_count = m.vertices.size();
 	auto vertex_size = 3 + 3 + 2;
 	
 	std::vector<float> data(vertex_count * vertex_size);
 
 	for (auto i = 0u; i < vertex_count; i++)
 	{
-		data[i * vertex_size + 0] = m.positions[i].x;
-		data[i * vertex_size + 1] = m.positions[i].y;
-		data[i * vertex_size + 2] = m.positions[i].z;
+		data[i * vertex_size + 0] = m.vertices[i].x;
+		data[i * vertex_size + 1] = m.vertices[i].y;
+		data[i * vertex_size + 2] = m.vertices[i].z;
 
 		// Normal (up if missing)
 		glm::vec3 N;
