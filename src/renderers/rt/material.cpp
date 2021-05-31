@@ -24,7 +24,7 @@ bu::rt::material::material(const bu::material_data &mat) :
 		if (auto ptr = dynamic_cast<const bu::emissive_material*>(mat.surface.get()))
 		{
 			this->type = material_type::EMISSIVE;
-			this->emissive.emission = ptr->color;
+			this->emissive.emission = ptr->color * ptr->strength;
 		}
 	}
 }

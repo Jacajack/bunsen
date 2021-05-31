@@ -15,6 +15,7 @@
 #include "../../materials/generic_material.hpp"
 #include "../../materials/diffuse_material.hpp"
 #include "../../materials/glass_material.hpp"
+#include "../../materials/emissive_material.hpp"
 #include "../../materials/generic_volume.hpp"
 
 /**
@@ -39,6 +40,7 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 		{typeid(bu::diffuse_material).hash_code(), "Diffuse material"},
 		{typeid(bu::generic_material).hash_code(), "Generic material"},
 		{typeid(bu::glass_material).hash_code(), "Glass material"},
+		{typeid(bu::emissive_material).hash_code(), "Emissive volume"},
 		{typeid(bu::generic_volume).hash_code(), "Generic volume"},
 	};
 
@@ -59,6 +61,9 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 
 		if (ImGui::Selectable("Glass material"))
 			mat->surface = std::make_unique<bu::glass_material>();
+
+		if (ImGui::Selectable("Emissive material"))
+			mat->surface = std::make_unique<bu::emissive_material>();
 
 		ImGui::EndCombo();
 	}
@@ -99,12 +104,20 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
 		}
 
-		// Generic material
+		// Glass material
 		if (auto surf = dynamic_cast<bu::glass_material*>(mat->surface.get()))
 		{
 			ImGui::ColorEdit3("Base color", &surf->color[0]);
 			ImGui::SliderFloat("IOR", &surf->ior, 0, 2);
 		}
+
+		// Emissive material
+		if (auto surf = dynamic_cast<bu::emissive_material*>(mat->surface.get()))
+		{
+			ImGui::DragFloat("Strength", &surf->strength, 0.1f);
+			ImGui::ColorEdit3("Color", &surf->color[0]);
+		}
+
 
 		ImGui::TreePop();
 	}
