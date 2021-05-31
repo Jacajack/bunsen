@@ -15,46 +15,49 @@ class scene_cache;
 class bvh_draft;
 struct bvh_tree;
 struct material;
-
-struct scene
-{
-	std::shared_ptr<bu::rt::bvh_tree> bvh;
-	std::shared_ptr<std::vector<bu::rt::material>> materials;
-	// std::shared_ptr<std::vector<bu::rt::light>> lights;
-};
-
+struct scene;
 }
 
 namespace bu {
 struct rt_renderer_job;
 
-/**
-	\todo make this a class
-*/
-struct rt_context
+class rt_context
 {
+public:
 	rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx = {});
 
+	void update_from_scene(const bu::scene &scene, bool allow_rebuild);
+
+	auto get_basic_preview_context() const {return m_preview_context;}
+	auto &get_sampled_image_program() const {return *m_sampled_image_program;}
+	auto &get_aabb_program() const {return *m_aabb_program;}
+
+	auto get_aabb_count() const {return m_aabb_count;}
+	auto &get_aabb_buffer() const {return m_aabb_buffer;}
+	auto &get_aabb_vao() const {return m_aabb_vao;}
+
+	auto get_scene() const {return m_scene;}
+	auto get_scene_cache() const {return m_scene_cache;}
+
+private:
 	// Embedded preview renderer
-	std::shared_ptr<bu::basic_preview_context> preview_context;
+	std::shared_ptr<bu::basic_preview_context> m_preview_context;
 
 	// Shader for drawing the raytraced image and AABBs
-	std::unique_ptr<bu::shader_program> draw_sampled_image;
-	std::unique_ptr<bu::shader_program> draw_aabb;
+	std::unique_ptr<bu::shader_program> m_sampled_image_program;
+	std::unique_ptr<bu::shader_program> m_aabb_program;
 
 	// AABB data for drawing BVH preview
-	bu::gl_vertex_array aabb_vao;
-	bu::gl_buffer aabb_buffer;
-	int aabb_count = 0;
+	bu::gl_vertex_array m_aabb_vao;
+	bu::gl_buffer m_aabb_buffer;
+	int m_aabb_count = 0;
 
-	// Scene cache
-	std::shared_ptr<bu::rt::scene_cache> scene_cache;
-	std::shared_ptr<bu::rt::scene> scene;
+	// Scene cache and scene
+	std::shared_ptr<bu::rt::scene_cache> m_scene_cache;
+	std::shared_ptr<bu::rt::scene> m_scene;
 
-	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> bvh_draft_build_task;
-	std::optional<bu::async_task<std::unique_ptr<bu::rt::scene>>> scene_build_task;
-
-	void update_bvh(const bu::scene &scene, bool rebuild);
+	std::optional<bu::async_task<std::unique_ptr<bu::rt::bvh_draft>>> m_bvh_draft_build_task;
+	std::optional<bu::async_task<std::unique_ptr<bu::rt::scene>>> m_scene_build_task;
 };
 
 /**

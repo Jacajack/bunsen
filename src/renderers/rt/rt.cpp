@@ -7,6 +7,7 @@
 #include "bvh_builder.hpp"
 #include "bvh.hpp"
 #include "material.hpp"
+#include "scene.hpp"
 #include "../../log.hpp"
 
 using namespace std::chrono_literals;
@@ -17,7 +18,7 @@ static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(
 	const bu::async_stop_flag *flag,
 	rt_context *ctx)
 {
-	auto cache_ptr = ctx->scene_cache;
+	auto cache_ptr = ctx->get_scene_cache();
 	auto draft_ptr = std::make_unique<bu::rt::bvh_draft>();
 	draft_ptr->build(*cache_ptr, *flag);
 	return draft_ptr;
@@ -28,7 +29,7 @@ static std::unique_ptr<bu::rt::scene> build_rt_scene(
 	rt_context *ctx,
 	std::shared_ptr<bu::rt::bvh_draft> draft_ptr)
 {
-	auto cache_ptr = ctx->scene_cache;
+	auto cache_ptr = ctx->get_scene_cache();
 	auto materials = std::make_shared<std::vector<bu::rt::material>>(cache_ptr->get_materials());
 	
 	// Build BVH
@@ -42,17 +43,17 @@ static std::unique_ptr<bu::rt::scene> build_rt_scene(
 }
 
 rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
-	draw_sampled_image(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
-	draw_aabb(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
-	scene_cache(std::make_unique<bu::rt::scene_cache>())
+	m_sampled_image_program(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
+	m_aabb_program(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
+	m_scene_cache(std::make_unique<bu::rt::scene_cache>())
 {
 	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
-	preview_context = std::move(preview_ctx);
+	m_preview_context = std::move(preview_ctx);
 
 	// Setup AABB VAO
-	glBindVertexArray(aabb_vao.id());
+	glBindVertexArray(m_aabb_vao.id());
 	glVertexArrayAttribFormat( // Position (0)
-		aabb_vao.id(), 
+		m_aabb_vao.id(), 
 		0,
 		3,
 		GL_FLOAT,
@@ -61,57 +62,57 @@ rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
 	);
 
 	// Enable position attribute
-	glEnableVertexArrayAttrib(aabb_vao.id(), 0);
+	glEnableVertexArrayAttrib(m_aabb_vao.id(), 0);
 
 	// All data is read from buffer bound to binding 0
-	glVertexArrayAttribBinding(aabb_vao.id(), 0, 0);
+	glVertexArrayAttribBinding(m_aabb_vao.id(), 0, 0);
 }
 
-void rt_context::update_bvh(const bu::scene &scene, bool allow_build)
+void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 {
 	const auto policy = std::launch::async;
 
 	// Trigger BVH draft build
 	if (allow_build)
 	{
-		bool cache_modified = scene_cache->update_from_scene(scene);
+		bool cache_modified = m_scene_cache->update_from_scene(scene);
 		if (cache_modified)
 		{
 			LOG_INFO << "BVH cache modified - initiating draft build!";
 
 			// Kill running tasks
-			bvh_draft_build_task.reset();
-			scene_build_task.reset();
+			m_bvh_draft_build_task.reset();
+			m_scene_build_task.reset();
 
-			bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
+			m_bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
 		}
 	}
 
 	// When BVH draft is complete, update BVH preview and start scene build
-	if (bvh_draft_build_task.has_value() && bvh_draft_build_task->is_ready())
+	if (m_bvh_draft_build_task.has_value() && m_bvh_draft_build_task->is_ready())
 	{
-		std::shared_ptr<bu::rt::bvh_draft> draft{std::move(bvh_draft_build_task->get())};
+		std::shared_ptr<bu::rt::bvh_draft> draft{std::move(m_bvh_draft_build_task->get())};
 		auto aabbs = draft->get_tree_aabbs();
-		glNamedBufferData(aabb_buffer.id(), 0, nullptr, GL_STATIC_DRAW);
-		glNamedBufferData(aabb_buffer.id(), bu::vector_size(aabbs), aabbs.data(), GL_STATIC_DRAW);
-		aabb_count = aabbs.size();
+		glNamedBufferData(m_aabb_buffer.id(), 0, nullptr, GL_STATIC_DRAW);
+		glNamedBufferData(m_aabb_buffer.id(), bu::vector_size(aabbs), aabbs.data(), GL_STATIC_DRAW);
+		m_aabb_count = aabbs.size();
 
-		scene_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_rt_scene, this, draft);
-		bvh_draft_build_task.reset();
+		m_scene_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_rt_scene, this, draft);
+		m_bvh_draft_build_task.reset();
 	}
 
 	// Update scene
-	if (scene_build_task.has_value() && scene_build_task->is_ready())
+	if (m_scene_build_task.has_value() && m_scene_build_task->is_ready())
 	{
-		this->scene = std::move(scene_build_task->get());
-		scene_build_task.reset();
-		LOG_INFO << "Final BVH build finished: " << this->scene->bvh->triangle_count << " triangles and " << this->scene->bvh->node_count << " nodes";
+		this->m_scene = std::move(m_scene_build_task->get());
+		m_scene_build_task.reset();
+		LOG_INFO << "Final BVH build finished: " << this->m_scene->bvh->triangle_count << " triangles and " << this->m_scene->bvh->node_count << " nodes";
 	}	
 }
 
 rt_renderer::rt_renderer(std::shared_ptr<rt_context> context) :
 	m_context(std::move(context)),
-	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->preview_context)),
+	m_preview_renderer(std::make_unique<bu::basic_preview_renderer>(m_context->get_basic_preview_context())),
 	m_job(std::make_unique<bu::rt_renderer_job>(m_context))
 {
 	set_viewport_size({1024, 1024});
@@ -172,9 +173,9 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// Detect BVH update
-	if (m_last_scene != m_context->scene.get())
+	if (m_last_scene != m_context->get_scene().get())
 	{
-		m_last_scene = m_context->scene.get();
+		m_last_scene = m_context->get_scene().get();
 		changed = true;
 	}
 
@@ -187,10 +188,10 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// If 0.5 has passed from the last change, start a new job
-	if (!m_active && m_context->scene && std::chrono::steady_clock::now() - m_last_change > 0.5s)
+	if (!m_active && m_context->get_scene() && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job->start(m_context->scene, m_camera, m_viewport);
+		m_job->start(m_context->get_scene(), m_camera, m_viewport);
 		m_active = true;
 	}
 
@@ -202,21 +203,21 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	}
 
 	// BVH preview
-	if (m_preview_active && m_context->aabb_count)
+	if (m_preview_active && m_context->get_aabb_count())
 	{
 		auto mat_view = camera.get_view_matrix();
 		auto mat_proj = camera.get_projection_matrix();
 		glm::vec3 line_color{1, 1, 0};
 
-		auto &aabb_program = m_context->draw_aabb;
-		glUseProgram(aabb_program->id());
-		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-		glUniformMatrix4fv(aabb_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
-		glUniform3fv(aabb_program->get_uniform_location("color"), 1, &line_color[0]);
+		auto &aabb_program = m_context->get_aabb_program();
+		glUseProgram(aabb_program.id());
+		glUniformMatrix4fv(aabb_program.get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
+		glUniformMatrix4fv(aabb_program.get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+		glUniform3fv(aabb_program.get_uniform_location("color"), 1, &line_color[0]);
 
-		glBindVertexArray(m_context->aabb_vao.id());
-		glBindVertexBuffer(0, m_context->aabb_buffer.id(), 0, 3 * sizeof(float));
-		glDrawArrays(GL_LINES, 0, 2 * m_context->aabb_count);
+		glBindVertexArray(m_context->get_aabb_vao().id());
+		glBindVertexBuffer(0, m_context->get_aabb_buffer().id(), 0, 3 * sizeof(float));
+		glDrawArrays(GL_LINES, 0, 2 * m_context->get_aabb_count());
 	}
 
 	// Draw the sampled image if the job is active
@@ -226,7 +227,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		{
 		ZoneScopedN("PBO upload")
 		// std::lock_guard lock{m_job->m_image_mutex};
-		const auto &image_data = m_job->m_image->data; // FIXME!
+		const auto &image_data = m_job->get_image().data; // FIXME!
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
@@ -240,11 +241,11 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_BLEND);
-		glUseProgram(m_context->draw_sampled_image->id());
+		glUseProgram(m_context->get_sampled_image_program().id());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
-		glUniform1i(m_context->draw_sampled_image->get_uniform_location("tex"), 0);
-		glUniform2i(m_context->draw_sampled_image->get_uniform_location("size"), m_viewport.x, m_viewport.y);
+		glUniform1i(m_context->get_sampled_image_program().get_uniform_location("tex"), 0);
+		glUniform2i(m_context->get_sampled_image_program().get_uniform_location("size"), m_viewport.x, m_viewport.y);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);

@@ -8,14 +8,16 @@
 #include "bvh.hpp"
 #include "rt.hpp"
 #include "kernel.hpp"
+#include "scene.hpp"
 #include <glm/gtx/string_cast.hpp>
 
 using namespace std::chrono_literals;
 using bu::splat_bucket_pool;
 using bu::rt_renderer_job;
+using bu::rt_job_context;
 
-static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id);
-static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id);
+static bool child_job(std::shared_ptr<rt_job_context> ctx, int job_id);
+static bool splatter_job(std::shared_ptr<rt_job_context> ctx, int job_id);
 
 void splat_bucket_pool::submit(std::unique_ptr<rt::splat_bucket> bucket)
 {
@@ -37,6 +39,28 @@ std::unique_ptr<bu::rt::splat_bucket> splat_bucket_pool::acquire()
 	}
 }
 
+rt_job_context::rt_job_context(
+	std::shared_ptr<const rt::scene> scene,
+	const bu::camera &camera,
+	const glm::ivec2 &viewport_size,
+	int bucket_count,
+	int thread_count,
+	int tile_size) :
+	active(true),
+	scene(std::move(scene)),
+	ray_caster(camera),
+	image(viewport_size),
+	bucket_count(bucket_count),
+	thread_count(thread_count),
+	tile_size(tile_size)
+{
+	int bucket_size = tile_size * tile_size;
+	LOG_INFO << "Creating " << bucket_count << " new splat buckets (size = " << bucket_size << ")";
+	for (int i = 0; i < bucket_count; i++)
+		clean_pool.submit(std::make_unique<rt::splat_bucket>(bucket_size));
+}
+
+
 rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context) :
 	m_context(std::move(context))
 {
@@ -48,38 +72,9 @@ rt_renderer_job::rt_renderer_job(std::shared_ptr<bu::rt_context> context) :
 */
 rt_renderer_job::~rt_renderer_job()
 {
-	if (m_active) *m_active = false;
+	if (m_job_context && m_job_context->active)
+		m_job_context->active = false;
 	LOG_INFO << "RT job terminated!";
-}
-
-const bu::rt::sampled_image &rt_renderer_job::get_image() const
-{
-	return *m_image;
-}
-
-const bu::rt_context &rt_renderer_job::get_context() const
-{
-	return *m_context;
-}
-
-bu::camera_ray_caster rt_renderer_job::get_ray_caster() const
-{
-	return *m_ray_caster;
-}
-
-std::shared_ptr<splat_bucket_pool> rt_renderer_job::get_clean_pool() const
-{
-	return m_clean_pool;
-}
-
-std::shared_ptr<splat_bucket_pool> rt_renderer_job::get_dirty_pool() const
-{
-	return m_dirty_pool;
-}
-
-std::shared_ptr<const bu::rt::scene> rt_renderer_job::get_scene() const
-{
-	return m_scene;
 }
 
 /**
@@ -89,9 +84,13 @@ std::shared_ptr<const bu::rt::scene> rt_renderer_job::get_scene() const
 void rt_renderer_job::start(
 	std::shared_ptr<const bu::rt::scene> scene,
 	bu::camera &camera,
-	const glm::ivec2 &viewport_size)
+	const glm::ivec2 &viewport_size,
+	int bucket_count,
+	int thread_count,
+	int tile_size)
 {
-	if (m_active && *m_active) stop();
+	if (m_job_context && m_job_context->active)
+		stop();
 
 	if (!scene)
 	{
@@ -104,21 +103,19 @@ void rt_renderer_job::start(
 		return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 	}), m_futures.end());
 
+	m_job_context = std::make_shared<rt_job_context>(
+		scene,
+		camera,
+		viewport_size,
+		bucket_count,
+		thread_count,
+		tile_size);
+
 	LOG_INFO << "Starting new RT jobs";
-	m_active = std::make_shared<std::atomic<bool>>(true);
-	m_ray_caster = bu::camera_ray_caster{camera};
-	m_image = std::make_shared<bu::rt::sampled_image>(viewport_size);
-	m_clean_pool = std::make_shared<splat_bucket_pool>();
-	m_dirty_pool = std::make_shared<splat_bucket_pool>();
-	m_scene = scene;
-	new_buckets(64, 64 * 64);
+	for (int i = 0; i < thread_count; i++)
+		m_futures.emplace_back(std::async(std::launch::async, child_job, m_job_context, i));
 
-	int job_count = 4;
-
-	for (int i = 0; i < job_count; i++)
-		m_futures.emplace_back(std::async(std::launch::async, child_job, this, m_active, i));
-
-	m_futures.emplace_back(std::async(std::launch::async, splatter_job, this, m_active, job_count));
+	m_futures.emplace_back(std::async(std::launch::async, splatter_job, m_job_context, thread_count));
 }
 
 
@@ -127,109 +124,84 @@ void rt_renderer_job::start(
 */
 void rt_renderer_job::stop()
 {
-	if (m_active)
+	if (m_job_context)
 	{
-		if (*m_active)
+		if (m_job_context->active)
 			LOG_INFO << "Requesting RT jobs to stop";
-		 *m_active = false;
+		 m_job_context->active = false;
 	}
-	m_scene.reset();
+	m_job_context.reset();
 }
 
-void rt_renderer_job::new_buckets(int count, int size)
-{
-	LOG_INFO << "Creating " << count << " new splat buckets (size = " << size << ")";
-	
-	while (count--)
-		m_clean_pool->submit(std::make_unique<rt::splat_bucket>(size));
-}
 
-static bool child_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id)
+static bool child_job(std::shared_ptr<rt_job_context> ctx, int job_id)
 {
-	auto &job = *jobp;
-	auto &active = *activep;
-	auto &image = job.get_image();
-	auto ray_caster = job.get_ray_caster();
-	auto scene = job.get_scene();
-	auto &bvh = *scene->bvh;
-	auto &materials = *scene->materials;
-	auto clean_pool = job.get_clean_pool();
-	auto dirty_pool = job.get_dirty_pool();
 	std::mt19937 rng(std::random_device{}() + job_id);
 	std::uniform_real_distribution<float> dist(0, 1);
 
-	for (int bucket_id = 0; active; bucket_id++)
+	for (int bucket_id = 0; ctx->active; bucket_id++)
 	{	
 		std::unique_ptr<bu::rt::splat_bucket> bucket;
 
 		// This should never stall
-		while (active && !(bucket = clean_pool->acquire()))
+		while (ctx->active && !(bucket = ctx->clean_pool.acquire()))
 		{
 			ZoneScopedN("Bucket wait");
 			LOG_WARNING << "RT thread could not acquire bucket - stalling!";
 			std::this_thread::sleep_for(0.1s);
 		}
 
-		if (!active) break;
+		if (!ctx->active) break;
 		
 		{
 			ZoneScopedN("Bucket generation");
 
-			//! \todo Variable tile dimensions!
-			int tile_size = 64;
-			int job_count = 4;
-			auto start_pos = glm::ivec2{0, (job_id * tile_size) % image.size.y};
+			auto start_pos = glm::ivec2{0, (job_id * ctx->tile_size) % ctx->image.size.y};
 
-			for (auto i = 0u; i < bucket->size && active; i++)
+			for (auto i = 0u; i < bucket->size && ctx->active; i++)
 			{
 				auto &splat = bucket->data[i];
-				glm::ivec2 p = start_pos + glm::ivec2{i % tile_size, i / tile_size} + glm::ivec2{bucket_id * tile_size, 0};
-				p.y += (p.x / image.size.x) * job_count * tile_size;
-				p.x %= image.size.x;
-				p.y %= image.size.y;
+				glm::ivec2 p = start_pos + glm::ivec2{i % ctx->tile_size, i / ctx->tile_size} + glm::ivec2{bucket_id * ctx->tile_size, 0};
+				p.y += (p.x / ctx->image.size.x) * ctx->thread_count * ctx->tile_size;
+				p.x %= ctx->image.size.x;
+				p.y %= ctx->image.size.y;
 				splat.pos = glm::vec2{p} + glm::vec2{dist(rng), dist(rng)};
-				auto ndc = (splat.pos / glm::vec2{job.get_image().size}) * 2.f - 1.f;
+				auto ndc = (splat.pos / glm::vec2{ctx->image.size}) * 2.f - 1.f;
 				
 				bu::rt::ray r;
-				r.direction = ray_caster.get_direction(ndc);
-				r.origin = ray_caster.origin;
-				splat.color = bu::rt::trace_ray(bvh, materials, rng, r, 24);
+				r.direction = ctx->ray_caster.get_direction(ndc);
+				r.origin = ctx->ray_caster.origin;
+				splat.color = bu::rt::trace_ray(*ctx->scene->bvh, *ctx->scene->materials, rng, r, 24);
 				splat.samples = 1;
 			}
 
-			dirty_pool->submit(std::move(bucket));
+			ctx->dirty_pool.submit(std::move(bucket));
 		}
 	}
 
 	return true;
 }
 
-static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool>> activep, int job_id)
+static bool splatter_job(std::shared_ptr<rt_job_context> ctx, int job_id)
 {
-	auto &job = *jobp;
-	auto &active = *activep;
-	std::shared_ptr<bu::rt::sampled_image> image = job.m_image;
-	auto clean_pool = job.get_clean_pool();
-	auto dirty_pool = job.get_dirty_pool();
-
-	while (active)
+	while (ctx->active)
 	{
 		std::unique_ptr<bu::rt::splat_bucket> bucket;
 
 		// If bucket can be acquired do it
-		if (!(bucket = dirty_pool->acquire()))
+		if (!(bucket = ctx->dirty_pool.acquire()))
 		{
 			// Otherwise wait until notified
-			std::unique_lock<std::mutex> lk{dirty_pool->mut};
-			dirty_pool->cv.wait_for(lk, 0.1s);
+			std::unique_lock<std::mutex> lk{ctx->dirty_pool.mut};
+			ctx->dirty_pool.cv.wait_for(lk, 0.1s);
 
-			if (!active) return true;
+			if (!ctx->active) return true;
 
 			// Wakeup can be spurious - check size
-			if (dirty_pool->buckets.size())
+			if (ctx->dirty_pool.buckets.size())
 			{
-				bucket = std::move(dirty_pool->buckets.back());
-				dirty_pool->buckets.pop_back();
+				bucket = std::move(ctx->dirty_pool.buckets.back());
+				ctx->dirty_pool.buckets.pop_back();
 			}
 			else
 				continue;
@@ -237,12 +209,12 @@ static bool splatter_job(rt_renderer_job *jobp, std::shared_ptr<std::atomic<bool
 
 		// Splat the bucket on the image
 		{
-			std::lock_guard lock{job.m_image_mutex};
-			image->splat(*bucket);
+			std::lock_guard lock{ctx->image_mutex};
+			ctx->image.splat(*bucket);
 		}
 
 		// Return the bucket
-		clean_pool->submit(std::move(bucket));
+		ctx->clean_pool.submit(std::move(bucket));
 	}
 
 	return true;

@@ -29,7 +29,36 @@ struct splat_bucket_pool
 };
 
 /**
-	Path tracing rendering job.
+	\brief Context provided to each ray-tracing thread
+*/
+struct rt_job_context
+{
+	rt_job_context(
+		std::shared_ptr<const rt::scene> scene,
+		const bu::camera &camera,
+		const glm::ivec2 &viewport_size,
+		int bucket_count,
+		int thread_count,
+		int tile_size);
+
+	std::atomic<bool> active;
+	
+	std::shared_ptr<const bu::rt::scene> scene;
+	bu::camera_ray_caster ray_caster;
+
+	splat_bucket_pool clean_pool;
+	splat_bucket_pool dirty_pool;
+
+	rt::sampled_image image;
+	std::mutex image_mutex;
+
+	int bucket_count;
+	int thread_count;
+	int tile_size;
+};
+
+/**
+	\brief Path tracing rendering job - spawns multiple threads sharing one rt_job_context
 */
 class rt_renderer_job : public std::enable_shared_from_this<rt_renderer_job>
 {
@@ -37,43 +66,27 @@ public:
 	rt_renderer_job(std::shared_ptr<bu::rt_context> context);
 	~rt_renderer_job();
 	
-	const rt::sampled_image &get_image() const;
-	const bu::rt_context &get_context() const;
-	bu::camera_ray_caster get_ray_caster() const;
-	std::shared_ptr<splat_bucket_pool> get_clean_pool() const;
-	std::shared_ptr<splat_bucket_pool> get_dirty_pool() const;
-	std::shared_ptr<const bu::rt::scene> get_scene() const;
+	auto &get_image() const {return m_job_context->image;}
+	auto &get_context() const {return *m_context;}
+	auto get_job_context() const {return m_job_context;}
 
 	// Run control
 	void start(
 		std::shared_ptr<const bu::rt::scene> scene,
 		bu::camera &camera,
-		const glm::ivec2 &viewport_size);
+		const glm::ivec2 &viewport_size,
+		int bucket_count = 64,
+		int thread_count = 4,
+		int tile_size = 64);
 	void stop();
 
-	// The sampled image
-	std::shared_ptr<rt::sampled_image> m_image;
-	std::mutex m_image_mutex;
-
 private:
-	void new_buckets(int count, int size);
-
 	// The main context
 	std::shared_ptr<bu::rt_context> m_context;
 
 	// Childrens' futures and active flag
-	std::shared_ptr<std::atomic<bool>> m_active;
+	std::shared_ptr<rt_job_context> m_job_context;
 	std::vector<std::future<bool>> m_futures;
-
-	// Pointers to the bucket pools
-	std::shared_ptr<splat_bucket_pool> m_clean_pool;
-	std::shared_ptr<splat_bucket_pool> m_dirty_pool;
-
-	// The BVH and materials
-	std::shared_ptr<const bu::rt::scene> m_scene;
-
-	// View settings
-	std::optional<bu::camera_ray_caster> m_ray_caster;
 };
 
 }
