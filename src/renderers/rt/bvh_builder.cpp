@@ -134,6 +134,80 @@ static bool partition_boxes_sah(
 	return !stop_flag.should_stop();
 }
 
+static void partition_triangles(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node)
+{
+	std::vector<bvh_box> contents(node->triangles.size());
+	for (auto i = 0u; i < node->triangles.size(); i++)
+	{
+		auto aabb = bu::rt::triangle_aabb(node->triangles[i]);
+		contents[i] = bvh_box{aabb.get_center(), aabb, i};
+		
+		if (i == 0)
+			node->aabb = aabb;
+		else
+			node->aabb.add_aabb(aabb);
+	}
+
+	std::vector<unsigned int> l, r;
+	bool should_split = node->triangles.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
+	bool split_valid = !l.empty() && !r.empty();
+
+	if (should_split && split_valid)
+	{
+		// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " triangles";
+
+		node->left = std::make_unique<bu::rt::bvh_draft_node>();
+		node->right = std::make_unique<bu::rt::bvh_draft_node>();
+
+		for (auto id : l)
+			node->left->triangles.emplace_back(std::move(node->triangles[id]));
+		
+		for (auto id : r)
+			node->right->triangles.emplace_back(std::move(node->triangles[id]));
+
+		node->triangles.clear();
+	}
+}
+
+/**
+	\returns true if the the meshes in this node should be dissolved
+*/
+static bool partition_meshes(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node)
+{
+	std::vector<bvh_box> contents(node->meshes.size());
+	for (auto i = 0u; i < node->meshes.size(); i++)
+	{
+		auto aabb = node->meshes[i]->aabb;
+		contents[i] = bvh_box{aabb.get_center(), aabb, i};
+		
+		if (i == 0)
+			node->aabb = node->meshes[i]->aabb;
+		else
+			node->aabb.add_aabb(node->meshes[i]->aabb);
+	}
+
+	std::vector<unsigned int> l, r;
+	bool should_split = node->meshes.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
+	bool split_valid = !l.empty() && !r.empty();
+
+	if (should_split && split_valid)
+	{
+		// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " meshes";
+		node->left = std::make_unique<bu::rt::bvh_draft_node>();
+		node->right = std::make_unique<bu::rt::bvh_draft_node>();
+
+		for (auto id : l)
+			node->left->meshes.emplace_back(std::move(node->meshes[id]));
+		
+		for (auto id : r)
+			node->right->meshes.emplace_back(std::move(node->meshes[id]));
+
+		node->meshes.clear();
+	}
+
+	return !should_split || !split_valid;
+}
+
 /**
 	Recursively processes BVH nodes.
 
@@ -175,73 +249,12 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 	}
 	else if (!node->triangles.empty()) // Has triangles - partition triangles
 	{
-		std::vector<bvh_box> contents(node->triangles.size());
-		for (auto i = 0u; i < node->triangles.size(); i++)
-		{
-			auto aabb = bu::rt::triangle_aabb(node->triangles[i]);
-			contents[i] = bvh_box{aabb.get_center(), aabb, i};
-			
-			if (i == 0)
-				node->aabb = aabb;
-			else
-				node->aabb.add_aabb(aabb);
-		}
-
-		std::vector<unsigned int> l, r;
-		bool should_split = node->triangles.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
-		bool split_valid = !l.empty() && !r.empty();
-
-		if (should_split && split_valid)
-		{
-			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " triangles";
-
-			node->left = std::make_unique<bu::rt::bvh_draft_node>();
-			node->right = std::make_unique<bu::rt::bvh_draft_node>();
-
-			for (auto id : l)
-				node->left->triangles.emplace_back(std::move(node->triangles[id]));
-			
-			for (auto id : r)
-				node->right->triangles.emplace_back(std::move(node->triangles[id]));
-
-			node->triangles.clear();
-		}
+		partition_triangles(stop_flag, node);
 	}
 	else if (!node->meshes.empty()) // Has meshes - try to partition them
 	{
-		// LOG_DEBUG << "a mesh node...";
-
-		std::vector<bvh_box> contents(node->meshes.size());
-		for (auto i = 0u; i < node->meshes.size(); i++)
-		{
-			auto aabb = node->meshes[i]->aabb;
-			contents[i] = bvh_box{aabb.get_center(), aabb, i};
-			
-			if (i == 0)
-				node->aabb = node->meshes[i]->aabb;
-			else
-				node->aabb.add_aabb(node->meshes[i]->aabb);
-		}
-
-		std::vector<unsigned int> l, r;
-		bool should_split = node->meshes.size() > 1 && partition_boxes_sah(*stop_flag, contents, l, r);
-		bool split_valid = !l.empty() && !r.empty();
-
-		if (should_split && split_valid)
-		{
-			// LOG_DEBUG << "splitting into " << l.size() + 1 << " and " << r.size() << " meshes";
-			node->left = std::make_unique<bu::rt::bvh_draft_node>();
-			node->right = std::make_unique<bu::rt::bvh_draft_node>();
-
-			for (auto id : l)
-				node->left->meshes.emplace_back(std::move(node->meshes[id]));
-			
-			for (auto id : r)
-				node->right->meshes.emplace_back(std::move(node->meshes[id]));
-
-			node->meshes.clear();
-		}
-		else // If no split, dissolve meshes and try this node again
+		// If splitting fails, dissolve meshes
+		if (partition_meshes(stop_flag, node))
 		{
 			node->dissolve_meshes();
 			return !stop_flag->should_stop() && process_bvh_node(stop_flag, node, depth);
@@ -281,7 +294,6 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 void bvh_draft_node::dissolve_meshes()
 {
 	ZoneScopedN("Dissolve meshes in BVH node");
-
 	for (auto &mesh : meshes)
 		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
 	meshes.clear();

@@ -14,6 +14,32 @@ using namespace std::chrono_literals;
 using bu::rt_renderer;
 using bu::rt_context;
 
+rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
+	m_sampled_image_program(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
+	m_aabb_program(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
+	m_scene_cache(std::make_unique<bu::rt::scene_cache>())
+{
+	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
+	m_preview_context = std::move(preview_ctx);
+
+	// Setup AABB VAO
+	glBindVertexArray(m_aabb_vao.id());
+	glVertexArrayAttribFormat( // Position (0)
+		m_aabb_vao.id(), 
+		0,
+		3,
+		GL_FLOAT,
+		GL_FALSE,
+		0
+	);
+
+	// Enable position attribute
+	glEnableVertexArrayAttrib(m_aabb_vao.id(), 0);
+
+	// All data is read from buffer bound to binding 0
+	glVertexArrayAttribBinding(m_aabb_vao.id(), 0, 0);
+}
+
 static std::unique_ptr<bu::rt::bvh_draft> build_bvh_draft(
 	const bu::async_stop_flag *flag,
 	rt_context *ctx)
@@ -42,32 +68,6 @@ static std::unique_ptr<bu::rt::scene> build_rt_scene(
 	return scene;
 }
 
-rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
-	m_sampled_image_program(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
-	m_aabb_program(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
-	m_scene_cache(std::make_unique<bu::rt::scene_cache>())
-{
-	if (!preview_ctx) preview_ctx = std::make_shared<bu::basic_preview_context>();
-	m_preview_context = std::move(preview_ctx);
-
-	// Setup AABB VAO
-	glBindVertexArray(m_aabb_vao.id());
-	glVertexArrayAttribFormat( // Position (0)
-		m_aabb_vao.id(), 
-		0,
-		3,
-		GL_FLOAT,
-		GL_FALSE,
-		0
-	);
-
-	// Enable position attribute
-	glEnableVertexArrayAttrib(m_aabb_vao.id(), 0);
-
-	// All data is read from buffer bound to binding 0
-	glVertexArrayAttribBinding(m_aabb_vao.id(), 0, 0);
-}
-
 void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 {
 	const auto policy = std::launch::async;
@@ -75,22 +75,32 @@ void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 	// Trigger BVH draft build
 	if (allow_build)
 	{
-		bool cache_modified = m_scene_cache->update_from_scene(scene);
-		if (cache_modified)
+		auto [update_scene, update_bvh] = m_scene_cache->update_from_scene(scene);
+		if (update_bvh)
 		{
 			LOG_INFO << "BVH cache modified - initiating draft build!";
 
-			// Kill running tasks
+			// Kill running tasks and start building a new BVH
 			m_bvh_draft_build_task.reset();
 			m_scene_build_task.reset();
-
 			m_bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
+		}
+		else if (update_scene && m_scene)
+		{
+			LOG_INFO << "Preserving BVH through scene update!";
+			
+			auto new_scene = std::make_shared<rt::scene>();
+			new_scene->bvh = m_scene->bvh;
+			new_scene->materials = std::make_shared<std::vector<rt::material>>(m_scene_cache->get_materials());
+			m_scene = std::move(new_scene);
 		}
 	}
 
 	// When BVH draft is complete, update BVH preview and start scene build
 	if (m_bvh_draft_build_task.has_value() && m_bvh_draft_build_task->is_ready())
 	{
+		LOG_INFO << "BVH draft complete!";
+
 		std::shared_ptr<bu::rt::bvh_draft> draft{std::move(m_bvh_draft_build_task->get())};
 		auto aabbs = draft->get_tree_aabbs();
 		glNamedBufferData(m_aabb_buffer.id(), 0, nullptr, GL_STATIC_DRAW);

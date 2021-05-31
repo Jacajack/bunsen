@@ -46,7 +46,10 @@ static std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, con
 /**
 	\returns true if the mesh has been updated
 */
-bool scene_cache::update_from_model_node(bu::rt::scene_cache_mesh &cached_mesh, const bu::model_node &node)
+bool scene_cache::update_from_model_node(
+	bu::rt::scene_cache_mesh &cached_mesh,
+	const bu::model_node &node,
+	bool force_update)
 {
 	ZoneScopedN("Update BVH mesh from node");
 
@@ -108,10 +111,10 @@ bool scene_cache::update_from_model_node(bu::rt::scene_cache_mesh &cached_mesh, 
 		}
 	}
 
-	cached_mesh.changed = transform_changed || meshes_changed;
+	bool changed = transform_changed || meshes_changed || force_update;
 
 	// Update from the model
-	if (cached_mesh.changed)
+	if (changed)
 	{
 		ZoneScopedN("Actual update from model");
 		cached_mesh.transform = node.get_final_transform();
@@ -128,22 +131,54 @@ bool scene_cache::update_from_model_node(bu::rt::scene_cache_mesh &cached_mesh, 
 		cached_mesh.aabb = bu::rt::triangles_aabb(cached_mesh.triangles.data(), cached_mesh.triangles.size());
 	}
 
-	return cached_mesh.changed;
+	return changed;
 }
 
 /**
-	\returns true if material cache was updated in a way that requires meshes
-	to be updated as well
+	\returns a pair of booleans. The first one indicated whether any material in the
+	cache has been updated (the rendering should be restarted). The second indicates
+	whether the material cache has been updated in a way such that the mesh cache has
+	to be rebuilt as well.
 */
-bool scene_cache::update_materials(const bu::scene &scene)
+std::pair<bool, bool> scene_cache::update_materials(const bu::scene &scene)
 {
 	auto &scene_root = *scene.root_node;
 	bool changed = false;
+	bool full_rebuild = false;
 
+	// Mark all cached materials as unvisited
+	int visited_materials = 0;
 	for (auto &p : m_materials)
 		p.second.visited = false;
 
-	// Update materials from scene
+	// Visit all materials in the scene
+	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
+	{
+		auto &node = *it;
+		if (auto model_node = dynamic_cast<bu::model_node*>(&node))
+		{
+			for (auto mat_ptr : model_node->model->materials)
+			{
+				auto it = m_materials.find(mat_ptr->uid());
+				if (it != m_materials.end())
+				{
+					auto &cached_mat = it->second;
+					cached_mat.visited = true;
+					visited_materials++;
+				}
+			}
+		}
+	}
+
+	// If there are more than max_unused_materials, rebuild material cache completely
+	const int max_unused_materials = 64;
+	if (m_materials.size() - visited_materials > max_unused_materials)
+	{
+		m_materials.clear();
+		full_rebuild = true;
+	}
+
+	// Update material pointers from scene
 	for (bu::scene_node::dfs_iterator it = scene_root.begin(); !(it == scene_root.end()); ++it)
 	{
 		auto &node = *it;
@@ -155,14 +190,12 @@ bool scene_cache::update_materials(const bu::scene &scene)
 				if (it == m_materials.end())
 				{
 					auto &cached_mat = m_materials[mat_ptr->uid()];
-					cached_mat.visited = true;
 					cached_mat.material_data = mat_ptr;
 					cached_mat.index = m_materials.size() - 1;
 				}
 				else
 				{
 					auto &cached_mat = it->second;
-					cached_mat.visited = true;
 					if (cached_mat.material_data.lock() != mat_ptr)
 						changed = true;
 					cached_mat.material_data = mat_ptr;
@@ -171,20 +204,10 @@ bool scene_cache::update_materials(const bu::scene &scene)
 		}
 	}
 
-	//! \todo Remove unused materials when there are too many of them
-
-
-	// Remove all unvisited materials
-	// for (auto it = m_materials.begin(); it != m_materials.end();)
-	// 	if (!it->second.visited)
-	// 		it = m_materials.erase(it);
-	// 	else
-	// 		++it;
-
-	return changed;
+	return {changed, full_rebuild};
 }
 
-bool scene_cache::update_meshes(const bu::scene &scene)
+bool scene_cache::update_meshes(const bu::scene &scene, bool force_update)
 {
 	auto &scene_root = *scene.root_node;
 	bool changed = false;
@@ -205,7 +228,7 @@ bool scene_cache::update_meshes(const bu::scene &scene)
 				ptr = std::make_shared<scene_cache_mesh>();
 				LOG_DEBUG << "Adding a new mesh to BVH";
 			}
-			changed |= update_from_model_node(*ptr, *model_node);
+			changed |= update_from_model_node(*ptr, *model_node, force_update);
 			ptr->visited = true;
 		}
 	}
@@ -225,15 +248,18 @@ bool scene_cache::update_meshes(const bu::scene &scene)
 	return changed;
 }
 
-bool scene_cache::update_from_scene(const bu::scene &scene)
+/**
+	\returns a pair of boolean. The first one indicates whether the scene should
+	be updates. The second indicates whether the BVH has to be rebuilt.
+*/
+std::pair<bool, bool> scene_cache::update_from_scene(const bu::scene &scene)
 {
 	ZoneScopedN("RT cache update from scene");
 
-	bool materials_changed = update_materials(scene);
-	bool meshes_changed = update_meshes(scene);
-	return meshes_changed || materials_changed;
+	auto [materials_changed, force_mesh_update] = update_materials(scene);
+	bool meshes_changed = update_meshes(scene, force_mesh_update);
+	return {materials_changed, meshes_changed};
 }
-
 
 std::vector<bu::rt::material> bu::rt::scene_cache::get_materials() const
 {

@@ -1,6 +1,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <mutex>
 #include <glm/glm.hpp>
 #include "aabb.hpp"
 #include "ray.hpp"
@@ -15,6 +16,9 @@ struct model_node;
 
 namespace bu::rt {
 
+/**
+	\brief Assigns every bu::material different index in material array
+*/
 struct scene_cache_material
 {
 	std::weak_ptr<bu::material_data> material_data;
@@ -23,10 +27,9 @@ struct scene_cache_material
 };
 
 /**
-	\brief Corresponds to one scene model node
+	\brief Corresponds to single scene model node
 
-	\todo MUTEXES!!!!! - This struct can be modified by cache update and read by
-	the BVH draft builder at the same time.
+	\todo Thread-safety - triangles may be read from another thread
 */
 struct scene_cache_mesh
 {
@@ -37,18 +40,17 @@ struct scene_cache_mesh
 	std::vector<rt::triangle> triangles;
 
 	bool visited; //!< Has node been visited in this update_from_scene pass
-	bool changed; //!< Has node been considered modified during current update pass
 };
 
-class bvh_draft;
-
 /**
-	\brief Caches transformed models for quicker BVH build
+	\brief Caches dissolved meshes, material and light arrays
+
+	\todo Thread-safety - get_materials() and get_mesh_aabbs() can be called from another thread
 */
 class scene_cache
 {
 public:
-	bool update_from_scene(const bu::scene &scene);
+	std::pair<bool, bool> update_from_scene(const bu::scene &scene);
 
 	const auto &get_meshes() const
 	{
@@ -59,9 +61,12 @@ public:
 	std::vector<rt::aabb> get_mesh_aabbs() const;
 
 private:
-	bool update_from_model_node(bu::rt::scene_cache_mesh &cached_mesh, const bu::model_node &node);
-	bool update_materials(const bu::scene &scene);
-	bool update_meshes(const bu::scene &scene);
+	bool update_from_model_node(
+		bu::rt::scene_cache_mesh &cached_mesh,
+		const bu::model_node &node,
+		bool force_update);
+	std::pair<bool, bool> update_materials(const bu::scene &scene);
+	bool update_meshes(const bu::scene &scene, bool force_update);
 
 
 	std::map<std::uint64_t, std::shared_ptr<scene_cache_mesh>> m_meshes;
