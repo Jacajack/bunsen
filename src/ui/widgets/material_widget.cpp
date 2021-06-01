@@ -145,7 +145,7 @@ void material_widget::draw(const std::vector<std::shared_ptr<bu::material_data>>
 			selected_valid |= is_selected;
 			if (ImGui::Selectable(text.c_str(), is_selected))
 			{
-				m_selected = mat_data;
+				m_selected = selected = mat_data;
 				selected_valid = true;
 			}
 		}
