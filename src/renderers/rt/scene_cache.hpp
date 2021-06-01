@@ -40,6 +40,7 @@ struct scene_cache_mesh
 	std::vector<rt::triangle> triangles;
 
 	bool visited; //!< Has node been visited in this update_from_scene pass
+	bool visible;
 };
 
 /**

@@ -111,7 +111,14 @@ bool scene_cache::update_from_model_node(
 		}
 	}
 
-	bool changed = transform_changed || meshes_changed || force_update;
+	bool visibility_changed = false;
+	if (cached_mesh.visible != node.is_visible())
+	{
+		cached_mesh.visible = node.is_visible();
+		visibility_changed = true;
+	}
+
+	bool changed = transform_changed || meshes_changed || visibility_changed || force_update;
 
 	// Update from the model
 	if (changed)

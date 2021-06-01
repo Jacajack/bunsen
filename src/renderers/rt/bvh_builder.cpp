@@ -363,7 +363,7 @@ void bvh_draft::build(const scene_cache &cache, const bu::async_stop_flag &stop_
 {
 	m_root_node = std::make_unique<bu::rt::bvh_draft_node>();
 	for (const auto &[id, mesh] : cache.get_meshes())
-		if (!mesh->triangles.empty())
+		if (mesh->visible && !mesh->triangles.empty())
 			m_root_node->meshes.push_back(mesh);
 
 	process_bvh_node(&stop_flag, m_root_node.get());
