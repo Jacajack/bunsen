@@ -13,6 +13,7 @@
 #include "scene_selection.hpp"
 #include "uid_provider.hpp"
 #include "editor/layout_editor.hpp"
+#include "events.hpp"
 
 namespace bu {
 
@@ -176,6 +177,7 @@ struct scene
 	std::shared_ptr<bu::world> world;
 	bu::scene_selection selection;
 	bu::layout_editor layout_ed;
+	std::shared_ptr<bu::event_bus> event_bus;
 };
 
 }

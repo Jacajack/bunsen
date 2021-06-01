@@ -264,6 +264,7 @@ void layout_editor::start(
 		abort();
 	state = new_action;
 	scene_ptr = scene;
+	scene_ptr->event_bus->direct_emit({event_type::SCENE_TRANSFORM_STARTED});
 
 	auto &selection = scene->selection;
 	auto origin = glm::vec3{0.f};
@@ -308,6 +309,7 @@ void layout_editor::apply()
 		n->apply();
 	transform_nodes.clear();
 	state = action_state::IDLE;
+	scene_ptr->event_bus->direct_emit({event_type::SCENE_TRANSFORM_FINISHED});
 	scene_ptr.reset();
 }
 
@@ -317,6 +319,7 @@ void layout_editor::abort()
 		n->dissolve();
 	transform_nodes.clear();
 	state = action_state::IDLE;
+	scene_ptr->event_bus->direct_emit({event_type::SCENE_TRANSFORM_ABORTED});
 	scene_ptr.reset();
 }
 

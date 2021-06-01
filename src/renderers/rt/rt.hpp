@@ -9,6 +9,7 @@
 #include "../../camera.hpp"
 #include "../../renderer.hpp"
 #include "../../renderers/basic_preview/basic_preview.hpp"
+#include "../../events.hpp"
 
 namespace bu::rt {
 class scene_cache;
@@ -24,7 +25,7 @@ struct rt_renderer_job;
 class rt_context
 {
 public:
-	rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx = {});
+	rt_context(bu::event_bus &bus, std::shared_ptr<bu::basic_preview_context> preview_ctx = {});
 
 	void update_from_scene(const bu::scene &scene, bool allow_rebuild);
 
@@ -40,6 +41,9 @@ public:
 	auto get_scene_cache() const {return m_scene_cache;}
 
 private:
+	// Event bus connection
+	std::shared_ptr<bu::event_bus_connection> m_events;
+
 	// Embedded preview renderer
 	std::shared_ptr<bu::basic_preview_context> m_preview_context;
 

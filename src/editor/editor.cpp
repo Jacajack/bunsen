@@ -232,7 +232,7 @@ public:
 			*m_editor.albedo_ctx = bu::albedo_context();
 
 		if (ImGui::Button("Reload RT"))
-			*m_editor.rt_ctx = bu::rt_context();
+			*m_editor.rt_ctx = bu::rt_context(*m_editor.scene->event_bus, m_editor.basic_preview_ctx);
 	}
 
 private:
@@ -258,7 +258,7 @@ bunsen_editor::bunsen_editor() :
 	preview_ctx(std::make_shared<bu::preview_context>()),
 	basic_preview_ctx(std::make_shared<bu::basic_preview_context>()),
 	albedo_ctx(std::make_shared<bu::albedo_context>()),
-	rt_ctx(std::make_shared<bu::rt_context>(basic_preview_ctx))
+	rt_ctx(std::make_shared<bu::rt_context>(*scene->event_bus, basic_preview_ctx))
 {
 	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
 	windows.push_back(std::make_unique<scene_editor_window>(*this));
@@ -324,4 +324,10 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 	rt_ctx->update_from_scene(*scene, tmp != tp && !tp);
 	tmp = tp;
 
+	static auto events = scene->event_bus->make_connection();
+	bu::event ev;
+	while (events->poll(ev))
+	{
+		LOG_DEBUG << "GOT EVENT";
+	}
 }

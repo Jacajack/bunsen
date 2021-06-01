@@ -34,6 +34,7 @@ add_executable(bunsen
 	"src/utils.cpp"
 	"src/camera.cpp"
 	"src/log.cpp"
+	"src/event.cpp"
 	"src/scene.cpp"
 	"src/mesh.cpp"
 	"src/input.cpp"

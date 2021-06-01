@@ -2,12 +2,13 @@
 #include <imgui.h>
 #include "../../gl/gl.hpp"
 #include "../../utils.hpp"
+#include "../../events.hpp"
 using bu::ui::window;
 
 std::unordered_map<std::string, std::vector<bool>> window::m_instances;
 bool window::m_mouse_locked = false;
 
-window::window(const std::string &title, ImGuiWindowFlags flags) :
+window::window(const std::string &title, ImGuiWindowFlags flags, std::shared_ptr<bu::event_bus> bus) :
 	m_flags(flags),
 	m_title(title)
 {
@@ -41,6 +42,10 @@ window::window(const std::string &title, ImGuiWindowFlags flags) :
 		m_full_title = m_title;
 	else
 		m_full_title = m_title + " [" + std::to_string(m_instance) + "]";
+
+	// Event bus connection
+	if (bus)
+		m_events = bus->make_connection();
 }
 
 void window::display()
@@ -121,6 +126,16 @@ void window::release_mouse()
 		m_owns_mouse = false;
 		m_mouse_locked = false;
 	}
+}
+
+bu::event_bus_connection &window::get_event_bus_connection()
+{
+	if (!m_events)
+		throw std::runtime_error{
+			"window::get_event_bus_connection() called on window without"
+			" a connection to the event bus!"
+			};
+	return *m_events;
 }
 
 window::~window()

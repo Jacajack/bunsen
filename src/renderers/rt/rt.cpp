@@ -14,7 +14,8 @@ using namespace std::chrono_literals;
 using bu::rt_renderer;
 using bu::rt_context;
 
-rt_context::rt_context(std::shared_ptr<bu::basic_preview_context> preview_ctx) :
+rt_context::rt_context(bu::event_bus &bus, std::shared_ptr<bu::basic_preview_context> preview_ctx) :
+	m_events(bus.make_connection()),
 	m_sampled_image_program(std::make_unique<bu::shader_program>(bu::load_shader_program("draw_sampled_image"))),
 	m_aabb_program(std::make_unique<bu::shader_program>(bu::load_shader_program("aabb"))),
 	m_scene_cache(std::make_unique<bu::rt::scene_cache>())

@@ -11,7 +11,8 @@ using bu::transform_node;
 
 bu::scene::scene() :
 	root_node(std::make_shared<scene_node>()),
-	world(std::make_shared<solid_world>())
+	world(std::make_shared<solid_world>()),
+	event_bus(std::make_shared<bu::event_bus>())
 {
 	root_node->set_name("Scene Root");
 }

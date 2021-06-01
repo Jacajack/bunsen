@@ -2,102 +2,80 @@
 #include <list>
 #include <queue>
 #include <memory>
+#include <functional>
 
 namespace bu {
 
-enum class bunsen_event_type
+enum class event_type
 {
+	EMPTY,
 	SCENE_TRANSFORM_STARTED,
 	SCENE_TRANSFORM_ABORTED,
 	SCENE_TRANSFORM_FINISHED,
 	SCENE_MODIFIED
 };
 
-struct bunsen_event
-{
-	bunsen_event_type type;
-};
-
-template <typename T>
-class event_listener;
-
-template <typename T = bunsen_event>
-class event_source
+class event
 {
 public:
-	void emit(const T &ev)
-	{
-		for (auto it = m_listeners.begin(); it != m_listeners.end();)
-		{
-			if (auto ptr = it->lock())
-			{
-				ptr->push_event(ev);
-				++it;
-			}
-			else
-				it = m_listeners.erase(it);
-		}
-	}
+	event() = default;
+	event(event_type t) :
+		m_type(t)
+	{}
 
-	void add_listener(std::shared_ptr<event_listener<T>> listener)
-	{
-		m_listeners.emplace_back(listener);
-	}
+	event_type get_type() const {return m_type;}
 
-	void remove_listener(std::shared_ptr<event_listener<T>> listener)
-	{
-		m_listeners.remove(listener);
-	}
-
-protected:
-	std::list<std::weak_ptr<event_listener<T>>> m_listeners;
+private:
+	event_type m_type = event_type::EMPTY;
 };
 
-template <typename T = bunsen_event>
-class event_listener : public std::enable_shared_from_this<event_listener<T>>
+class event_bus;
+
+/**
+	\brief Allows to listen to events on event_bus
+*/
+class event_bus_connection : public std::enable_shared_from_this<event_bus_connection>
 {
-	friend class event_source<T>;
+	friend class event_bus;
 
 public:
-	event_listener() = default;
-	
-	void add_source(event_source<T> &src)
-	{
-		src->add_listener(this->shared_from_this());
-	}
+	event_bus_connection(const event_bus_connection &) = delete;
+	event_bus_connection(event_bus_connection &&) noexcept = default;
+	event_bus_connection &operator=(const event_bus_connection &) = delete;
+	event_bus_connection &operator=(event_bus_connection &&) noexcept = default;
 
-	void remove_source(event_source<T> &src)
-	{
-		src->remove_listener(this->shared_from_this());
-	}
-
-	bool poll(T &ev)
-	{
-		if (m_queue.empty()) return false;
-		else
-		{
-			ev = m_queue.front();
-			m_queue.pop();
-			return true;
-		}
-	}
-
-	void clear()
-	{
-		while (!m_queue.empty())
-			m_queue.pop();
-	}
+	void emit(const event &ev);
+	bool poll(event &ev);
+	void process_events(std::function<void(const event &ev)> handler);
 
 protected:
-	void push_event(const T &ev)
-	{
-		m_queue.push(ev);
-	}
+	event_bus_connection() = default;
+	event_bus_connection(std::shared_ptr<event_bus> bus);
 
-	std::queue<T> m_queue;
+	void push_event(const event &ev);
+
+	std::shared_ptr<event_bus> m_bus;
+	std::queue<event> m_queue;
 };
 
-using bunsen_event_source = event_source<bunsen_event>;
-using bunsen_event_listener = event_listener<bunsen_event>;
+/**
+	\brief Transmits events
+*/
+class event_bus : public std::enable_shared_from_this<event_bus>
+{
+	friend class event_bus_connection;
+
+public:
+	std::shared_ptr<event_bus_connection> make_connection();
+	void direct_emit(const event &ev);
+
+protected:
+	void emit(const event &ev, std::shared_ptr<event_bus_connection> skip = {});
+
+	std::list<std::weak_ptr<event_bus_connection>> m_connections;
+};
+
+using event_bus_ptr = std::shared_ptr<event_bus>;
+using event_bus_connection_ptr = std::shared_ptr<event_bus_connection>;
 
 }
