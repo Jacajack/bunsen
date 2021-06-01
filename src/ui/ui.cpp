@@ -1,5 +1,5 @@
 #include "ui.hpp"
-#include "../../log.hpp"
+#include "log.hpp"
 #include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
 void bu::ui::load_theme(float r, float g, float b)

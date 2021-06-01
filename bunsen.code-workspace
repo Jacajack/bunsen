@@ -8,6 +8,7 @@
 		"clang-tidy.compilerArgs": [
 			"--std=c++20",
 			"-Iinclude",
+			"-Isrc",
 			"-Ibuild/imgui/imgui",
 			"-Ibuild/imgui/imgui/backends",
 			"-Ibuild/imgui_file_dialog/imgui_file_dialog",
@@ -107,7 +108,8 @@
 			"*.ipp": "cpp",
 			"any": "cpp",
 			"core": "cpp",
-			"source_location": "cpp"
+			"source_location": "cpp",
+			"export": "cpp"
 		}
 	}
 }

@@ -1,7 +1,10 @@
-#include "world_menu.hpp"
+#include "world_widget.hpp"
 #include <imgui.h>
+#include "world.hpp"
 
-void bu::ui::world_menu(bu::world &world)
+using bu::ui::world_widget;
+
+void world_widget::draw(bu::world &world)
 {
 	ImGui::Text("World properties");
 	ImGui::Indent();

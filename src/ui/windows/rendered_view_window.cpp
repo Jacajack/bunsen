@@ -1,12 +1,14 @@
-#include "rendered_view.hpp"
+#include "rendered_view_window.hpp"
 #include <imgui.h>
-#include "../../log.hpp"
-#include "../../utils.hpp"
+#include "log.hpp"
+#include "utils.hpp"
 
-#include "../../renderers/albedo/albedo.hpp"
-#include "../../renderers/preview/preview.hpp"
-#include "../../renderers/basic_preview/basic_preview.hpp"
-#include "../../renderers/rt/rt.hpp"
+#include "ui/editor.hpp"
+
+#include "renderers/albedo/albedo.hpp"
+#include "renderers/preview/preview.hpp"
+#include "renderers/basic_preview/basic_preview.hpp"
+#include "renderers/rt/rt.hpp"
 
 using bu::ui::rendered_view;
 using bu::ui::rendered_view_window;

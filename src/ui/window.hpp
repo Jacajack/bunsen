@@ -15,6 +15,8 @@ namespace bu::ui {
 
 /**
 	\brief A base class for all ImGui windows
+
+	\note Moving/copying is prevented because widgets hold pointers to their windows
 */
 class window
 {

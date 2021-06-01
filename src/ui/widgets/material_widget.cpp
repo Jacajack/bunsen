@@ -1,27 +1,22 @@
-#include "material_menu.hpp"
+#include "material_widget.hpp"
 
-#include <typeinfo>
-#include <set>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <cstring>
-
 #include <imgui.h>
 #include <imgui_icon_font_headers/IconsFontAwesome5.h>
 
-#include "../../scene.hpp"
-#include "../../material.hpp"
-#include "../../materials/generic_material.hpp"
-#include "../../materials/diffuse_material.hpp"
-#include "../../materials/glass_material.hpp"
-#include "../../materials/emissive_material.hpp"
-#include "../../materials/generic_volume.hpp"
+#include "material.hpp"
+#include "materials/generic_material.hpp"
+#include "materials/diffuse_material.hpp"
+#include "materials/glass_material.hpp"
+#include "materials/emissive_material.hpp"
+#include "materials/generic_volume.hpp"
 
-/**
-	\brief Displays UI for editing materials in place
-*/
-void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
+using bu::ui::material_widget;
+
+void material_widget::draw_editor(std::shared_ptr<bu::material_data> mat)
 {
 	// Name buffer
 	const auto name_max_len = 32u;
@@ -36,11 +31,11 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 	}
 
 	// Volume and surface type names
-	static const std::map<std::uint64_t, std::string> material_type_names{
+	static const std::unordered_map<std::uint64_t, std::string> material_type_names{
 		{typeid(bu::diffuse_material).hash_code(), "Diffuse material"},
 		{typeid(bu::generic_material).hash_code(), "Generic material"},
 		{typeid(bu::glass_material).hash_code(), "Glass material"},
-		{typeid(bu::emissive_material).hash_code(), "Emissive volume"},
+		{typeid(bu::emissive_material).hash_code(), "Emissive material"},
 		{typeid(bu::generic_volume).hash_code(), "Generic volume"},
 	};
 
@@ -128,35 +123,29 @@ void bu::ui::material_editor(std::shared_ptr<bu::material_data> mat)
 	}
 }
 
-void bu::ui::material_menu(bu::scene_selection &selection)
+void material_widget::draw(const std::vector<std::shared_ptr<bu::material_data>> &materials)
 {
-	auto primary = selection.get_primary();
-	if (!primary)
+	if (materials.empty())
 	{
 		ImGui::Text("No materials are selected...");
 		return;
 	}
 
-	auto model_node = dynamic_cast<bu::model_node*>(primary.get());
-	if (!model_node) return;
-	auto model = model_node->model;
-	if (!model) return;
-
-	// TODO remove static
-	static std::shared_ptr<bu::material_data> selected;
+	auto selected = m_selected.lock();
 	bool selected_valid = false;
 
 	if (ImGui::ListBoxHeader("Materials", ImVec2(0, 80)))
 	{
-		for (auto &mat_data : model->materials)
+		for (auto i = 0u; i < materials.size(); i++)
 		{
+			auto mat_data = materials[i];
 			bool is_selected = mat_data == selected;
 			auto text = std::string{ICON_FA_GEM " "} + mat_data->name;
 
 			selected_valid |= is_selected;
 			if (ImGui::Selectable(text.c_str(), is_selected))
 			{
-				selected = mat_data;
+				m_selected = mat_data;
 				selected_valid = true;
 			}
 		}
@@ -167,7 +156,7 @@ void bu::ui::material_menu(bu::scene_selection &selection)
 	ImGui::Separator();
 
 	if (selected_valid)
-		bu::ui::material_editor(selected);
+		draw_editor(selected);
 	else
-		selected.reset();
+		m_selected.reset();
 }

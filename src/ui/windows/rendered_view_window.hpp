@@ -1,12 +1,16 @@
 #pragma once 
 #include <memory>
-#include "window.hpp"
-#include "../../renderer.hpp"
-#include "../../scene.hpp"
-#include "../../gl/gl.hpp"
-#include "../../gl/shader.hpp"
-#include "../layout_editor.hpp"
-#include "../editor.hpp"
+#include "ui/window.hpp"
+#include "camera.hpp"
+#include "gl/gl.hpp"
+#include "ui/imgui_overlay.hpp"
+
+namespace bu {
+class renderer;
+class shader_program;
+struct bunsen_editor;
+struct scene;
+}
 
 namespace bu::ui {
 

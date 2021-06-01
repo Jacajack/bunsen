@@ -61,19 +61,29 @@ add_executable(bunsen
 
 	"src/renderers/albedo/albedo.cpp"
 
-	"src/editor/editor.cpp"
-	"src/editor/layout_editor.cpp"
-	"src/editor/imgui_overlay.cpp"
+	"src/ui/editor.cpp"
+	"src/ui/layout_editor.cpp"
+	"src/ui/imgui_overlay.cpp"
 
-	"src/editor/ui/ui.cpp"
-	"src/editor/ui/window.cpp"
-	"src/editor/ui/scene_control.cpp"
-	"src/editor/ui/material_menu.cpp"
-	"src/editor/ui/light_menu.cpp"
-	"src/editor/ui/model_menu.cpp"
-	"src/editor/ui/world_menu.cpp"
-	"src/editor/ui/rendered_view.cpp"
+	"src/ui/ui.cpp"
+	"src/ui/window.cpp"
+	"src/ui/widget.cpp"
+
+	"src/ui/windows/debug_window.cpp"
+	"src/ui/windows/imgui_style_editor_window.cpp"
+	"src/ui/windows/rendered_view_window.cpp"
+	"src/ui/windows/scene_editor_window.cpp"
+
+	"src/ui/widgets/light_widget.cpp"
+	"src/ui/widgets/material_widget.cpp"
+	"src/ui/widgets/model_widget.cpp"
+	"src/ui/widgets/node_widget.cpp"
+	"src/ui/widgets/scene_graph_widget.cpp"
+	"src/ui/widgets/world_widget.cpp"
+	"src/ui/widgets/model_import_dialog.cpp"
 	)
+
+target_include_directories(bunsen PRIVATE "src")
 
 target_link_libraries(bunsen PRIVATE 
 	glm

@@ -15,8 +15,8 @@
 #include <tracy/TracyOpenGL.hpp>
 
 #include "gl/gl.hpp"
-#include "editor/editor.hpp"
-#include "editor/ui/ui.hpp"
+#include "ui/editor.hpp"
+#include "ui/ui.hpp"
 #include "config.hpp"
 #include "log.hpp"
 #include "async_task.hpp"

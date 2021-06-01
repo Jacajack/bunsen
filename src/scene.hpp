@@ -12,7 +12,7 @@
 #include "camera.hpp"
 #include "scene_selection.hpp"
 #include "uid_provider.hpp"
-#include "editor/layout_editor.hpp"
+#include "ui/layout_editor.hpp"
 #include "events.hpp"
 
 namespace bu {

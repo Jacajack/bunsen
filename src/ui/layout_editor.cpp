@@ -2,10 +2,10 @@
 #include <cmath>
 #include <glm/gtx/transform.hpp>
 #include <imgui.h>
-#include "../log.hpp"
-#include "../utils.hpp"
-#include "../scene.hpp"
-#include "../camera.hpp"
+#include "log.hpp"
+#include "utils.hpp"
+#include "scene.hpp"
+#include "camera.hpp"
 
 using bu::layout_editor;
 

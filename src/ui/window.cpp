@@ -1,8 +1,8 @@
 #include "window.hpp"
 #include <imgui.h>
-#include "../../gl/gl.hpp"
-#include "../../utils.hpp"
-#include "../../events.hpp"
+#include "gl/gl.hpp"
+#include "utils.hpp"
+#include "events.hpp"
 using bu::ui::window;
 
 std::unordered_map<std::string, std::vector<bool>> window::m_instances;

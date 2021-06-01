@@ -1,13 +1,12 @@
-#include "model_menu.hpp"
-#include <set>
-#include <string>
+#include "model_widget.hpp"
 #include <imgui.h>
-#include "../../scene.hpp"
+
+using bu::ui::model_widget;
 
 /**
 	\brief Displays mesh data info (vertex count, etc.)
 */
-void bu::ui::mesh_info(const std::shared_ptr<bu::mesh> &mesh)
+void model_widget::draw_mesh_info(const std::shared_ptr<bu::mesh> &mesh)
 {
 	// Table with mesh info
 	ImGui::Text("Basic mesh info:");
@@ -42,40 +41,51 @@ void bu::ui::mesh_info(const std::shared_ptr<bu::mesh> &mesh)
 	}
 }
 
-void bu::ui::model_menu(bu::scene_selection &selection)
+void model_widget::draw(const std::vector<std::shared_ptr<bu::model>> &models)
 {
-	auto primary = selection.get_primary();
-	if (!primary) return;
-	auto model_node = std::dynamic_pointer_cast<bu::model_node>(primary);
-	if (!model_node) return;
-	auto model = model_node->model;
+	auto selected_model = m_selected_model.lock();
+	bool selected_model_valid = false;
 
-	static bu::model::mesh_material_pair *selected_mesh_mat; //TODO remove static
-	bool selected_mesh_valid = false;
+	for (auto model : models)
+		if (model == selected_model)
+			selected_model_valid = true;
+
+	if (!selected_model_valid)
+	{
+		m_selected_model.reset();
+		m_selected_pair = nullptr;
+	}
+
+	bool selected_pair_valid = false;
 
 	ImGui::ListBoxHeader("Meshes");
-	for (auto &mesh_mat : model->meshes)
+	for (auto &model : models)
 	{
-		std::string text = mesh_mat.mesh->name;
-		bool selected = &mesh_mat == selected_mesh_mat;
-		selected_mesh_valid |= selected;
-		if (ImGui::Selectable(text.c_str(), selected))
+		for (auto &mesh_mat : model->meshes)
 		{
-			selected_mesh_mat = &mesh_mat;
-			selected_mesh_valid = true;
+			std::string text = mesh_mat.mesh->name;
+			bool selected = &mesh_mat == m_selected_pair;
+			selected_pair_valid |= selected;
+
+			if (ImGui::Selectable(text.c_str(), selected))
+			{
+				m_selected_model = model;
+				m_selected_pair = &mesh_mat;
+				selected_pair_valid = true;
+			}
 		}
 	}
 	ImGui::ListBoxFooter();
 
 	ImGui::Separator();
 
-	if (!selected_mesh_valid && model->meshes.size())
+	if (!selected_pair_valid)
 	{
-		selected_mesh_mat = &model->meshes[0];
-		selected_mesh_valid = true;
+		m_selected_pair = nullptr;
+		m_selected_model.reset();
 	}
 
-	if (selected_mesh_valid)
+	if (selected_pair_valid)
 	{
 		if (ImGui::BeginCombo("Material", "Material"))
 		{
@@ -83,6 +93,6 @@ void bu::ui::model_menu(bu::scene_selection &selection)
 			ImGui::EndCombo();
 		}
 
-		bu::ui::mesh_info(selected_mesh_mat->mesh);
+		draw_mesh_info(m_selected_pair->mesh);
 	}
 }

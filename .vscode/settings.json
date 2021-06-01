@@ -2,6 +2,7 @@
 	"clang-tidy.compilerArgs": [
         "--std=c++20",
         "-Iinclude",
+        "-Isrc",
         "-Ibuild/imgui/imgui",
 		"-Ibuild/imgui/imgui/backends",
 		"-Ibuild/imgui_file_dialog/imgui_file_dialog",
@@ -104,11 +105,11 @@
 	},
 	"C_Cpp.default.includePath": [
 		"${default}",
+		"${workspaceFolder}/src",
 		"${workspaceFolder}/build/imgui/imgui",
 		"${workspaceFolder}/build/imgui/imgui/backends",
 		"${workspaceFolder}/build/imgui_file_dialog/imgui_file_dialog",
 		"${workspaceFolder}/build/imgui_icon_font_headers",
 		"${workspaceFolder}/build/tracy",
-		"${workspaceFolder}/build/tinygltf",
 	],
 }

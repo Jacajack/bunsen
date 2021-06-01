@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/imgui/imgui",
+                "${workspaceFolder}/build/imgui/imgui/backends",
+                "${workspaceFolder}/build/imgui_file_dialog/imgui_file_dialog",
+                "${workspaceFolder}/build/imgui_icon_font_headers",
+                "${workspaceFolder}/build/tracy",
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-clang-x64"
+        }
+    ],
+    "version": 4
+}
