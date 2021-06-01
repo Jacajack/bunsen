@@ -22,7 +22,7 @@ void main()
 		return;
 	}
 
-	vec3 color = sampled.rgb / sampled.a;
+	vec3 color = max(vec3(0.0), sampled.rgb / sampled.a);
 	
 	// Reinhard
 	color = color / (color + 1);
