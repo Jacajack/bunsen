@@ -6,8 +6,8 @@ namespace bu::rt {
 class bvh_draft;
 
 /**
-	\note If count is negative, this is not a leaf node. In such case, if index
-	is non-zero, the chlidren nodes do overlap.
+	\note If count is positive, this node contains triangles. If count is zero, this
+	node has children. If count is negative, node doesn't have niether children nor triangles.
 */
 struct bvh_node
 {

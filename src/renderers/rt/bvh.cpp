@@ -42,8 +42,10 @@ bool bvh_tree::test_ray(const rt::ray &r, rt::ray_hit &hit) const
 		auto &node = nodes[node_id];
 		st.pop();
 
-		// Positive triangle count indicates a leaf node
-		if (node.count <= 0)
+		// Negative count indicates no children an no triangles
+		// Zero count indicates node with children
+		// Positive count indicates node with triangles
+		if (node.count == 0)
 		{
 			auto id_l = 2 * node_id;
 			auto id_r = 2 * node_id + 1;
@@ -73,7 +75,7 @@ bool bvh_tree::test_ray(const rt::ray &r, rt::ray_hit &hit) const
 			else if (hit_r)
 				st.push(id_r);
 		}
-		else // Leaf node
+		else if (node.count > 0) // Leaf node
 		{
 			for (unsigned int i = node.index; i < node.index + node.count; i++)
 			{

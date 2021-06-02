@@ -1,6 +1,7 @@
 #include "bvh.hpp"
 #include "bvh_builder.hpp"
 #include <stack>
+#include <tracy/Tracy.hpp>
 
 using bu::rt::bvh_tree;
 using bu::rt::bvh_draft;
@@ -8,6 +9,8 @@ using bu::rt::bvh_draft_node;
 
 void bvh_tree::populate(const bvh_draft &draft)
 {
+	ZoneScopedN("BVH populate");
+	
 	unsigned int t_count = 0;
 
 	std::stack<std::pair<unsigned int, const bvh_draft_node*>> st;
@@ -21,18 +24,26 @@ void bvh_tree::populate(const bvh_draft &draft)
 		nodes[node_id].aabb = node_ptr->aabb;
 		if (node_ptr->triangles.empty())
 		{
-			if (!node_ptr->left || !node_ptr->right)
-				throw std::runtime_error{"BVH draft has empty node with no children - cannot populate final BVH"};
+			bool has_children = node_ptr->left || node_ptr->right;
+			if (has_children)
+			{
+				// This node has children
+				nodes[node_id].count = 0;
 
-			// This is not a leaf node
-			nodes[node_id].count = 0;
+				// Check if children overlap
+				nodes[node_id].index = node_ptr->left->aabb.check_overlap(node_ptr->right->aabb);
 
-			// Check if children overlap
-			nodes[node_id].index = node_ptr->left->aabb.check_overlap(node_ptr->right->aabb);
-
-			// Process children
-			st.push({node_id * 2, node_ptr->left.get()});
-			st.push({node_id * 2 + 1, node_ptr->right.get()});
+				// Process children
+				st.push({node_id * 2, node_ptr->left.get()});
+				st.push({node_id * 2 + 1, node_ptr->right.get()});
+			}
+			else
+			{
+				// No triangles and no children
+				nodes[node_id].count = -1;
+				nodes[node_id].index = 0;
+				nodes[node_id].aabb = rt::aabb{};
+			}
 		}
 		else // Leaf node
 		{
