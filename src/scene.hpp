@@ -78,6 +78,7 @@ public:
 
 	// Modification flag
 	bool is_modified() const override;
+	bool is_visibly_modified() const;
 	void clear_modified() override;
 
 
@@ -159,12 +160,16 @@ public:
 struct model_node : public scene_node
 {
 	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
+	bool is_modified() const override;
+	void clear_modified() override;
 	std::shared_ptr<bu::model> model;
 };
 
 struct light_node : public scene_node
 {
 	std::shared_ptr<scene_node> clone(std::shared_ptr<scene_node> parent = {}) const override;
+	bool is_modified() const override;
+	void clear_modified() override;
 	std::shared_ptr<bu::light> light;
 };
 

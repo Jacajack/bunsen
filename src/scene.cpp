@@ -293,6 +293,17 @@ bool scene_node::is_modified() const
 		return true;
 }
 
+bool scene_node::is_visibly_modified() const
+{
+	if (!is_visible()) return false;
+	if (is_modified()) return true;
+
+	bool children_modified = false;
+	for (auto &ptr : m_children)
+		children_modified |= ptr->is_visibly_modified();
+	return children_modified;
+}
+
 void scene_node::clear_modified()
 {
 	m_modified = false;
@@ -474,10 +485,39 @@ std::shared_ptr<scene_node> bu::model_node::clone(std::shared_ptr<scene_node> pa
 	return cl;
 }
 
+bool bu::model_node::is_modified() const
+{
+	return scene_node::is_modified() || model->is_modified();
+}
+
+void bu::model_node::clear_modified()
+{
+	scene_node::clear_modified();
+	model->clear_modified();
+}
+
 std::shared_ptr<scene_node> bu::light_node::clone(std::shared_ptr<scene_node> parent) const
 {
 	auto cl = std::make_shared<light_node>();
 	*std::dynamic_pointer_cast<scene_node>(cl) = std::move(*scene_node::clone(parent));
 	cl->light = light;
 	return cl;
+}
+
+/**
+	\todo fixme
+*/
+bool bu::light_node::is_modified() const
+{
+	return scene_node::is_modified();
+	// return scene_node::is_modified() || model->is_modified();
+}
+
+/**
+	\todo fixme
+*/
+void bu::light_node::clear_modified()
+{
+	scene_node::clear_modified();
+	// model->clear_modified();
 }
