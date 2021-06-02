@@ -3,13 +3,13 @@
 #include <atomic>
 #include <vector>
 #include <chrono>
-#include "../../async_task.hpp"
-#include "../../gl/shader.hpp"
-#include "../../scene.hpp"
-#include "../../camera.hpp"
-#include "../../renderer.hpp"
-#include "../../renderers/basic_preview/basic_preview.hpp"
-#include "../../events.hpp"
+#include "async_task.hpp"
+#include "gl/shader.hpp"
+#include "scene.hpp"
+#include "camera.hpp"
+#include "renderer.hpp"
+#include "renderers/basic_preview/basic_preview.hpp"
+#include "event.hpp"
 
 namespace bu::rt {
 class scene_cache;
