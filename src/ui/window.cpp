@@ -2,7 +2,7 @@
 #include <imgui.h>
 #include "gl/gl.hpp"
 #include "utils.hpp"
-#include "events.hpp"
+#include "event.hpp"
 using bu::ui::window;
 
 std::unordered_map<std::string, std::vector<bool>> window::m_instances;
@@ -92,6 +92,8 @@ void window::display()
 
 	}
 	ImGui::End();
+
+	m_events->clear();
 }
 
 bool window::is_open() const
@@ -128,14 +130,14 @@ void window::release_mouse()
 	}
 }
 
-bu::event_bus_connection &window::get_event_bus_connection()
+std::shared_ptr<bu::event_bus> window::get_event_bus() const
 {
 	if (!m_events)
 		throw std::runtime_error{
-			"window::get_event_bus_connection() called on window without"
+			"window::get_event_bus() called on window without"
 			" a connection to the event bus!"
 			};
-	return *m_events;
+	return m_events->get_bus();
 }
 
 window::~window()

@@ -26,6 +26,7 @@ public:
 
 	void display();
 	bool is_open() const;
+	std::shared_ptr<bu::event_bus> get_event_bus() const;
 
 protected:
 	virtual void draw() = 0;
@@ -34,7 +35,6 @@ protected:
 	bool has_mouse() const;
 	void lock_mouse();
 	void release_mouse();
-	bu::event_bus_connection &get_event_bus_connection();
 
 	bool m_open = true;
 	ImGuiWindowFlags m_flags;
