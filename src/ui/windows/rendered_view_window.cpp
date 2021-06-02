@@ -141,8 +141,11 @@ void rendered_view::draw(const bu::scene &scene, const bu::camera &camera)
 	after();
 }
 
-rendered_view_window::rendered_view_window(bu::bunsen_editor &editor, int samples) :
-	window("3D View", ImGuiWindowFlags_MenuBar),
+rendered_view_window::rendered_view_window(
+	bu::bunsen_editor &editor,
+	int samples,
+	std::shared_ptr<bu::event_bus> bus) :
+	window("3D View", ImGuiWindowFlags_MenuBar, bus),
 	rendered_view(samples),
 	m_editor(editor)
 {

@@ -49,7 +49,7 @@ protected:
 class rendered_view_window : public bu::ui::window, protected rendered_view
 {
 public:
-	rendered_view_window(bu::bunsen_editor &editor, int samples = -1);
+	rendered_view_window(bu::bunsen_editor &editor, int samples = -1, std::shared_ptr<bu::event_bus> bus = {});
 	void update() override;
 	void draw() override;
 

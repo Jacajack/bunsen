@@ -16,8 +16,8 @@ namespace bu::ui {
 class scene_editor_window : public bu::ui::window
 {
 public:
-	scene_editor_window(bunsen_editor &editor) :
-		window("Editor", ImGuiWindowFlags_MenuBar),
+	scene_editor_window(bunsen_editor &editor, std::shared_ptr<bu::event_bus> bus = {}) :
+		window("Editor", ImGuiWindowFlags_MenuBar, bus),
 		m_editor(editor),
 		m_light_widget(*this),
 		m_material_widget(*this),
@@ -42,7 +42,7 @@ private:
 	scene_graph_widget m_scene_graph_widget;
 	world_widget m_world_widget;
 
-	bool m_open_model_import_dialog;
+	bool m_open_model_import_dialog = false;
 };
 
 }
