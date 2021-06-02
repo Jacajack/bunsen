@@ -136,6 +136,8 @@ static bool partition_boxes_sah(
 
 static void partition_triangles(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node)
 {
+	ZoneScopedN("BVH triangle partitioning");
+
 	std::vector<bvh_box> contents(node->triangles.size());
 	for (auto i = 0u; i < node->triangles.size(); i++)
 	{
@@ -174,6 +176,8 @@ static void partition_triangles(const bu::async_stop_flag *stop_flag, bu::rt::bv
 */
 static bool partition_meshes(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node)
 {
+	ZoneScopedN("BVH mesh partitioning");
+
 	std::vector<bvh_box> contents(node->meshes.size());
 	for (auto i = 0u; i < node->meshes.size(); i++)
 	{
@@ -221,6 +225,7 @@ static bool partition_meshes(const bu::async_stop_flag *stop_flag, bu::rt::bvh_d
 bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_node *node, int depth = 0)
 {
 	if (!node) return false;
+	ZoneScopedN("BVH node processing");
 	// LOG_DEBUG << "Processing BVH node...";
 
 	/*
@@ -293,7 +298,7 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 
 void bvh_draft_node::dissolve_meshes()
 {
-	ZoneScopedN("Dissolve meshes in BVH node");
+	ZoneScopedN("BVH meshes dissolve");
 	for (auto &mesh : meshes)
 		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
 	meshes.clear();
@@ -361,6 +366,8 @@ int bvh_draft::get_triangle_count() const
 
 void bvh_draft::build(const scene_cache &cache, const bu::async_stop_flag &stop_flag)
 {
+	ZoneScopedN("BVH draft build");
+
 	m_root_node = std::make_unique<bu::rt::bvh_draft_node>();
 	for (const auto &[id, mesh] : cache.get_meshes())
 		if (mesh->visible && !mesh->triangles.empty())
