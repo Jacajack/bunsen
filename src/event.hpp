@@ -12,7 +12,8 @@ enum class event_type
 	SCENE_TRANSFORM_STARTED,
 	SCENE_TRANSFORM_ABORTED,
 	SCENE_TRANSFORM_FINISHED,
-	SCENE_MODIFIED
+	SCENE_MODIFIED,
+	MATERIAL_MODIFIED,
 };
 
 class event
@@ -44,9 +45,11 @@ public:
 	event_bus_connection &operator=(const event_bus_connection &) = delete;
 	event_bus_connection &operator=(event_bus_connection &&) noexcept = default;
 
+	void clear();
 	void emit(const event &ev);
 	bool poll(event &ev);
 	void process_events(std::function<void(const event &ev)> handler);
+	std::shared_ptr<bu::event_bus> get_bus() const;
 
 protected:
 	event_bus_connection() = default;

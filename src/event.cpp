@@ -1,7 +1,13 @@
-#include "events.hpp"
+#include "event.hpp"
 
 using bu::event_bus;
 using bu::event_bus_connection;
+
+void event_bus_connection::clear()
+{
+	while (!m_queue.empty())
+		m_queue.pop();
+}
 
 void event_bus_connection::emit(const event &ev)
 {
@@ -34,6 +40,11 @@ event_bus_connection::event_bus_connection(std::shared_ptr<event_bus> bus) :
 void event_bus_connection::push_event(const event &ev)
 {
 	m_queue.push(ev);
+}
+
+std::shared_ptr<bu::event_bus> event_bus_connection::get_bus() const
+{
+	return m_bus;
 }
 
 std::shared_ptr<event_bus_connection> event_bus::make_connection()
