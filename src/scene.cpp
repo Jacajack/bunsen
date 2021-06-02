@@ -30,8 +30,11 @@ scene_node &scene_node::operator=(scene_node &&rhs)
 	m_visible = rhs.m_visible;
 
 	// Steal the children
-	while (rhs.m_children.size())
-		rhs.m_children[0]->set_parent(shared_from_this());
+	for (auto it = rhs.m_children.begin(); it != rhs.m_children.end();)
+	{
+		(*it)->set_parent(shared_from_this());
+		it = rhs.m_children.erase(it);
+	}
 	
 	// Assign yourself the parent and remove the old node from its parent
 	if (auto p = rhs.get_parent().lock())
