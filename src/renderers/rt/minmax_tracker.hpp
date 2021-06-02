@@ -1,5 +1,7 @@
 #pragma once
 #include <set>
+#include <functional>
+#include "pool_allocator.hpp"
 
 namespace bu::rt {
 
@@ -13,7 +15,7 @@ public:
 	inline unsigned int size() const;
 
 private:
-	std::multiset<float> set;
+	std::multiset<float, std::less<float>, bu::rt::pool_allocator<float>> set;
 };
 
 void minmax_tracker::add(float x)
