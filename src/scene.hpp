@@ -13,14 +13,15 @@
 #include "scene_selection.hpp"
 #include "uid_provider.hpp"
 #include "ui/layout_editor.hpp"
-#include "events.hpp"
+#include "event.hpp"
+#include "modified_flag.hpp"
 
 namespace bu {
 
 /**
 	\brief Basic element of a scene.
 */
-class scene_node : public std::enable_shared_from_this<scene_node>, public bu::uid_provider<scene_node>
+class scene_node : public std::enable_shared_from_this<scene_node>, public bu::uid_provider<scene_node>, public modified_flag
 {
 public:
 	enum class node_transform_origin
@@ -74,6 +75,11 @@ public:
 	void set_name(const std::string &name);
 	bool is_visible() const;
 	void set_visible(bool v);
+
+	// Modification flag
+	bool is_modified() const override;
+	void clear_modified() override;
+
 
 	virtual ~scene_node();
 

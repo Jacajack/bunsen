@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include <stdexcept>
+#include <iterator>
 #include "log.hpp"
 #include "utils.hpp"
 
@@ -176,6 +177,8 @@ void scene_node::add_child(std::shared_ptr<scene_node> c)
 		c->remove_from_parent();
 	c->m_parent = shared_from_this();
 	m_children.push_back(c);
+	this->mark_as_modified();
+	c->mark_as_modified();
 }
 
 /**
@@ -191,6 +194,7 @@ std::shared_ptr<scene_node> scene_node::remove_child(scene_node *c)
 			m_children[i] = std::move(m_children.back());
 			m_children.pop_back();
 			p->m_parent.reset();
+			this->mark_as_modified();
 			return p;
 		}
 	}
@@ -274,6 +278,26 @@ bool scene_node::is_visible() const
 void scene_node::set_visible(bool v)
 {
 	m_visible = v;
+}
+
+bool scene_node::is_modified() const
+{
+	if (!m_modified)
+	{
+		bool children_modified = false;
+		for (auto &ptr : m_children)
+			children_modified |= ptr->is_modified();
+		return children_modified;
+	}
+	else
+		return true;
+}
+
+void scene_node::clear_modified()
+{
+	m_modified = false;
+	for (auto &ptr : m_children)
+		ptr->clear_modified();
 }
 
 scene_node::~scene_node()
