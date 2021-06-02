@@ -91,17 +91,58 @@ static bool partition_boxes_sah(
 	int best_index{};
 	std::vector<bvh_box> *best_buf{};
 
-	sort_in_axis(buf_x, &glm::vec3::x);
-	if (stop_flag.should_stop()) return false;
-	find_best_split(buf_x, cx, ix);
-	if (stop_flag.should_stop()) return false;
-	sort_in_axis(buf_y, &glm::vec3::y);
-	if (stop_flag.should_stop()) return false;
-	find_best_split(buf_y, cy, iy);
-	if (stop_flag.should_stop()) return false;
-	sort_in_axis(buf_z, &glm::vec3::z);
-	if (stop_flag.should_stop()) return false;
-	find_best_split(buf_z, cz, iz);
+	auto split_x = [
+		sort_in_axis,
+		find_best_split,
+		&stop_flag,
+		&buf_x, &cx, &ix]()
+	{
+		sort_in_axis(buf_x, &glm::vec3::x);
+		if (stop_flag.should_stop()) return;
+		find_best_split(buf_x, cx, ix);
+	};
+
+	auto split_y = [
+		sort_in_axis,
+		find_best_split,
+		&stop_flag,
+		&buf_y, &cy, &iy]
+	{
+		sort_in_axis(buf_y, &glm::vec3::y);
+		if (stop_flag.should_stop()) return;
+		find_best_split(buf_y, cy, iy);
+	};
+
+	auto split_z = [
+		sort_in_axis,
+		find_best_split,
+		&stop_flag,
+		&buf_z, &cz, &iz]
+	{
+		sort_in_axis(buf_z, &glm::vec3::z);
+		if (stop_flag.should_stop()) return;
+		find_best_split(buf_z, cz, iz);
+	};
+
+	// Depending on number of items to partition
+	// find splits in parallel or sequentially
+	if (input.size() > 1000)
+	{
+		auto fut_x = std::async(std::launch::async, split_x);
+		auto fut_y = std::async(std::launch::async, split_y);
+		split_z();
+		fut_x.wait();
+		fut_y.wait();
+	}
+	else
+	{
+		split_x();
+		if (stop_flag.should_stop()) return false;
+		split_y();
+		if (stop_flag.should_stop()) return false;
+		split_z();
+	}
+
 	if (stop_flag.should_stop()) return false;
 
 	if (cx < cy && cx < cz)
@@ -281,11 +322,10 @@ bool process_bvh_node(const bu::async_stop_flag *stop_flag, bu::rt::bvh_draft_no
 	{
 		auto async_policy = std::launch::async;
 
-		std::future<bool> lfut, rfut;
+		std::future<bool> lfut;
 		if (node->left) lfut = std::async(async_policy, process_bvh_node, stop_flag, node->left.get(), depth + 1);
-		if (node->right) rfut = std::async(async_policy, process_bvh_node, stop_flag, node->right.get(), depth + 1);
+		if (node->right) process_bvh_node(stop_flag, node->right.get(), depth + 1);
 		if (node->left) lfut.wait();
-		if (node->right) rfut.wait();
 	}
 	else
 	{
