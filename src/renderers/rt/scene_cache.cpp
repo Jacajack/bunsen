@@ -12,9 +12,10 @@ using bu::rt::scene_cache;
 using bu::rt::scene_cache_material;
 using bu::rt::scene_cache_mesh;
 
-static std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, const glm::mat4 &transform, int material_id)
+static void mesh_to_triangles(std::vector<bu::rt::triangle> &tris, const bu::mesh &mesh, const glm::mat4 &transform, int material_id)
 {
-	ZoneScopedN("mesh_to_triangles");
+	ZoneScopedN("mesh_to_triangles()");
+	tris.reserve(tris.size() + mesh.indices.size() / 3);
 
 	// Transform matrix for normals
 	glm::mat3 tn{transform};
@@ -25,22 +26,22 @@ static std::vector<bu::rt::triangle> mesh_to_triangles(const bu::mesh &mesh, con
 	if (mesh.indices.size() % 3)
 		LOG_ERROR << "There are some redundant indices in the mesh!";
 
-	std::vector<bu::rt::triangle> tris(mesh.indices.size() / 3);
+	bu::rt::triangle t;
 	for (auto i = 0u; i < mesh.indices.size(); i++)
 	{
-		auto ti = i / 3;
 		auto vi = i % 3;
 		auto index = mesh.indices[i];
 
-		tris[ti].material_id = material_id;
-		tris[ti].vertices[vi] = glm::vec3{transform * glm::vec4{mesh.vertices[index], 1}};
-		tris[ti].normals[vi] = glm::normalize(tn * mesh.normals[index]);
+		t.material_id = material_id;
+		t.vertices[vi] = glm::vec3{transform * glm::vec4{mesh.vertices[index], 1}};
+		t.normals[vi] = glm::normalize(tn * mesh.normals[index]);
 		
 		if (i < mesh.uvs.size())
-			tris[ti].uvs[vi] = mesh.uvs[index];
-	}
+			t.uvs[vi] = mesh.uvs[index];
 
-	return tris;
+		if (i % 3 == 2)
+			tris.emplace_back(t);
+	}
 }
 
 /**
@@ -51,7 +52,7 @@ bool scene_cache::update_from_model_node(
 	const bu::model_node &node,
 	bool force_update)
 {
-	ZoneScopedN("Update BVH mesh from node");
+	ZoneScopedN("scene_cache::update_from_model_node()");
 
 	// Update transform
 	bool transform_changed = false;
@@ -131,8 +132,7 @@ bool scene_cache::update_from_model_node(
 		{
 			auto mesh_ptr = model.get_mesh(i);
 			cached_mesh.meshes.push_back(mesh_ptr);
-			auto mesh_tris = mesh_to_triangles(*mesh_ptr, cached_mesh.transform, m_materials.at(model.get_mesh_material(i)->uid()).index);
-			std::copy(mesh_tris.begin(), mesh_tris.end(), std::back_insert_iterator(cached_mesh.triangles));
+			mesh_to_triangles(cached_mesh.triangles, *mesh_ptr, cached_mesh.transform, m_materials.at(model.get_mesh_material(i)->uid()).index);
 		}
 
 		cached_mesh.aabb = bu::rt::triangles_aabb(cached_mesh.triangles.data(), cached_mesh.triangles.size());
@@ -149,6 +149,8 @@ bool scene_cache::update_from_model_node(
 */
 std::pair<bool, bool> scene_cache::update_materials(const bu::scene &scene)
 {
+	ZoneScopedN("scene_cache::update_materials()");
+
 	auto &scene_root = *scene.root_node;
 	bool changed = false;
 	bool full_rebuild = false;
@@ -216,6 +218,8 @@ std::pair<bool, bool> scene_cache::update_materials(const bu::scene &scene)
 
 bool scene_cache::update_meshes(const bu::scene &scene, bool force_update)
 {
+	ZoneScopedN("scene_cache::update_meshes()");
+
 	auto &scene_root = *scene.root_node;
 	bool changed = false;
 
@@ -246,6 +250,7 @@ bool scene_cache::update_meshes(const bu::scene &scene, bool force_update)
 		if (!it->second->visited)
 		{
 			LOG_DEBUG << "Erasing mesh from BVH";
+			changed |= it->second->visible;
 			it = m_meshes.erase(it);
 		}
 		else
@@ -272,7 +277,13 @@ std::vector<bu::rt::material> bu::rt::scene_cache::get_materials() const
 {
 	std::vector<bu::rt::material> materials(m_materials.size());
 	for (const auto &[uid, mat] : m_materials)
-		materials.at(mat.index) = bu::rt::material{*mat.material_data.lock()};
+	{
+		// Not all materials will be valid - we're doing this so we can avoid
+		// rebuilding the BVH with different material indices
+		auto mat_data_ptr = mat.material_data.lock();
+		if (mat_data_ptr)
+			materials.at(mat.index) = bu::rt::material{*mat_data_ptr};
+	}
 	return materials;
 }
 
