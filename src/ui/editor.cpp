@@ -34,8 +34,8 @@ bunsen_editor::bunsen_editor() :
 	albedo_ctx(std::make_shared<bu::albedo_context>()),
 	rt_ctx(std::make_shared<bu::rt_context>(*scene->event_bus, basic_preview_ctx))
 {
-	windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
-	windows.push_back(std::make_unique<ui::scene_editor_window>(*this));
+	windows.push_back(std::make_unique<ui::rendered_view_window>(*this, -1, scene->event_bus));
+	windows.push_back(std::make_unique<ui::scene_editor_window>(*this, scene->event_bus));
 }
 
 void bunsen_editor::draw(const bu::bunsen &main_state)
@@ -63,11 +63,11 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 		{
 			if (ImGui::MenuItem("3D view"))
 			{
-				windows.push_back(std::make_unique<ui::rendered_view_window>(*this));
+				windows.push_back(std::make_unique<ui::rendered_view_window>(*this, -1, scene->event_bus));
 			}
 
 			if (ImGui::MenuItem("Scene editor"))
-				windows.push_back(std::make_unique<ui::scene_editor_window>(*this));
+				windows.push_back(std::make_unique<ui::scene_editor_window>(*this, scene->event_bus));
 
 			if (debug)
 				if (ImGui::MenuItem("Evil debug cheats"))
@@ -92,16 +92,22 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 		w->display();
 	}
 
-	// TEMP update BVH
-	static bool tmp = 1;
-	bool tp = scene->layout_ed.is_transform_pending();
-	rt_ctx->update_from_scene(*scene, tmp != tp && !tp);
-	tmp = tp;
 
-	static auto events = scene->event_bus->make_connection();
-	bu::event ev;
-	while (events->poll(ev))
-	{
-		LOG_DEBUG << "GOT EVENT";
-	}
+	// TEMP update BVH
+	bool tp = scene->layout_ed.is_transform_pending();
+	rt_ctx->update_from_scene(*scene, !tp);
+
+	// static auto events = scene->event_bus->make_connection();
+	// bu::event ev;
+	// while (events->poll(ev))
+	// {
+	// 	LOG_DEBUG << "GOT EVENT";
+	// }
+
+	if (scene->root_node->is_modified())
+		LOG_DEBUG << "scene root is modified";
+	else if (scene->root_node->is_visibly_modified())
+		LOG_DEBUG << "scene root is visibly modified";
+
+	scene->root_node->clear_modified();
 }

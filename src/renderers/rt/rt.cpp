@@ -73,8 +73,7 @@ void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 {
 	const auto policy = std::launch::async;
 
-	// Trigger BVH draft build
-	if (allow_build)
+	if (scene.root_node->is_visibly_modified() && allow_build)
 	{
 		auto [update_scene, update_bvh] = m_scene_cache->update_from_scene(scene);
 		if (update_bvh)
@@ -86,7 +85,7 @@ void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 			m_scene_build_task.reset();
 			m_bvh_draft_build_task = bu::make_async_task(bu::global_task_cleaner, policy, build_bvh_draft, this);
 		}
-		else if (update_scene && m_scene)
+		else if (m_scene)
 		{
 			LOG_INFO << "Preserving BVH through scene update!";
 			
@@ -202,7 +201,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	if (!m_active && m_context->get_scene() && std::chrono::steady_clock::now() - m_last_change > 0.5s)
 	{
 		if (m_job) m_job->stop();
-		m_job->start(m_context->get_scene(), m_camera, m_viewport);
+		m_job->start(m_context->get_scene(), m_camera, m_viewport, 512);
 		m_active = true;
 	}
 
