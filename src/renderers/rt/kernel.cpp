@@ -15,6 +15,7 @@ glm::vec3 bu::rt::trace_ray(
 	std::uniform_real_distribution<float> dist(0, 1);
 	glm::vec3 L{0.0};
 	glm::vec3 thrput{1.0};
+	float ray_ior = 1.f;
 
 	for (int bounces = 0; bounces < max_bounces; bounces++)
 	{
@@ -41,7 +42,7 @@ glm::vec3 bu::rt::trace_ray(
 
 		// Sample the BSDF
 		const auto &material = materials[hit.triangle->material_id];
-		auto bounce = material.sample(tbn_dir, 1.f, dist(rng), dist(rng));
+		auto bounce = material.sample(tbn_dir, ray_ior, dist(rng), dist(rng));
 
 		// Stop if we hit a light
 		if (bounce.type == ray_bounce_type::EMISSION)
@@ -54,6 +55,7 @@ glm::vec3 bu::rt::trace_ray(
 		const float ray_surface_offset = 1e-3;
 		r.direction = glm::normalize(TBN * bounce.new_direction);
 		r.origin = P + glm::sign(bounce.new_direction.z) * ray_surface_offset * N;
+		ray_ior = bounce.new_ior;
 
 		// Accumulate light
 		thrput *= bounce.bsdf / bounce.pdf;

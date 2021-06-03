@@ -31,6 +31,7 @@ enum class ray_bounce_type
 	SPECULAR,
 	EMISSION,
 	SCATTER,
+	TRANSMISSION,
 };
 
 struct ray_bounce

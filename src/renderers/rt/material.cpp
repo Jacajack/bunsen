@@ -1,6 +1,7 @@
 #include "material.hpp"
 #include "../../material.hpp"
 #include "../../materials/diffuse_material.hpp"
+#include "../../materials/glass_material.hpp"
 #include "../../materials/emissive_material.hpp"
 
 bu::rt::material::material() :
@@ -19,6 +20,13 @@ bu::rt::material::material(const bu::material_data &mat) :
 		{
 			this->type = material_type::BASIC_DIFFUSE;
 			this->basic_diffuse.albedo = ptr->color;
+		}
+
+		if (auto ptr = dynamic_cast<const bu::glass_material*>(mat.surface.get()))
+		{
+			this->type = material_type::GLASS;
+			this->glass.color = ptr->color;
+			this->glass.ior = ptr->ior;
 		}
 
 		if (auto ptr = dynamic_cast<const bu::emissive_material*>(mat.surface.get()))

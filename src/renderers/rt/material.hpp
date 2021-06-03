@@ -12,6 +12,7 @@ namespace bu::rt {
 enum class material_type
 {
 	BASIC_DIFFUSE,
+	GLASS,
 	EMISSIVE
 };
 
@@ -22,6 +23,7 @@ struct material
 	
 	inline ray_bounce sample(const glm::vec3 &V, float ior, float u1, float u2) const;
 	inline ray_bounce sample_basic_diffuse(const glm::vec3 &V, float ior, float u1, float u2) const;
+	inline ray_bounce sample_glass(const glm::vec3 &V, float ior, float u1) const;
 	inline ray_bounce sample_emissive() const;
 
 	material_type type;
@@ -30,6 +32,12 @@ struct material
 	{
 		glm::vec3 albedo;
 	} basic_diffuse;
+
+	struct
+	{
+		glm::vec3 color;
+		float ior;
+	} glass;
 
 	struct
 	{
@@ -44,6 +52,10 @@ ray_bounce material::sample(const glm::vec3 &V, float ior, float u1, float u2) c
 		default:
 		case material_type::BASIC_DIFFUSE:
 			return sample_basic_diffuse(V, ior, u1, u2);
+			break;
+
+		case material_type::GLASS:
+			return sample_glass(V, ior, u1);
 			break;
 
 		case material_type::EMISSIVE:
@@ -73,6 +85,68 @@ ray_bounce material::sample_basic_diffuse(const glm::vec3 &V, float ior, float u
 
 	bounce.pdf = 1.f;
 	return bounce;
+}
+
+ray_bounce material::sample_glass(const glm::vec3 &V, float ior, float u1) const
+{
+	float n1, n2;
+
+	// Determine if the ray is entering or leaving the medium
+	if (V.z < 0)
+	{
+		n1 = ior;
+		n2 = glass.ior;
+	}
+	else
+	{
+		n1 = glass.ior;
+		n2 = ior;
+	}
+
+	// Calculate Fresnel factor by Schlick's approximation
+	float cos_theta = std::abs(V.z);
+	float r = (n1 - n2) / (n1 + n2);
+	float R = r * r;
+	float F = R + (1.f - R) * std::pow(1.f - cos_theta, 5.f);
+
+	if (u1 < F)
+	{
+		// Reflection
+		ray_bounce bounce;
+		bounce.type = ray_bounce_type::SPECULAR;
+		bounce.new_ior = n1;
+		bounce.bsdf = glm::vec3{1.f};
+		bounce.new_direction = V * glm::vec3{1, 1, -1};
+		bounce.pdf = 1.f;
+		return bounce;
+	}
+	else
+	{
+		// Transmission
+		glm::vec3 T = glm::refract(V, glm::vec3{0, 0, -glm::sign(V.z)}, n1 / n2);
+		if (T != glm::vec3{0.f})
+		{
+			// Refraction
+			ray_bounce bounce;
+			bounce.type = ray_bounce_type::TRANSMISSION;
+			bounce.new_ior = n2;
+			bounce.bsdf = glass.color;
+			bounce.new_direction = T;
+			bounce.pdf = 1.f;
+			return bounce;
+		}
+		else
+		{
+			// Total Interal Reflection
+			ray_bounce bounce;
+			bounce.type = ray_bounce_type::SPECULAR;
+			bounce.new_ior = n1;
+			bounce.bsdf = glm::vec3{1.f};
+			bounce.new_direction = V * glm::vec3{1, 1, -1};
+			bounce.pdf = 1.f;
+			return bounce;
+		}
+	}
 }
 
 ray_bounce material::sample_emissive() const
