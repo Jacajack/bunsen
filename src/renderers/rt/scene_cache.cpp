@@ -26,6 +26,20 @@ static void mesh_to_triangles(std::vector<bu::rt::triangle> &tris, const bu::mes
 	if (mesh.indices.size() % 3)
 		LOG_ERROR << "There are some redundant indices in the mesh!";
 
+	std::vector<glm::vec3> vertices(mesh.vertices.size());
+	std::transform(mesh.vertices.begin(), mesh.vertices.end(), vertices.begin(),
+		[transform](const glm::vec3 &v)
+		{
+			return glm::vec3{transform * glm::vec4{v, 1}};
+		});
+
+	std::vector<glm::vec3> normals(mesh.normals.size());
+	std::transform(mesh.normals.begin(), mesh.normals.end(), normals.begin(),
+		[tn](const glm::vec3 &n)
+		{
+			return glm::normalize(tn * n);
+		});
+
 	bu::rt::triangle t;
 	for (auto i = 0u; i < mesh.indices.size(); i++)
 	{
@@ -33,8 +47,8 @@ static void mesh_to_triangles(std::vector<bu::rt::triangle> &tris, const bu::mes
 		auto index = mesh.indices[i];
 
 		t.material_id = material_id;
-		t.vertices[vi] = glm::vec3{transform * glm::vec4{mesh.vertices[index], 1}};
-		t.normals[vi] = glm::normalize(tn * mesh.normals[index]);
+		t.vertices[vi] = vertices[index];
+		t.normals[vi] = normals[index];
 		
 		if (i < mesh.uvs.size())
 			t.uvs[vi] = mesh.uvs[index];
