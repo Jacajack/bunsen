@@ -83,7 +83,7 @@ static bool partition_boxes_sah(
 			for (auto i = 0u; i < input.size() - 1 && !stop_flag.should_stop(); i++)
 			{
 				float sl = bu::rt::aabb{lmin[i], lmax[i]}.get_area();
-				float sr = bu::rt::aabb{rmin[rmin.size() - i - 1], rmax[rmin.size() - i - 1]}.get_area();
+				float sr = bu::rt::aabb{rmin[rmin.size() - i - 2], rmax[rmin.size() - i - 2]}.get_area();
 				float c = cost_traversal + cost_intersect / sp * (sl * (i + 1) + sr * (rmin.size() - (i + 1)));
 
 				// LOG_DEBUG << "split " << i << " sl=" << sl << " sr=" << sr << " c=" << c << " best=" << cost;
