@@ -54,41 +54,21 @@ static bool partition_boxes_sah(
 		std::vector<glm::vec3> rmin(input.size());
 		std::vector<glm::vec3> rmax(input.size());
 
-		std::transform(input.begin(), input.end(), lmin.begin(), [](auto box)
+		lmin[0] = input.front().box.min;
+		lmax[0] = input.front().box.max;
+		for (auto i = 1u; i < input.size(); i++)
 		{
-			return box.box.min;
-		});
-
-		std::transform(input.begin(), input.end(), lmax.begin(), [](auto box)
-		{
-			return box.box.max;
-		});
-
-		std::transform(input.rbegin(), input.rend(), rmin.begin(), [](auto box)
-		{
-			return box.box.min;
-		});
-
-		std::transform(input.rbegin(), input.rend(), rmax.begin(), [](auto box)
-		{
-			return box.box.max;
-		});
-
-		{
-			ZoneScopedN("AABB min max populate");
-			for (auto i = 1u; i < lmin.size(); i++)
-				lmin[i] = glm::min(lmin[i], lmin[i - 1]);
-
-			for (auto i = 1u; i < lmax.size(); i++)
-				lmax[i] = glm::max(lmax[i], lmax[i - 1]);
-
-			for (auto i = 1u; i < rmin.size(); i++)
-				rmin[i] = glm::min(rmin[i], rmin[i - 1]);
-
-			for (auto i = 1u; i < rmax.size(); i++)
-				rmax[i] = glm::max(rmax[i], rmax[i - 1]);
+			lmin[i] = glm::min(lmin[i - 1], input[i].box.min);
+			lmax[i] = glm::max(lmax[i - 1], input[i].box.max);
 		}
 
+		rmin[0] = input.back().box.min;
+		rmax[0] = input.back().box.max;
+		for (auto i = 1u; i < input.size(); i++)
+		{
+			rmin[i] = glm::min(rmin[i - 1], input[input.size() - i - 1].box.min);
+			rmax[i] = glm::max(rmax[i - 1], input[input.size() - i - 1].box.max);
+		}
 
 		index = -1;
 
@@ -131,6 +111,7 @@ static bool partition_boxes_sah(
 		&stop_flag, input,
 		&buf_x, &cx, &ix]()
 	{
+		ZoneScopedN("X split");
 		buf_x = input;
 		sort_in_axis(buf_x, &glm::vec3::x);
 		if (stop_flag.should_stop()) return;
@@ -143,6 +124,7 @@ static bool partition_boxes_sah(
 		&stop_flag, input,
 		&buf_y, &cy, &iy]
 	{
+		ZoneScopedN("Y split");
 		buf_y = input;
 		sort_in_axis(buf_y, &glm::vec3::y);
 		if (stop_flag.should_stop()) return;
@@ -155,6 +137,7 @@ static bool partition_boxes_sah(
 		&stop_flag, input,
 		&buf_z, &cz, &iz]
 	{
+		ZoneScopedN("Z split");
 		buf_z = input;
 		sort_in_axis(buf_z, &glm::vec3::z);
 		if (stop_flag.should_stop()) return;
@@ -163,7 +146,7 @@ static bool partition_boxes_sah(
 
 	// Depending on number of items to partition
 	// find splits in parallel or sequentially
-	if (input.size() > 1000)
+	if (input.size() > 10000)
 	{
 		auto fut_x = std::async(std::launch::async, split_x);
 		auto fut_y = std::async(std::launch::async, split_y);
@@ -258,6 +241,7 @@ static void partition_triangles(const bu::async_stop_flag *stop_flag, bu::rt::bv
 			node->right->triangles.emplace_back(std::move(node->triangles[id]));
 
 		node->triangles.clear();
+		node->triangles.shrink_to_fit();
 	}
 }
 
@@ -297,6 +281,7 @@ static bool partition_meshes(const bu::async_stop_flag *stop_flag, bu::rt::bvh_d
 			node->right->meshes.emplace_back(std::move(node->meshes[id]));
 
 		node->meshes.clear();
+		node->meshes.shrink_to_fit();
 	}
 
 	return !should_split || !split_valid;
@@ -391,6 +376,7 @@ void bvh_draft_node::dissolve_meshes()
 	for (auto &mesh : meshes)
 		std::copy(mesh->triangles.begin(), mesh->triangles.end(), std::back_insert_iterator(triangles));
 	meshes.clear();
+	meshes.shrink_to_fit();
 }
 
 std::vector<bu::rt::aabb> bu::rt::bvh_draft::get_tree_aabbs() const
