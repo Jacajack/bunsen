@@ -6,8 +6,8 @@ namespace bu {
 
 struct emissive_material : public surface_material
 {
-	glm::vec3 color;
-	float strength;
+	glm::vec3 color{1.f};
+	float strength{1.f};
 };
 
 }

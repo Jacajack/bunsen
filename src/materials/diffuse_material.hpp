@@ -6,7 +6,7 @@ namespace bu {
 
 struct diffuse_material : public surface_material
 {
-	glm::vec3 color;
+	glm::vec3 color{1.f};
 };
 
 
