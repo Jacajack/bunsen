@@ -147,14 +147,20 @@ void basic_preview_renderer::draw(const bu::scene &scene, const bu::camera &came
 					}
 				}
 
+				// Bind buffers
 				glBindVertexArray(ctx.vao.id());
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_buffer.index_buffer.id());
+				glBindVertexBuffer(0, mesh_buffer.vertex_buffer.id(), 0, 6 * sizeof(float));
+
 				glUseProgram(ctx.basic_preview_program->id());
 				glUniform1f(ctx.basic_preview_program->get_uniform_location("specular_int"), specular_intensity);
 				glUniform3fv(ctx.basic_preview_program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniformMatrix4fv(ctx.basic_preview_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_buffer.index_buffer.id());
-				glBindVertexBuffer(0, mesh_buffer.vertex_buffer.id(), 0, 6 * sizeof(float));
 				glDrawElements(GL_TRIANGLES, mesh_buffer.size, GL_UNSIGNED_INT, nullptr);
+
+				// Unbind buffers to avoid accidentally keeping mesh ownership
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				glBindVertexBuffer(0, 0, 0, 0);
 			}
 		}
 	}

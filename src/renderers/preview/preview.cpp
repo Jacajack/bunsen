@@ -149,15 +149,17 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 				}
 				else
 					glDisable(GL_STENCIL_TEST);
-
+					
+				// Bind mesh buffers
 				glBindVertexArray(ctx.vao.id());
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
+				glBindVertexBuffer(0, mesh_data->gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
+
 				glUseProgram(ctx.program->id());
 				glUniform1f(ctx.program->get_uniform_location("specular_int"), specular_intensity);
 				glUniform3fv(ctx.program->get_uniform_location("base_color"), 1, &base_color[0]);
 				glUniform1i(ctx.program->get_uniform_location("selected"), is_selected);
 				glUniformMatrix4fv(ctx.program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_data->gl_buffers->index_buffer.id());
-				glBindVertexBuffer(0, mesh_data->gl_buffers->vertex_buffer.id(), 0, 8 * sizeof(float));
 				glDrawElements(GL_TRIANGLES, mesh_data->indices.size(), GL_UNSIGNED_INT, nullptr);
 
 				if (is_selected)
@@ -183,6 +185,11 @@ void preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, co
 					glDisable(GL_CULL_FACE);
 					glDisable(GL_STENCIL_TEST);
 				}
+
+				// Unbind buffers, so we don't accidentaly keep ownership of
+				// the last model in the scene
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				glBindVertexBuffer(0, 0, 0, 0);
 			}
 		}
 
