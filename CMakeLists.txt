@@ -2,7 +2,9 @@ project(bunsen)
 cmake_minimum_required(VERSION 3.3)
 
 option(GL_DEBUG "Should OpenGL debugging be enabled? (meaningless in Debug builds)" OFF)
+option(BUNSEN_DEBUG "Enable debug features in builds" OFF)
 option(SANITIZE "Should sanitizer be enabled in debug builds? (can conflict with debuggers)" ON)
+option(STRIP "Should the executable be stripped in release builds?" OFF)
 
 set(OpenGL_GL_PREFERENCE GLVND)
 
@@ -26,6 +28,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DND
 if (SANITIZE)
 	message("Sanitizers will be enabled!")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined")
+endif()
+
+if (STRIP)
+	message("Stripping!")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+else()
+	message("Embedding debugging information in the executable!")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
 endif()
 
 add_executable(bunsen 
@@ -102,6 +112,11 @@ target_link_libraries(bunsen PRIVATE
 if (GL_DEBUG)
 	message("GL_DEBUG is enabled!")
 	target_compile_definitions(bunsen PRIVATE GL_DEBUG)
+endif()
+
+if (BUNSEN_DEBUG)
+	message("Enabling debug features!")
+	target_compile_definitions(bunsen PRIVATE BUNSEN_DEBUG)
 endif()
 
 add_custom_target(
