@@ -36,7 +36,6 @@ add_executable(bunsen
 	"src/log.cpp"
 	"src/event.cpp"
 	"src/scene.cpp"
-	"src/mesh.cpp"
 	"src/input.cpp"
 	"src/assimp_loader.cpp"
 	"src/scene_export.cpp"
@@ -45,8 +44,9 @@ add_executable(bunsen
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
 
+	"src/renderers/basic_gl_renderer.cpp"
 	"src/renderers/preview/preview.cpp"
-	"src/renderers/basic_preview/basic_preview.cpp"
+	"src/renderers/preview/basic_preview.cpp"
 
 	"src/renderers/rt/rt.cpp"
 	"src/renderers/rt/job.cpp"

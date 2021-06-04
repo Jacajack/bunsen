@@ -8,7 +8,7 @@
 #include "scene.hpp"
 #include "camera.hpp"
 #include "renderer.hpp"
-#include "renderers/basic_preview/basic_preview.hpp"
+#include "renderers/preview/basic_preview.hpp"
 #include "event.hpp"
 
 namespace bu::rt {

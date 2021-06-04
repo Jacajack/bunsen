@@ -7,7 +7,7 @@
 
 #include "renderers/albedo/albedo.hpp"
 #include "renderers/preview/preview.hpp"
-#include "renderers/basic_preview/basic_preview.hpp"
+#include "renderers/preview/basic_preview.hpp"
 #include "renderers/rt/rt.hpp"
 
 using bu::ui::rendered_view;
@@ -171,7 +171,7 @@ void rendered_view_window::draw()
 				m_renderer = std::make_unique<bu::preview_renderer>(m_editor.preview_ctx);
 
 			if (ImGui::MenuItem("Basic Preview"))
-				m_renderer = std::make_unique<bu::basic_preview_renderer>(m_editor.basic_preview_ctx);
+				m_renderer = std::make_unique<bu::basic_preview_renderer>(m_editor.preview_ctx);
 
 			if (ImGui::MenuItem("Albedo"))
 				m_renderer = std::make_unique<bu::albedo_renderer>(m_editor.albedo_ctx);

@@ -23,7 +23,6 @@ struct bunsen_editor
 
 	// Rendering contexts shared by all open viewports
 	std::shared_ptr<preview_context> preview_ctx;
-	std::shared_ptr<basic_preview_context> basic_preview_ctx;
 	std::shared_ptr<albedo_context> albedo_ctx;
 	std::shared_ptr<rt_context> rt_ctx;
 };

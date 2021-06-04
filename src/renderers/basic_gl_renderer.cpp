@@ -1,19 +1,19 @@
-#include "basic_preview.hpp"
+#include "basic_gl_renderer.hpp"
 #include <vector>
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
-#include "../../materials/diffuse_material.hpp"
-#include "../../log.hpp"
+#include "materials/diffuse_material.hpp"
+#include "log.hpp"
 
-using bu::basic_preview_mesh;
-using bu::basic_preview_context;
-using bu::basic_preview_renderer;
+using bu::basic_gl_renderer_mesh;
+using bu::basic_gl_renderer_context;
+using bu::basic_gl_renderer;
 
-basic_preview_mesh::basic_preview_mesh(std::shared_ptr<bu::mesh> mesh)
+basic_gl_renderer_mesh::basic_gl_renderer_mesh(std::shared_ptr<bu::mesh> mesh)
 {
 	if (mesh->vertices.size() != mesh->normals.size())
 	{
-		LOG_ERROR << "basic_preview_renderer: Mesh vertex count doesn't match normal count!";
+		LOG_ERROR << "basic_gl_renderer: Mesh vertex count doesn't match normal count!";
 		return;
 	}
 	
@@ -32,8 +32,7 @@ basic_preview_mesh::basic_preview_mesh(std::shared_ptr<bu::mesh> mesh)
 	LOG_INFO << "Basic preview renderer finished buffering mesh '" << mesh->name << "'";
 }
 
-basic_preview_context::basic_preview_context() :
-	basic_preview_program(std::make_unique<bu::shader_program>(bu::load_shader_program("basic_preview")))
+basic_gl_renderer_context::basic_gl_renderer_context()
 {
 	glBindVertexArray(vao.id());
 
@@ -66,28 +65,28 @@ basic_preview_context::basic_preview_context() :
 	LOG_INFO << "Created a new basic preview renderer context.";
 }
 
-basic_preview_mesh &basic_preview_context::get_mesh(const std::shared_ptr<bu::mesh> &mesh)
+basic_gl_renderer_mesh &basic_gl_renderer_context::get_mesh(const std::shared_ptr<bu::mesh> &mesh)
 {
 	auto uid = mesh->uid();
 	auto it = meshes.find(uid);
 	if (it == meshes.end())
 	{
-		meshes.emplace(uid, basic_preview_mesh(mesh));
+		meshes.emplace(uid, basic_gl_renderer_mesh(mesh));
 		return meshes.at(uid);
 	}
 	else
 		return it->second;
 }
 
-basic_preview_renderer::basic_preview_renderer(std::shared_ptr<basic_preview_context> context) :
+basic_gl_renderer::basic_gl_renderer(std::shared_ptr<basic_gl_renderer_context> context) :
 	m_context(std::move(context))
 {
 }
 
-void basic_preview_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
+void basic_gl_renderer::draw(const bu::scene &scene, const bu::camera &camera, const glm::ivec2 &viewport_size)
 {
-	ZoneScopedN("basic_preview_renderer::draw");
-	TracyGpuZone("Basic preview");
+	ZoneScopedN("basic_gl_renderer::draw");
+	TracyGpuZone("basic_gl_renderer::draw");
 
 	auto &ctx = *m_context;
 
@@ -95,27 +94,21 @@ void basic_preview_renderer::draw(const bu::scene &scene, const bu::camera &came
 	auto mat_view = camera.get_view_matrix();
 	auto mat_proj = camera.get_projection_matrix();
 
-	// If world is solid_world, get the color from there
-	glm::vec3 world_color{0.1, 0.1, 0.1};
-	if (auto w = dynamic_cast<bu::solid_world*>(scene.world.get()))
-		world_color = w->color;
-
-	glClearColor(world_color.r, world_color.g, world_color.b, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glEnable(GL_DEPTH_TEST);
-	glUseProgram(ctx.basic_preview_program->id());
-	glUniform3fv(ctx.basic_preview_program->get_uniform_location("world_color"), 1, &world_color[0]);
-	glUniformMatrix4fv(ctx.basic_preview_program->get_uniform_location("mat_view"), 1, GL_FALSE, &mat_view[0][0]);
-	glUniformMatrix4fv(ctx.basic_preview_program->get_uniform_location("mat_proj"), 1, GL_FALSE, &mat_proj[0][0]);
+	pre_scene_draw(
+		scene,
+		camera,
+		viewport_size,
+		mat_view,
+		mat_proj);
 
 	for (auto it = scene.root_node->begin(); !(it == scene.root_node->end()); ++it)
 	{
 		auto node_ptr = &*it;
 
-		// Skip invisible
+		// Skip invisible nodes
 		if (!node_ptr->is_visible()) continue;
 
+		bool is_selected = scene.selection.contains(node_ptr->shared_from_this());
 		glm::mat4 transform = it.get_transform();
 
 		// Model nodes
@@ -134,34 +127,49 @@ void basic_preview_renderer::draw(const bu::scene &scene, const bu::camera &came
 				auto &mesh_buffer = ctx.get_mesh(model->get_mesh(i));
 				auto material = model->get_mesh_material(i);
 
-				
-				// Material properties
-				glm::vec3 base_color{0.8f};
-				float specular_intensity = 0.2f;
-				if (material)
-				{
-					if (auto mat = dynamic_cast<const bu::diffuse_material*>(material->surface.get()))
-					{
-						base_color = mat->color;
-						specular_intensity = 0.2;
-					}
-				}
-
 				// Bind buffers
 				glBindVertexArray(ctx.vao.id());
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_buffer.index_buffer.id());
 				glBindVertexBuffer(0, mesh_buffer.vertex_buffer.id(), 0, 6 * sizeof(float));
 
-				glUseProgram(ctx.basic_preview_program->id());
-				glUniform1f(ctx.basic_preview_program->get_uniform_location("specular_int"), specular_intensity);
-				glUniform3fv(ctx.basic_preview_program->get_uniform_location("base_color"), 1, &base_color[0]);
-				glUniformMatrix4fv(ctx.basic_preview_program->get_uniform_location("mat_model"), 1, GL_FALSE, &transform[0][0]);
-				glDrawElements(GL_TRIANGLES, mesh_buffer.size, GL_UNSIGNED_INT, nullptr);
+				draw_mesh(
+					scene,
+					camera,
+					viewport_size,
+					mat_view,
+					mat_proj,
+					transform,
+					*model_node_ptr,
+					is_selected,
+					*model->get_mesh(i),
+					material,
+					mesh_buffer.size);
 
 				// Unbind buffers to avoid accidentally keeping mesh ownership
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 				glBindVertexBuffer(0, 0, 0, 0);
 			}
 		}
+
+		// Light nodes
+		if (auto ln = dynamic_cast<bu::light_node*>(node_ptr))
+		{
+			draw_light(
+				scene,
+				camera,
+				viewport_size,
+				mat_view,
+				mat_proj,
+				transform,
+				*ln,
+				is_selected);
+		}
 	}
+
+	post_scene_draw(
+		scene,
+		camera,
+		viewport_size,
+		mat_view,
+		mat_proj);
 }

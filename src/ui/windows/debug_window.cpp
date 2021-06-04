@@ -21,5 +21,5 @@ void debug_window::draw()
 		*m_editor.albedo_ctx = bu::albedo_context();
 
 	if (ImGui::Button("Reload RT"))
-		*m_editor.rt_ctx = bu::rt_context(*m_editor.scene->event_bus, m_editor.basic_preview_ctx);
+		*m_editor.rt_ctx = bu::rt_context(*m_editor.scene->event_bus, m_editor.preview_ctx);
 }
