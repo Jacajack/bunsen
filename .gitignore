@@ -3,3 +3,4 @@ build**
 ign
 docs
 **/*.kate-swp
+resources/models/*-big.*
