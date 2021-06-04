@@ -47,45 +47,79 @@ static bool partition_boxes_sah(
 
 	auto find_best_split = [&](const std::vector<bvh_box> &input, float &cost, int &index)
 	{
-		// LOG_DEBUG << "finding best split...";
-		ZoneScopedN("Find split");
+		ZoneScopedN("find_best_split()");
 
-		bu::rt::aabb_collection l, r;
+		std::vector<glm::vec3> lmin(input.size());
+		std::vector<glm::vec3> lmax(input.size());
+		std::vector<glm::vec3> rmin(input.size());
+		std::vector<glm::vec3> rmax(input.size());
+
+		std::transform(input.begin(), input.end(), lmin.begin(), [](auto box)
+		{
+			return box.box.min;
+		});
+
+		std::transform(input.begin(), input.end(), lmax.begin(), [](auto box)
+		{
+			return box.box.max;
+		});
+
+		std::transform(input.rbegin(), input.rend(), rmin.begin(), [](auto box)
+		{
+			return box.box.min;
+		});
+
+		std::transform(input.rbegin(), input.rend(), rmax.begin(), [](auto box)
+		{
+			return box.box.max;
+		});
+
+		{
+			ZoneScopedN("AABB min max populate");
+			for (auto i = 1u; i < lmin.size(); i++)
+				lmin[i] = glm::min(lmin[i], lmin[i - 1]);
+
+			for (auto i = 1u; i < lmax.size(); i++)
+				lmax[i] = glm::max(lmax[i], lmax[i - 1]);
+
+			for (auto i = 1u; i < rmin.size(); i++)
+				rmin[i] = glm::min(rmin[i], rmin[i - 1]);
+
+			for (auto i = 1u; i < rmax.size(); i++)
+				rmax[i] = glm::max(rmax[i], rmax[i - 1]);
+		}
+
+
 		index = -1;
 
 		if (input.empty()) return;
 
-		for (auto i = 0u; i < input.size(); i++)
-			r.add(input[i].box);
-
 		// "Leave as is cost" - number of primitives times intersection cost
-		float sp = r.get_aabb().get_area();
-		cost = cost_intersect * r.size();
+		float sp = bu::rt::aabb{lmin.back(), lmax.back()}.get_area();
+		cost = cost_intersect * lmin.size();
 
-		for (auto i = 0u; i < input.size() - 1 && !stop_flag.should_stop(); i++)
 		{
-			l.add(input[i].box);
-			r.remove(input[i].box);
-
-			float sl = l.get_aabb().get_area();
-			float sr = r.get_aabb().get_area();
-			float c = cost_traversal + cost_intersect / sp * (sl * l.size() + sr * r.size());
-
-			// LOG_DEBUG << "split " << i << " sl=" << sl << " sr=" << sr << " c=" << c << " best=" << cost;
-
-			if (c < cost)
+			ZoneScopedN("Best split search");
+			for (auto i = 0u; i < input.size() - 1 && !stop_flag.should_stop(); i++)
 			{
-				cost = c;
-				index = i;
+				float sl = bu::rt::aabb{lmin[i], lmax[i]}.get_area();
+				float sr = bu::rt::aabb{rmin[rmin.size() - i - 1], rmax[rmin.size() - i - 1]}.get_area();
+				float c = cost_traversal + cost_intersect / sp * (sl * (i + 1) + sr * (rmin.size() - (i + 1)));
+
+				// LOG_DEBUG << "split " << i << " sl=" << sl << " sr=" << sr << " c=" << c << " best=" << cost;
+
+				if (c < cost)
+				{
+					cost = c;
+					index = i;
+				}
 			}
 		}
 
+		// LOG_DEBUG << "best cost " << cost << " index " << index;
 	};
 
-	auto buf_x = input;
-	auto buf_y = input;
-	auto buf_z = input;
-
+	std::vector<bvh_box> buf_x, buf_y, buf_z;
 	float cx, cy, cz;
 	int ix, iy, iz;
 	int best_index{};
@@ -94,9 +128,10 @@ static bool partition_boxes_sah(
 	auto split_x = [
 		sort_in_axis,
 		find_best_split,
-		&stop_flag,
+		&stop_flag, input,
 		&buf_x, &cx, &ix]()
 	{
+		buf_x = input;
 		sort_in_axis(buf_x, &glm::vec3::x);
 		if (stop_flag.should_stop()) return;
 		find_best_split(buf_x, cx, ix);
@@ -105,9 +140,10 @@ static bool partition_boxes_sah(
 	auto split_y = [
 		sort_in_axis,
 		find_best_split,
-		&stop_flag,
+		&stop_flag, input,
 		&buf_y, &cy, &iy]
 	{
+		buf_y = input;
 		sort_in_axis(buf_y, &glm::vec3::y);
 		if (stop_flag.should_stop()) return;
 		find_best_split(buf_y, cy, iy);
@@ -116,9 +152,10 @@ static bool partition_boxes_sah(
 	auto split_z = [
 		sort_in_axis,
 		find_best_split,
-		&stop_flag,
+		&stop_flag, input,
 		&buf_z, &cz, &iz]
 	{
+		buf_z = input;
 		sort_in_axis(buf_z, &glm::vec3::z);
 		if (stop_flag.should_stop()) return;
 		find_best_split(buf_z, cz, iz);
@@ -149,16 +186,28 @@ static bool partition_boxes_sah(
 	{
 		best_index = ix;
 		best_buf = &buf_x;
+		buf_y.clear();
+		buf_y.shrink_to_fit();
+		buf_z.clear();
+		buf_z.shrink_to_fit();
 	}
 	else if (cy < cx && cy < cz)
 	{
 		best_index = iy;
 		best_buf = &buf_y;
+		buf_x.clear();
+		buf_x.shrink_to_fit();
+		buf_z.clear();
+		buf_z.shrink_to_fit();
 	}
 	else
 	{
 		best_index = iz;
 		best_buf = &buf_z;
+		buf_x.clear();
+		buf_x.shrink_to_fit();
+		buf_y.clear();
+		buf_y.shrink_to_fit();
 	}
 
 	// LOG_DEBUG << "best index is " << best_index;
