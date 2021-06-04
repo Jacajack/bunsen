@@ -229,6 +229,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glBindVertexArray(m_context->get_aabb_vao().id());
 		glBindVertexBuffer(0, m_context->get_aabb_buffer().id(), 0, 3 * sizeof(float));
 		glDrawArrays(GL_LINES, 0, 2 * m_context->get_aabb_count());
+		glBindVertexBuffer(0, 0, 0, 0);
 	}
 
 	// Draw the sampled image if the job is active
@@ -248,6 +249,7 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
 				glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
 				glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
+				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 			}
 			ctx->inhibit_splat = false;
 		}
