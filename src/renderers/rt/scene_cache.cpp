@@ -148,6 +148,8 @@ bool scene_cache::update_from_model_node(
 			cached_mesh.meshes.push_back(mesh_ptr);
 			mesh_to_triangles(cached_mesh.triangles, *mesh_ptr, cached_mesh.transform, m_materials.at(model.get_mesh_material(i)->uid()).index);
 		}
+		cached_mesh.meshes.shrink_to_fit();
+		cached_mesh.triangles.shrink_to_fit();
 
 		cached_mesh.aabb = bu::rt::triangles_aabb(cached_mesh.triangles.data(), cached_mesh.triangles.size());
 	}
