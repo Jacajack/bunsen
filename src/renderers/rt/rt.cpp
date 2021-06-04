@@ -1,5 +1,6 @@
 #include "rt.hpp"
 #include <vector>
+#include <chrono>
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
 #include "job.hpp"
@@ -235,12 +236,20 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 	{
 		// Discard old PBO contents and buffer new data
 		{
-		ZoneScopedN("PBO upload")
-		// std::lock_guard lock{m_job->m_image_mutex};
-		const auto &image_data = m_job->get_image().data; // FIXME!
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
+			ZoneScopedN("PBO upload")
+
+			auto ctx = m_job->get_job_context();
+			ctx->inhibit_splat = true;
+			{
+				std::lock_guard lock{ctx->image_mutex};
+				ZoneScopedN("PBO upload image lock");
+
+				const auto &image_data = m_job->get_image().data;
+				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo.id());
+				glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), nullptr, GL_STREAM_DRAW);
+				glBufferData(GL_PIXEL_UNPACK_BUFFER, bu::vector_size(image_data), image_data.data(), GL_STREAM_DRAW);
+			}
+			ctx->inhibit_splat = false;
 		}
 
 		// Copy texture data from the PBO

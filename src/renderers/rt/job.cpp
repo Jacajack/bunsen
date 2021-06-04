@@ -50,6 +50,7 @@ rt_job_context::rt_job_context(
 	scene(std::move(scene)),
 	ray_caster(camera),
 	image(viewport_size),
+	inhibit_splat(false),
 	bucket_count(bucket_count),
 	thread_count(thread_count),
 	tile_size(tile_size)
@@ -207,9 +208,14 @@ static bool splatter_job(std::shared_ptr<rt_job_context> ctx, int job_id)
 				continue;
 		}
 
+		// Wait if splatting is inhibited
+		while (ctx->inhibit_splat && ctx->active)
+			std::this_thread::sleep_for(1ms);
+
 		// Splat the bucket on the image
 		{
 			std::lock_guard lock{ctx->image_mutex};
+			ZoneScopedN("Splat image lock");
 			ctx->image.splat(*bucket);
 		}
 

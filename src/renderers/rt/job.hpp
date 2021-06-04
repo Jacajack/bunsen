@@ -51,6 +51,7 @@ struct rt_job_context
 
 	rt::sampled_image image;
 	std::mutex image_mutex;
+	std::atomic<bool> inhibit_splat;
 
 	int bucket_count;
 	int thread_count;

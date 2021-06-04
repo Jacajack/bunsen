@@ -24,7 +24,7 @@ sampled_image::sampled_image(glm::ivec2 s) :
 
 void sampled_image::splat(splat_bucket &bucket)
 {
-	ZoneScoped;
+	ZoneScopedN("sampled_image::splat()");
 	
 	for (auto i = 0u; i < bucket.size; i++)
 	{
