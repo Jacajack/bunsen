@@ -93,7 +93,8 @@ void window::display()
 	}
 	ImGui::End();
 
-	m_events->clear();
+	if (m_events)
+		m_events->clear();
 }
 
 bool window::is_open() const
