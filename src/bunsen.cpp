@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	#endif
 
 	main_state.debug = false;
-	#if defined(DEBUG)
+	#if defined(DEBUG) || defined(BUNSEN_DEBUG)
 	main_state.debug = true;
 	#endif
 
