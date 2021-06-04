@@ -112,7 +112,7 @@ public:
 
 	unsigned int size() const
 	{
-		return x.size();
+		return x.size() / 2;
 	}
 
 private:
