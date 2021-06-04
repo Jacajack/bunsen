@@ -33,6 +33,8 @@ public:
 	auto &get_sampled_image_program() const {return *m_sampled_image_program;}
 	auto &get_aabb_program() const {return *m_aabb_program;}
 
+	auto &get_2d_vao() const {return m_2d_vao;}
+
 	auto get_aabb_count() const {return m_aabb_count;}
 	auto &get_aabb_buffer() const {return m_aabb_buffer;}
 	auto &get_aabb_vao() const {return m_aabb_vao;}
@@ -50,6 +52,9 @@ private:
 	// Shader for drawing the raytraced image and AABBs
 	std::unique_ptr<bu::shader_program> m_sampled_image_program;
 	std::unique_ptr<bu::shader_program> m_aabb_program;
+
+	// VAO for 2D drawing
+	bu::gl_vertex_array m_2d_vao;
 
 	// AABB data for drawing BVH preview
 	bu::gl_vertex_array m_aabb_vao;

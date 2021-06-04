@@ -258,15 +258,21 @@ void rt_renderer::draw(const bu::scene &scene, const bu::camera &camera, const g
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport_size.x, viewport_size.y, GL_RGBA, GL_FLOAT, nullptr);
 
 		ZoneScopedN("Draw");
+		
+		
 		glDisable(GL_DEPTH_TEST);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_BLEND);
-		glUseProgram(m_context->get_sampled_image_program().id());
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		glBindVertexArray(m_context->get_2d_vao().id());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, m_result_tex->id());
+		
+		glUseProgram(m_context->get_sampled_image_program().id());
 		glUniform1i(m_context->get_sampled_image_program().get_uniform_location("tex"), 0);
 		glUniform2i(m_context->get_sampled_image_program().get_uniform_location("size"), m_viewport.x, m_viewport.y);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+		
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
 		
