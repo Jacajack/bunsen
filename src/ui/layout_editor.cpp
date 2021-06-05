@@ -6,6 +6,7 @@
 #include "utils.hpp"
 #include "scene.hpp"
 #include "camera.hpp"
+#include "gl/gl.hpp"
 
 using bu::layout_editor;
 
