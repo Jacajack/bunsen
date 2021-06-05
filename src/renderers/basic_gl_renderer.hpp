@@ -28,6 +28,7 @@ struct basic_gl_renderer_context
 	bu::gl_vertex_array vao;
 
 	basic_gl_renderer_mesh &get_mesh(const std::shared_ptr<bu::mesh> &mesh);
+	void unbuffer_outdated_meshes();
 };
 
 /**

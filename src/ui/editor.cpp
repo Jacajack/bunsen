@@ -109,4 +109,7 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 		LOG_DEBUG << "scene root is visibly modified";
 
 	scene->root_node->clear_modified();
+
+	// TEMP unbuffer meshes
+	preview_ctx->unbuffer_outdated_meshes();
 }

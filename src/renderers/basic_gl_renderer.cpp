@@ -9,7 +9,8 @@ using bu::basic_gl_renderer_mesh;
 using bu::basic_gl_renderer_context;
 using bu::basic_gl_renderer;
 
-basic_gl_renderer_mesh::basic_gl_renderer_mesh(std::shared_ptr<bu::mesh> mesh)
+basic_gl_renderer_mesh::basic_gl_renderer_mesh(std::shared_ptr<bu::mesh> mesh) :
+	source(mesh)
 {
 	if (mesh->vertices.size() != mesh->normals.size())
 	{
@@ -71,11 +72,26 @@ basic_gl_renderer_mesh &basic_gl_renderer_context::get_mesh(const std::shared_pt
 	auto it = meshes.find(uid);
 	if (it == meshes.end())
 	{
+		LOG_DEBUG << "basic_gl_renderer buffering mesh '" << mesh->name << "'";
 		meshes.emplace(uid, basic_gl_renderer_mesh(mesh));
 		return meshes.at(uid);
 	}
 	else
 		return it->second;
+}
+
+void basic_gl_renderer_context::unbuffer_outdated_meshes()
+{
+	for (auto it = meshes.begin(); it != meshes.end(); )
+	{
+		if (it->second.source.expired())
+		{
+			LOG_DEBUG << "basic_gl_renderer unbuffering mesh";
+			it = meshes.erase(it);
+		}
+		else
+			++it;
+	}
 }
 
 basic_gl_renderer::basic_gl_renderer(std::shared_ptr<basic_gl_renderer_context> context) :
