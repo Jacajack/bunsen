@@ -10,7 +10,7 @@ namespace bu {
 struct material_data;
 struct mesh;
 struct scene;
-struct async_stop_flag;
+class async_stop_flag;
 struct model_node;
 }
 

@@ -96,6 +96,9 @@ add_executable(bunsen
 target_include_directories(bunsen PRIVATE "src")
 
 target_link_libraries(bunsen PRIVATE 
+	stdc++
+	m
+	dl
 	glm
 	glfw
 	GLEW

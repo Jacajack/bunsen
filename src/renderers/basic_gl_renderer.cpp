@@ -137,7 +137,7 @@ void basic_gl_renderer::draw(const bu::scene &scene, const bu::camera &camera, c
 				continue;
 			}
 
-			for (int i = 0; i < model->get_mesh_count(); i++)
+			for (auto i = 0u; i < model->get_mesh_count(); i++)
 			{
 				ZoneScopedN("Mesh");
 				auto &mesh_buffer = ctx.get_mesh(model->get_mesh(i));

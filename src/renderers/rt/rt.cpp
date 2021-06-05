@@ -102,7 +102,7 @@ void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 	{
 		LOG_INFO << "BVH draft complete!";
 
-		std::shared_ptr<bu::rt::bvh_draft> draft{std::move(m_bvh_draft_build_task->get())};
+		std::shared_ptr<bu::rt::bvh_draft> draft{m_bvh_draft_build_task->get()};
 		auto aabbs = draft->get_tree_aabbs();
 		glNamedBufferData(m_aabb_buffer.id(), 0, nullptr, GL_STATIC_DRAW);
 		glNamedBufferData(m_aabb_buffer.id(), bu::vector_size(aabbs), aabbs.data(), GL_STATIC_DRAW);
@@ -115,7 +115,7 @@ void rt_context::update_from_scene(const bu::scene &scene, bool allow_build)
 	// Update scene
 	if (m_scene_build_task.has_value() && m_scene_build_task->is_ready())
 	{
-		this->m_scene = std::move(m_scene_build_task->get());
+		this->m_scene = m_scene_build_task->get();
 		m_scene_build_task.reset();
 		LOG_INFO << "Final BVH build finished: " << this->m_scene->bvh->triangle_count << " triangles and " << this->m_scene->bvh->node_count << " nodes";
 	}	

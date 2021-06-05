@@ -16,7 +16,7 @@ struct material;
 struct scene;
 }
 
-struct rt_context;
+class rt_context;
 
 struct splat_bucket_pool
 {

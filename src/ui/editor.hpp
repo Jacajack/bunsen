@@ -9,9 +9,9 @@ namespace bu {
 
 struct scene;
 class rt_context;
-class albedo_context;
-class basic_preview_context;
-class preview_context;
+struct albedo_context;
+struct basic_preview_context;
+struct preview_context;
 
 struct bunsen_editor
 {

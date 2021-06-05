@@ -59,7 +59,7 @@ struct camera_orbiter
 	void update_camera(camera &cam) const;
 };
 
-struct input_event_queue;
+class input_event_queue;
 void update_camera_orbiter_from_mouse(camera_orbiter &orbiter, const bu::input_event_queue &mouse, const glm::vec2 &scale = glm::vec2(1440, 960));
 void update_camera_orbiter_from_imgui(camera_orbiter &orbiter, const ImGuiIO &io, const glm::vec2 &scale = glm::vec2(1440, 960), const glm::vec2 &mouse_offset = glm::vec2{0.f});
 

@@ -6,7 +6,7 @@
 #include "ui/imgui_overlay.hpp"
 
 namespace bu {
-class renderer;
+struct renderer;
 class shader_program;
 struct bunsen_editor;
 struct scene;

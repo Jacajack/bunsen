@@ -8,7 +8,7 @@
 #include "ui/widgets/world_widget.hpp"
 
 namespace bu {
-class bunsen_editor;
+struct bunsen_editor;
 }
 
 namespace bu::ui {

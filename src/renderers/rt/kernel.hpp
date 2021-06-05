@@ -3,7 +3,7 @@
 #include <random>
 
 namespace bu::rt {
-class bvh_tree;
+struct bvh_tree;
 struct ray;
 struct material;
 

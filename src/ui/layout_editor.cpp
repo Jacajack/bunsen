@@ -37,7 +37,7 @@ void layout_editor::update(
 		return ImGui::IsMouseClicked(button);
 	};
 
-	auto normalize_mouse_pos = [&cam, &viewport_size](const glm::vec2 &pos)
+	auto normalize_mouse_pos = [&viewport_size](const glm::vec2 &pos)
 	{
 		auto offset = bu::to_vec2(ImGui::GetWindowContentRegionMin()) + bu::to_vec2(ImGui::GetWindowPos());
 		return ((pos - offset) / viewport_size * 2.f - 1.f) * glm::vec2{1, -1};

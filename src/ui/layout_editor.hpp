@@ -6,8 +6,8 @@
 namespace bu {
 
 class transform_node;
-class scene;
-class camera;
+struct scene;
+struct camera;
 
 /**
 	\brief Layout editor is responsible for editing scene layout based on user input

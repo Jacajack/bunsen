@@ -3,7 +3,7 @@
 #include "ui/widget.hpp"
 
 namespace bu {
-struct scene_node;
+class scene_node;
 }
 
 namespace bu::ui {

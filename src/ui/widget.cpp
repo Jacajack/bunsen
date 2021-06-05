@@ -7,8 +7,8 @@ widget::widget(window &win) :
 {
 }
 
-void widget::draw() 
-{
-	ImGui::TextWrapped("This is widget::draw()");
-}
+// void widget::draw() 
+// {
+// 	ImGui::TextWrapped("This is widget::draw()");
+// }
 

@@ -20,7 +20,7 @@ struct scene;
 }
 
 namespace bu {
-struct rt_renderer_job;
+class rt_renderer_job;
 
 class rt_context
 {

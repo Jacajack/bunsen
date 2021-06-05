@@ -48,7 +48,10 @@ void material_widget::draw_editor(std::shared_ptr<bu::material_data> mat)
 	// Surface type
 	std::string surface_name = "None";
 	if (mat->surface)
-		surface_name = material_type_names.at(typeid(*mat->surface).hash_code());
+	{
+		auto &sm = *mat->surface;
+		surface_name = material_type_names.at(typeid(sm).hash_code());
+	}
 	if (ImGui::BeginCombo("Surface", surface_name.c_str()))
 	{
 		if (ImGui::Selectable("None"))
@@ -87,7 +90,10 @@ void material_widget::draw_editor(std::shared_ptr<bu::material_data> mat)
 	// Volume type
 	std::string volume_name = "None";
 	if (mat->volume)
-		volume_name = material_type_names.at(typeid(*mat->volume).hash_code());
+	{
+		auto &vm = *mat->volume;
+		volume_name = material_type_names.at(typeid(vm).hash_code());
+	}
 	if (ImGui::BeginCombo("Volume", volume_name.c_str()))
 	{
 		if (ImGui::Selectable("None"))

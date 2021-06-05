@@ -13,7 +13,7 @@ public:
 	widget(window &win);
 	virtual ~widget() = default;
 
-	virtual void draw();
+	// virtual void draw();
 
 protected:
 	window &get_window() {return *m_window;}

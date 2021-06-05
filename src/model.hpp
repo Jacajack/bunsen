@@ -17,7 +17,7 @@ namespace bu {
 
 	\todo Refactor this, I don't like this mesh_mat things
 */
-struct model : public modified_flag
+struct model final : public modified_flag
 {
 	struct mesh_material_pair
 	{
