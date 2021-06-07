@@ -16,7 +16,7 @@ void main()
 {
 	const vec3 light_pos = vec3(-2, 1, 1); // In camera space
 	const vec3 light_color = vec3(1);
-	const float ambient_int = 0.5;
+	const float ambient_int = 1.0;
 	const float diffuse_int = 1.0;
 	const float specular_exp = 10.0;
 
@@ -25,6 +25,11 @@ void main()
 	vec3 N = normalize(vs_out.v_normal);
 	vec3 L = normalize(vec3(-0.2, 0.2, 1));
 	vec3 V = -normalize(vs_out.v_pos);
+
+	// Flip normals if necessary
+	if (dot(N, V) < 0)
+		N = -N;
+
 	vec3 H = normalize(L + V);
 
 	vec3 ambient = base_color * world_color;
@@ -33,5 +38,7 @@ void main()
 
 	vec3 color = ambient * ambient_int + diffuse * diffuse_int + specular * specular_int;
 
+	// Gamma correction
+	color = pow(color, vec3(1 / 2.2));
 	f_color = vec4(color, 1);
 }
