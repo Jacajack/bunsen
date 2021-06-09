@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <memory>
 #include <filesystem>
+#include <thread>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
