@@ -89,32 +89,50 @@ ray_bounce material::sample_basic_diffuse(const glm::vec3 &V, float ior, float u
 
 ray_bounce material::sample_glass(const glm::vec3 &V, float ior, float u1) const
 {
-	float n1, n2;
+	float nI, nT;
 
 	// Determine if the ray is entering or leaving the medium
 	if (V.z < 0)
 	{
-		n1 = ior;
-		n2 = glass.ior;
+		// Entering
+		nI = ior;
+		nT = glass.ior;
 	}
 	else
 	{
-		n1 = glass.ior;
-		n2 = ior;
+		// Leaving
+		nI = glass.ior;
+		nT = ior;
 	}
 
-	// Calculate Fresnel factor by Schlick's approximation
-	float cos_theta = std::abs(V.z);
-	float r = (n1 - n2) / (n1 + n2);
-	float R = r * r;
-	float F = R + (1.f - R) * std::pow(1.f - cos_theta, 5.f);
+	// Calculate transmitted ray
+	glm::vec3 T = glm::refract(V, glm::vec3{0, 0, -glm::sign(V.z)}, nI / nT);
+
+	// Total internal reflection
+	if (T == glm::vec3{0.f})
+	{
+		ray_bounce bounce;
+		bounce.type = ray_bounce_type::SPECULAR;
+		bounce.new_ior = nI;
+		bounce.bsdf = glm::vec3{1.f};
+		bounce.new_direction = V * glm::vec3{1, 1, -1};
+		bounce.pdf = 1.f;
+		return bounce;
+	}
+
+	// Fresnel factor
+	float cosI = std::abs(V.z);
+	float cosT = std::abs(T.z); 
+	float rparl = (nT * cosI - nI * cosT) / (nT * cosI + nI * cosT);
+	float rperp = (nI * cosI - nT * cosT) / (nI * cosI + nT * cosT);
+	float F = (rparl * rparl + rperp * rperp) / 2.f;
 
 	if (u1 < F)
 	{
 		// Reflection
 		ray_bounce bounce;
 		bounce.type = ray_bounce_type::SPECULAR;
-		bounce.new_ior = n1;
+		bounce.new_ior = nI;
 		bounce.bsdf = glm::vec3{1.f};
 		bounce.new_direction = V * glm::vec3{1, 1, -1};
 		bounce.pdf = 1.f;
@@ -122,30 +140,14 @@ ray_bounce material::sample_glass(const glm::vec3 &V, float ior, float u1) const
 	}
 	else
 	{
-		// Transmission
-		glm::vec3 T = glm::refract(V, glm::vec3{0, 0, -glm::sign(V.z)}, n1 / n2);
-		if (T != glm::vec3{0.f})
-		{
-			// Refraction
-			ray_bounce bounce;
-			bounce.type = ray_bounce_type::TRANSMISSION;
-			bounce.new_ior = n2;
-			bounce.bsdf = glass.color;
-			bounce.new_direction = T;
-			bounce.pdf = 1.f;
-			return bounce;
-		}
-		else
-		{
-			// Total Interal Reflection
-			ray_bounce bounce;
-			bounce.type = ray_bounce_type::SPECULAR;
-			bounce.new_ior = n1;
-			bounce.bsdf = glm::vec3{1.f};
-			bounce.new_direction = V * glm::vec3{1, 1, -1};
-			bounce.pdf = 1.f;
-			return bounce;
-		}
+		// Refraction
+		ray_bounce bounce;
+		bounce.type = ray_bounce_type::TRANSMISSION;
+		bounce.new_ior = nT;
+		bounce.bsdf = glass.color;
+		bounce.new_direction = T;
+		bounce.pdf = 1.f;
+		return bounce;
 	}
 }
 
