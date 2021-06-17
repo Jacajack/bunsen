@@ -102,7 +102,7 @@ ray_bounce material::sample_glass(const glm::vec3 &V, float ior, float u1) const
 	{
 		// Leaving
 		nI = glass.ior;
-		nT = ior;
+		nT = 1.f; // FIXME - we need to handle nested media
 	}
 
 	// Calculate transmitted ray
