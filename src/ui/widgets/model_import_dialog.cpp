@@ -14,12 +14,14 @@ void model_import_dialog::draw(std::shared_ptr<bu::scene> scene, bool open)
 		m_dialog.SetExtentionInfos(".dae", file_highlight);
 		m_dialog.SetExtentionInfos(".gltf", file_highlight);
 		m_dialog.SetExtentionInfos(".glb", file_highlight);
+		m_dialog.SetExtentionInfos(".ply", file_highlight);
 
 		m_dialog.OpenDialog("import_model",
 			"Import a model from file",
-			"GLTF (*.gltf *.glb){.gltf,.glb}"
+			"GLTF (*.gltf *.glb){.gltf,.glb},"
 			"OBJ files (*.obj){.obj},"
-			"Collada files (*.dae){.dae},",
+			"Collada files (*.dae){.dae},"
+			"Stanford (*.ply){.ply},",
 			""
 		);
 	}
