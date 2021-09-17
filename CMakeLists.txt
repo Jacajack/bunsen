@@ -5,6 +5,7 @@ option(GL_DEBUG "Should OpenGL debugging be enabled? (meaningless in Debug build
 option(BUNSEN_DEBUG "Enable debug features in builds" OFF)
 option(SANITIZE "Should sanitizer be enabled in debug builds? (can conflict with debuggers)" ON)
 option(STRIP "Should the executable be stripped in release builds?" OFF)
+option(USE_MOLD "Should mold linker be used (if available)" ON)
 
 set(OpenGL_GL_PREFERENCE GLVND)
 
@@ -36,6 +37,14 @@ if (STRIP)
 else()
 	message("Embedding debugging information in the executable!")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
+endif()
+
+if (USE_MOLD)
+	message("Using mold linker!")
+	find_program(MOLD_LINKER mold)
+	if (MOLD_LINKER)
+		set(CMAKE_LINKER "${MOLD_LINKER}")
+	endif()
 endif()
 
 add_executable(bunsen 
