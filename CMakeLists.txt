@@ -59,6 +59,7 @@ add_executable(bunsen
 	"src/assimp_loader.cpp"
 	"src/scene_export.cpp"
 	"src/scene_selection.cpp"
+	"src/name_manager.cpp"
 
 	"src/gl/gl.cpp"
 	"src/gl/shader.cpp"
