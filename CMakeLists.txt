@@ -21,7 +21,7 @@ find_package(OpenGL 4.2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(ASSIMP REQUIRED)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter --std=c++17 -pthread")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -pthread")
 set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DNDEBUG")
 
@@ -93,6 +93,7 @@ add_executable(bunsen
 	"src/ui/widgets/model_import_dialog.cpp"
 	)
 
+set_property(TARGET bunsen PROPERTY CXX_STANDARD 17)
 target_include_directories(bunsen PRIVATE "src")
 
 target_link_libraries(bunsen PRIVATE 
