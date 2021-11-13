@@ -94,7 +94,7 @@ void bunsen_editor::draw(const bu::bunsen &main_state)
 
 	// TEMP update BVH
 	bool tp = scene->layout_ed.is_transform_pending();
-	rt_ctx->update_from_scene(*scene, !tp);
+	// rt_ctx->update_from_scene(*scene, !tp);
 
 	// static auto events = scene->event_bus->make_connection();
 	// bu::event ev;

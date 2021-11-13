@@ -202,7 +202,7 @@ void scene_editor_window::draw()
 
 	std::vector<std::shared_ptr<bu::light>> lights;
 	std::vector<std::shared_ptr<bu::model>> models;
-	std::vector<std::shared_ptr<bu::material_data>> materials;
+	std::vector<bu::resource_handle<bu::material_resource>> materials;
 	std::vector<std::shared_ptr<bu::scene_node>> selected_nodes;
 
 	for (auto node : ed.scene->selection.get_nodes())

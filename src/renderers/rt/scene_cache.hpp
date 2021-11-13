@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "aabb.hpp"
 #include "ray.hpp"
+#include "resmgr/resource_engine.hpp"
 
 namespace bu {
 struct material_data;
@@ -21,7 +22,7 @@ namespace bu::rt {
 */
 struct scene_cache_material
 {
-	std::weak_ptr<bu::material_data> material_data;
+	bu::weak_resource_handle<bu::material_resource> material_data;
 	int index;
 	bool visited = false;
 };

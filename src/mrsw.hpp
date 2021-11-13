@@ -70,9 +70,9 @@ public:
 			m_ptr->unregister_writer();
 	}
 
-	const T &ref() {return m_ptr->ref();}
-	const T &operator*() {return ref();}
-	const T *operator->() {return &ref();}
+	T &ref() {return m_ptr->ref();}
+	T &operator*() {return ref();}
+	T *operator->() {return &ref();}
 
 private:
 	explicit mrsw_writer(mrsw<T> *ptr) :

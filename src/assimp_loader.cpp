@@ -3,6 +3,8 @@
 #include "material.hpp"
 #include "model.hpp"
 #include "materials/diffuse_material.hpp"
+#include "bunsen.hpp"
+
 #include <stdexcept>
 #include <set>
 #include <map>
@@ -22,24 +24,25 @@ static glm::vec3 assimp_rgb_to_glm(const aiColor3D &c)
 	return glm::vec3{c.r, c.g, c.b};
 }
 
-static std::shared_ptr<bu::material_data> convert_assimp_material(const aiMaterial *am)
+static bu::resource_handle<bu::material_resource> convert_assimp_material(const aiMaterial *am)
 {
-	auto mat = std::make_shared<bu::material_data>();
 	auto surf = std::make_unique<bu::diffuse_material>();
 
 	// Get name
 	aiString aname;
 	am->Get(AI_MATKEY_NAME, aname);
-	mat->name = aname.C_Str();
-	LOG_INFO << "Processing material '" << mat->name << "'";
+	LOG_INFO << "Processing material '" << aname.C_Str() << "'";
+	
+	auto mat_handle = bu::res().materials.emplace(aname.C_Str());
+	auto hmat = mat_handle->w();
 
 	// Get color
 	aiColor3D col;
 	am->Get(AI_MATKEY_COLOR_DIFFUSE, col);
 	surf->color = assimp_rgb_to_glm(col);
+	hmat->surface = std::move(surf);
 
-	mat->surface = std::move(surf);
-	return mat;
+	return mat_handle;
 }
 
 /**

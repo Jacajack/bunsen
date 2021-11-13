@@ -109,7 +109,10 @@
 			"any": "cpp",
 			"core": "cpp",
 			"source_location": "cpp",
-			"export": "cpp"
+			"export": "cpp",
+			"*.inc": "cpp",
+			"numbers": "cpp",
+			"semaphore": "cpp"
 		}
 	}
 }

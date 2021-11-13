@@ -22,7 +22,7 @@ find_package(OpenGL 4.2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(ASSIMP REQUIRED)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -pthread")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -pthread -fmax-errors=10")
 set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -ftree-vectorize -march=native -DNDEBUG")
 

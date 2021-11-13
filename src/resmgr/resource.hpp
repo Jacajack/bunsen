@@ -15,6 +15,9 @@ class resource_manager;
 template <typename T>
 class resource_handle;
 
+template <typename T>
+class weak_resource_handle;
+
 /**
 	Resources should inherit from this class
 
@@ -35,7 +38,17 @@ public:
 	}
 
 	auto resource_id() const {return uid_provider<resource<T>>::uid();}
-	auto get_name() const {return m_name;}
+	auto get_name() const
+	{
+		std::scoped_lock lock{m_mutex};
+		return m_name;
+	}
+
+	void set_name(const std::string &new_name)
+	{
+		m_manager->set_name(resource_id(), new_name);
+	}
+
 	auto handle_count() const {return m_handles;}
 	auto is_expired() const {return m_expired;}
 	auto can_delete() const
@@ -78,10 +91,18 @@ public:
 		m_expired = true;
 	}
 
-private:
-	void set_name(std::string name)
+	//! Returns a size estimate
+	virtual size_t estimate_resource_size() const
 	{
+		return sizeof(T);
+	}
+
+private:
+	void set_manager(std::string name, bu::resource_manager<T> *mgr)
+	{
+		std::scoped_lock lock{m_mutex};
 		m_name = std::move(name);
+		m_manager = mgr;
 	}
 
 	void register_handle() const
@@ -106,24 +127,47 @@ private:
 	mutable int m_handles = 0;
 	bool m_expired = false;
 	std::string m_name;
+	bu::resource_manager<T> *m_manager = nullptr;
 };
 
 template <typename T>
-class resource_handle : public bu::no_copy
+class resource_handle
 {
 	friend class resource<T>;
+	friend class weak_resource_handle<T>;
 
 	static_assert(std::is_base_of_v<bu::resource<T>, T>, "resource_handle bad type");
 
 public:
 	resource_handle() = delete;
+
+	resource_handle(const resource_handle &src) :
+		m_resource(src.m_resource)
+	{
+		m_resource->register_handle();
+	}
+
 	resource_handle(resource_handle &&src) :
 		m_resource(src.m_resource)
 	{
 		m_resource->register_handle();
 	}
 
-	resource_handle &operator=(const resource_handle &rhs) = delete;
+	resource_handle(const weak_resource_handle<T> &src) :
+		m_resource(src.m_resource)
+	{
+		m_resource->register_handle();
+	}
+
+	resource_handle &operator=(const resource_handle &rhs)
+	{
+		if (this == &rhs) return *this;
+		m_resource->unregister_handle();
+		m_resource = rhs.m_resource;
+		m_resource->register_handle();
+		return *this;
+	}
+
 	resource_handle &operator=(resource_handle &&rhs)
 	{
 		if (this == &rhs) return *this;
@@ -150,6 +194,45 @@ private:
 	}
 
 	std::shared_ptr<T> m_resource;
+};
+
+template <typename T>
+class weak_resource_handle
+{
+	friend class resource_handle<T>;
+
+public:
+	weak_resource_handle(const resource_handle<T> &src) :
+		m_resource(src.m_resource)
+	{
+	}
+
+	weak_resource_handle() = default;
+	weak_resource_handle(const weak_resource_handle &) = default;
+	weak_resource_handle(weak_resource_handle &&) noexcept = default;
+	weak_resource_handle &operator=(const weak_resource_handle &) = default;
+	weak_resource_handle &operator=(weak_resource_handle &&) noexcept = default;
+	~weak_resource_handle() = default;
+
+	resource_handle<T> lock()
+	{
+		return resource_handle<T>{*this};
+	}
+
+	std::optional<resource_handle<T>> try_lock()
+	{
+		try
+		{
+			return resource_handle<T>{*this};
+		}
+		catch (const std::bad_weak_ptr &ex)
+		{
+			return {};
+		}
+	}
+
+private:
+	std::weak_ptr<T> m_resource;
 };
 
 template <typename T>

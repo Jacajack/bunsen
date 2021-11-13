@@ -1,5 +1,7 @@
 #pragma once
 
+//! \todo split this into separate files
+
 #include <string>
 #include <vector>
 #include <future>
@@ -36,3 +38,4 @@ inline bool is_future_ready(const std::future<T> &f)
 
 #define BU_TO_STR_(x) #x
 #define BU_TO_STR(x) BU_TO_STR_(x)
+#define const_this (const_cast<const decltype(this)>(this))

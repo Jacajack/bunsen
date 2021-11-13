@@ -27,7 +27,6 @@ struct volume_material : public uid_provider<volume_material>
 */
 struct material_data final : public uid_provider<material_data>, public modified_flag
 {
-	std::string name;
 	std::unique_ptr<surface_material> surface;
 	std::unique_ptr<volume_material> volume;
 };

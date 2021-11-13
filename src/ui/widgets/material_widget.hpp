@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include "ui/widget.hpp"
+#include "resmgr/resource_engine.hpp"
 
 namespace bu {
 struct material_data;
@@ -13,16 +14,17 @@ class material_widget : public widget
 {
 public:
 	material_widget(window &win) : 
-		widget(win)
+		widget(win),
+		m_selected(0)
 	{
 	}
 
-	void draw(const std::vector<std::shared_ptr<bu::material_data>> &materials);
+	void draw(const std::vector<bu::resource_handle<bu::material_resource>> &materials);
 
 private:
-	void draw_editor(std::shared_ptr<bu::material_data> mat);
+	void draw_editor(bu::resource_handle<bu::material_resource> mat);
 
-	std::weak_ptr<bu::material_data> m_selected;
+	std::uint64_t m_selected;
 };
 
 }

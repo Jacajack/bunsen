@@ -129,6 +129,9 @@ int main(int argc, char *argv[])
 	std::filesystem::current_path(exec_path.parent_path());
 	LOG_INFO << "Working directory: " << std::filesystem::current_path();
 
+	// Init resource engine
+	main_state.res_engine = std::make_unique<bu::resource_engine>();
+
 	main_state.gl_debug = false;
 	#if defined(GL_DEBUG) || defined(DEBUG)
 	main_state.gl_debug = true;
@@ -213,18 +216,18 @@ int main(int argc, char *argv[])
 	LOG_INFO << "Init completed!";
 
 	// Main loop
-	try
-	{
+	// try
+	// {
 		main_loop(main_state);
-	}
-	catch (const std::exception &ex)
-	{
-		LOG_ERROR << "Main loop threw an exception - " << ex.what() << std::endl;
-	}
-	catch (...)
-	{
-		LOG_ERROR << "Main loop threw an unrecognized exception..." << std::endl;
-	}
+	// }
+	// catch (const std::exception &ex)
+	// {
+	// 	LOG_ERROR << "Main loop threw an exception - " << ex.what() << std::endl;
+	// }
+	// catch (...)
+	// {
+	// 	LOG_ERROR << "Main loop threw an unrecognized exception..." << std::endl;
+	// }
 
 	LOG_INFO << "Waiting for background tasks to complete...";
 

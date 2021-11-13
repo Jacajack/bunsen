@@ -85,7 +85,7 @@ protected:
 		const bu::model_node &model_node,
 		const bool is_selected,
 		const bu::mesh &mesh,
-		const std::shared_ptr<bu::material_data> &material,
+		const bu::resource_handle<bu::material_resource> &material,
 		GLsizei draw_size)
 	{}
 

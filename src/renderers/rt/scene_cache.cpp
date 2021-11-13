@@ -146,7 +146,7 @@ bool scene_cache::update_from_model_node(
 		{
 			auto mesh_ptr = model.get_mesh(i);
 			cached_mesh.meshes.push_back(mesh_ptr);
-			mesh_to_triangles(cached_mesh.triangles, *mesh_ptr, cached_mesh.transform, m_materials.at(model.get_mesh_material(i)->uid()).index);
+			mesh_to_triangles(cached_mesh.triangles, *mesh_ptr, cached_mesh.transform, m_materials.at(model.get_mesh_material(i)->resource_id()).index);
 		}
 		cached_mesh.meshes.shrink_to_fit();
 		cached_mesh.triangles.shrink_to_fit();
@@ -184,7 +184,7 @@ std::pair<bool, bool> scene_cache::update_materials(const bu::scene &scene)
 		{
 			for (auto mat_ptr : model_node->model->materials)
 			{
-				auto it = m_materials.find(mat_ptr->uid());
+				auto it = m_materials.find(mat_ptr->resource_id());
 				if (it != m_materials.end())
 				{
 					auto &cached_mat = it->second;
@@ -209,21 +209,22 @@ std::pair<bool, bool> scene_cache::update_materials(const bu::scene &scene)
 		auto &node = *it;
 		if (auto model_node = dynamic_cast<bu::model_node*>(&node))
 		{
-			for (auto mat_ptr : model_node->model->materials)
+			for (auto weak_mat_handle : model_node->model->materials)
 			{
-				auto it = m_materials.find(mat_ptr->uid());
+
+				auto it = m_materials.find(mat_handle->resource_id());
 				if (it == m_materials.end())
 				{
-					auto &cached_mat = m_materials[mat_ptr->uid()];
-					cached_mat.material_data = mat_ptr;
+					auto &cached_mat = m_materials[mat_handle->resource_id()];
+					cached_mat.material_data = mat_handle;
 					cached_mat.index = m_materials.size() - 1;
 				}
 				else
 				{
 					auto &cached_mat = it->second;
-					if (cached_mat.material_data.lock() != mat_ptr)
+					if (cached_mat.material_data->resource_id() != mat_handle->resource_id())
 						changed = true;
-					cached_mat.material_data = mat_ptr;
+					cached_mat.material_data = mat_handle;
 				}
 			}
 		}
@@ -296,9 +297,8 @@ std::vector<bu::rt::material> bu::rt::scene_cache::get_materials() const
 	{
 		// Not all materials will be valid - we're doing this so we can avoid
 		// rebuilding the BVH with different material indices
-		auto mat_data_ptr = mat.material_data.lock();
-		if (mat_data_ptr)
-			materials.at(mat.index) = bu::rt::material{*mat_data_ptr};
+		if (auto mat_handle = mat.material_data.try_lock())
+		materials.at(mat.index) = bu::rt::material{*mat.material_data->r()};
 	}
 	return materials;
 }

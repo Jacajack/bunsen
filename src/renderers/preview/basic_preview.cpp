@@ -52,19 +52,16 @@ void basic_preview_renderer::draw_mesh(
 	const bu::model_node &model_node,
 	const bool is_selected,
 	const bu::mesh &mesh,
-	const std::shared_ptr<bu::material_data> &material,
+	const bu::resource_handle<bu::material_resource> &material,
 	GLsizei draw_size)
 {
 	// Material properties
 	glm::vec3 base_color{0.8f};
 	float specular_intensity = 0.2f;
-	if (material)
+	if (auto mat = dynamic_cast<const bu::diffuse_material*>(material->r()->surface.get()))
 	{
-		if (auto mat = dynamic_cast<const bu::diffuse_material*>(material->surface.get()))
-		{
-			base_color = mat->color;
-			specular_intensity = 0.2;
-		}
+		base_color = mat->color;
+		specular_intensity = 0.2;
 	}
 
 	glUseProgram(m_context->basic_preview_program->id());

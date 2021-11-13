@@ -4,6 +4,8 @@
 #include "material.hpp"
 #include "mesh.hpp"
 #include "modified_flag.hpp"
+#include "resmgr/resource.hpp"
+#include "resmgr/resource_engine.hpp"
 
 namespace bu {
 
@@ -26,7 +28,7 @@ struct model final : public modified_flag
 	};
 
 	std::vector<mesh_material_pair> meshes;
-	std::vector<std::shared_ptr<bu::material_data>> materials;
+	std::vector<bu::resource_handle<bu::material_resource>> materials;
 
 	unsigned int get_mesh_count() const
 	{
@@ -38,13 +40,13 @@ struct model final : public modified_flag
 		return meshes[id].mesh;
 	}
 
-	std::shared_ptr<bu::material_data> get_mesh_material(int id) const
+	bu::resource_handle<bu::material_resource> get_mesh_material(int id) const
 	{
 		auto mat_id = meshes[id].material_id;
 		if (mat_id < 0 || mat_id >= static_cast<int>(materials.size()))
-			return {};
-		else
-			return materials[mat_id];
+			; // FIXME return generic material
+
+		return materials.at(mat_id);
 	}
 
 	/**
@@ -55,7 +57,7 @@ struct model final : public modified_flag
 		for (auto &mesh_mat : meshes)
 		{
 			// mesh_mat.mesh->clear_modified(); //!< \todo FIXME
-			get_mesh_material(mesh_mat.material_id)->clear_modified();
+			get_mesh_material(mesh_mat.material_id)->w()->clear_modified();
 		}
 	}
 
@@ -68,7 +70,7 @@ struct model final : public modified_flag
 		for (auto mesh_mat : meshes)
 		{
 			// mod |= mesh_mat.mesh->is_modified();
-			mod |= get_mesh_material(mesh_mat.material_id)->is_modified();
+			mod |= get_mesh_material(mesh_mat.material_id)->r()->is_modified();
 		}
 		return mod;
 	}

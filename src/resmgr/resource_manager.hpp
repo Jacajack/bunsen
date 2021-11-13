@@ -18,8 +18,8 @@ namespace bu {
 template <typename T>
 class resource_manager
 {
-	static_assert(std::is_base_of_v<bu::resource<T>, T>,
-		"Resource manager can only manage classes derived from bu::managed_resource<T>");
+	// static_assert(std::is_base_of_v<bu::resource<T>, T>,
+		// "Resource manager can only manage classes derived from bu::managed_resource<T>");
 
 public:
 	using id_type = typename bu::uid_provider<T>::id_type;
@@ -39,7 +39,7 @@ public:
 		// Register name (or suggest a new one)
 		std::string new_name = m_name_manager.add(name);
 		m_ids[new_name] = id;
-		res.set_name(new_name);
+		res.set_manager(new_name, this);
 
 		LOG_INFO << "new resource '" << new_name << "' (id=" << id << ")";
 
@@ -139,6 +139,28 @@ public:
 		throw std::out_of_range{std::string{"resource_manager::get_name() - no resource with ID="} + std::to_string(id)};
 	}
 
+	std::string set_name(id_type id, const std::string &name)
+	{
+		std::scoped_lock lock{m_names_mutex};
+		
+		// Get old name
+		std::string old_name = get_name(id);
+
+		// Register the new name and unregister the old one
+		auto new_name = m_name_manager.add(name);
+		m_name_manager.remove(old_name);
+
+		m_resources[id]->set_manager(new_name, this);
+		m_ids[new_name] = id;
+		m_ids.erase(old_name);
+		return new_name;
+	}
+
+	std::string rename(const std::string &from, const std::string &to)
+	{
+		set_name(get_id(from), to);
+	}
+
 	//! Returns a vector with all resource IDs
 	std::vector<id_type> get_ids() const
 	{
@@ -149,24 +171,22 @@ public:
 		return ids;
 	}
 
-protected:
-	// std::string rename(const std::string &from, const std::string &to)
-	// {
-	// 	if (from == to) return from;
-
-	// 	// TODO mutex lock
-	// 	auto new_name = m_name_manager.rename(from, to);
-	// 	m_ids[new_name] = m_ids.at(from);
-	// 	m_ids.erase(from);
-	// 	return new_name;
-	// }
+	//! Estimates total size of all contained resources
+	size_t estimate_total_size() const
+	{
+		std::scoped_lock lock{m_names_mutex};
+		size_t total = 0;
+		for (const auto &[id, res] : m_resources)
+			total += res->estimate_resource_size();
+		return total;
+	}
 
 private:
 	//! Maps IDs to resource pointers
 	std::unordered_map<id_type, std::shared_ptr<T>> m_resources;
 	
 	//! Protects the name manager and ID map
-	std::shared_mutex m_names_mutex;
+	mutable std::recursive_mutex m_names_mutex;
 	std::unordered_map<std::string, id_type> m_ids;
 	bu::name_manager m_name_manager;
 };

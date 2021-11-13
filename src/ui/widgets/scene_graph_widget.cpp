@@ -167,11 +167,10 @@ void scene_graph_widget::draw(const bu::scene &scene, bu::scene_selection &selec
 					}
 
 					for (const auto &mat : model_node_ptr->model->materials)
-						if (mat)
-						{
-							ImGui::TreeNodeEx(mat.get(), leaf_flags, ICON_FA_GEM " %s", mat->name.c_str());
-							clicked |= ImGui::IsItemClicked();
-						}
+					{
+						ImGui::TreeNodeEx((void*)mat->resource_id(), leaf_flags, ICON_FA_GEM " %s", mat->get_name().c_str());
+						clicked |= ImGui::IsItemClicked();
+					}
 				}
 
 				// Clicking on leafs acts like clicking on the node
