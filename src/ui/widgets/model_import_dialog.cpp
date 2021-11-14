@@ -10,11 +10,11 @@ void model_import_dialog::draw(std::shared_ptr<bu::scene> scene, bool open)
 	{
 		m_scene = scene;
 		static ImVec4 file_highlight(0.8, 0, 0.3, 0.9);
-		m_dialog.SetExtentionInfos(".obj", file_highlight);
-		m_dialog.SetExtentionInfos(".dae", file_highlight);
-		m_dialog.SetExtentionInfos(".gltf", file_highlight);
-		m_dialog.SetExtentionInfos(".glb", file_highlight);
-		m_dialog.SetExtentionInfos(".ply", file_highlight);
+		m_dialog.SetFileStyle(IGFD_FileStyleByExtention, ".obj", file_highlight);
+		m_dialog.SetFileStyle(IGFD_FileStyleByExtention, ".dae", file_highlight);
+		m_dialog.SetFileStyle(IGFD_FileStyleByExtention, ".gltf", file_highlight);
+		m_dialog.SetFileStyle(IGFD_FileStyleByExtention, ".glb", file_highlight);
+		m_dialog.SetFileStyle(IGFD_FileStyleByExtention, ".ply", file_highlight);
 
 		m_dialog.OpenDialog("import_model",
 			"Import a model from file",
