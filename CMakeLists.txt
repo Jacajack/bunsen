@@ -20,7 +20,7 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(OpenGL 4.2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(ASSIMP REQUIRED)
+find_package(assimp REQUIRED)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -pthread")
 set(CMAKE_CXX_FLAGS_DEBUG "-fno-omit-frame-pointer -g -DDEBUG -ffast-math -march=native")
